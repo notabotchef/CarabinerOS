@@ -63,7 +63,8 @@ function createModalElement(path) {
 
   // Create modal structure
   newModal.innerHTML = `
-    <div class="modal-inner">
+    <div class="modal-inner" x-data>
+      <x-extension id="modal-shell-start"></x-extension>
       <div class="modal-header">
         <h2 class="modal-title"></h2>
         <button class="modal-close">&times;</button>
@@ -72,6 +73,7 @@ function createModalElement(path) {
         <div class="modal-bd"></div>
       </div>
       <div class="modal-footer-slot" style="display: none;"></div>
+      <x-extension id="modal-shell-end"></x-extension>
     </div>
   `;
 

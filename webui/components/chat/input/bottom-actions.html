@@ -10,6 +10,7 @@
 <body>
   <div x-data>
     <template x-if="$store.chatInput">
+      <x-extension id="chat-input-bottom-actions-start"></x-extension>
       <div class="text-buttons-row">
         <button class="text-button" @click="$store.chatInput.pauseAgent(!$store.chatInput.paused)">
             <template x-if="!$store.chatInput.paused">
@@ -74,6 +75,7 @@
             <p>Nudge</p>
         </button>
       </div>
+      <x-extension id="chat-input-bottom-actions-end"></x-extension>
     </template>
   </div>
 

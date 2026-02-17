@@ -9,6 +9,7 @@
 <body>
     <div x-data >
         <template x-if="$store.welcomeStore && $store.welcomeStore.isVisible">
+            <x-extension id="welcome-screen-start"></x-extension>
             <div x-create="$store.welcomeStore.onCreate()" class="welcome-container">
                 <div class="welcome-content">
                     <!-- Action Cards -->
@@ -96,6 +97,7 @@
                     </div>
                 </div>
             </div>
+            <x-extension id="welcome-screen-end"></x-extension>
         </template>
     </div>
 

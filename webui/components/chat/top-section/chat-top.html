@@ -14,6 +14,7 @@
     <!-- This construct of x-data + x-if is used to ensure the component is only rendered when the store is available -->
     <div x-data>
         <template x-if="$store.chatTop">
+            <x-extension id="chat-top-start"></x-extension>
 
             <!-- Time and Date -->
             <div id="time-date-container">
@@ -24,6 +25,7 @@
                 <!-- Project Selector -->
                 <x-component path="projects/project-selector.html"></x-component>
             </div>
+            <x-extension id="chat-top-end"></x-extension>
 
         </template>
     </div>

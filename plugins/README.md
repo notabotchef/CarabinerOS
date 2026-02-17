@@ -35,6 +35,53 @@ Core UI defines insertion points like:
 <x-extension id="sidebar-quick-actions-main-start"></x-extension>
 ```
 
+Current sidebar surfaces:
+
+- `sidebar-start`
+- `sidebar-end`
+- `sidebar-top-wrapper-start`
+- `sidebar-top-wrapper-end`
+- `sidebar-quick-actions-main-start`
+- `sidebar-quick-actions-main-end`
+- `sidebar-quick-actions-dropdown-start`
+- `sidebar-quick-actions-dropdown-end`
+- `sidebar-chats-list-start`
+- `sidebar-chats-list-end`
+- `sidebar-tasks-list-start`
+- `sidebar-tasks-list-end`
+- `sidebar-bottom-wrapper-start`
+- `sidebar-bottom-wrapper-end`
+
+Current input surfaces:
+
+- `chat-input-start`
+- `chat-input-end`
+- `chat-input-progress-start`
+- `chat-input-progress-end`
+- `chat-input-box-start`
+- `chat-input-box-end`
+- `chat-input-bottom-actions-start`
+- `chat-input-bottom-actions-end`
+
+Current chat surfaces:
+
+- `chat-top-start`
+- `chat-top-end`
+
+Current welcome surfaces:
+
+- `welcome-screen-start`
+- `welcome-screen-end`
+
+Current modal surfaces:
+
+- `modal-shell-start`
+- `modal-shell-end`
+
+Placement pattern:
+- keep wrapper-level anchors in parent composition files
+- keep section anchors in their owning component files, inside local `x-data` scope
+
 Resolution flow:
 
 1. `webui/js/extensions.js` finds `x-extension` nodes.
@@ -72,6 +119,10 @@ Runtime code calls:
 
 `callJsExtensions("<extension_point>", ...args)`
 
+JS hook convention:
+- pass one mutable context object when extensions are expected to influence behavior
+- that object is passed by reference, so mutations are visible to subsequent hooks in the same flow
+
 Example:
 
 `set_messages_before_loop` and `set_messages_after_loop` in `webui/js/messages.js`.
@@ -85,6 +136,12 @@ Example:
 - `x-move-to`
 - `x-move-before`
 - `x-move-after`
+
+Placement behavior:
+- `x-move-to-start`, `x-move-to-end`, and `x-move-to` resolve a parent selector and insert the extension element as that parent's child.
+- `x-move-before` and `x-move-after` resolve a reference selector and insert the extension element as a sibling in the reference element's parent.
+- This structural difference can produce different visual results when parent and sibling styling differ (for example dropdown spacing/padding).
+- Example anchor selector for placing after the first dropdown item: `x-move-after=".quick-actions-dropdown .dropdown-header + .dropdown-item"`.
 
 ## Plugin Author Flow
 

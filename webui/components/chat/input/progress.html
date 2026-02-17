@@ -6,7 +6,8 @@
     </script>
 </head>
 <body>
-    <div id="progress-bar-box">
+    <div id="progress-bar-box" x-data>
+        <x-extension id="chat-input-progress-start"></x-extension>
         <h4 id="progress-bar-h">
             <span id="progress-bar-i">|></span><span id="progress-bar"></span>
         </h4>
@@ -31,6 +32,7 @@
             </button>
           </div>
         </div>
+        <x-extension id="chat-input-progress-end"></x-extension>
     </div>
 
 

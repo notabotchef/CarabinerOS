@@ -7,6 +7,7 @@
 </head>
 <body>
     <div id="input-section" x-data>
+        <x-extension id="chat-input-start"></x-extension>
         <template x-if="$store.chatInput">
             <div style="width: 100%; display: contents;">
                 <!-- Message Queue section -->
@@ -21,6 +22,7 @@
                 <x-component path="chat/input/bottom-actions.html"></x-component>
             </div>
         </template>
+        <x-extension id="chat-input-end"></x-extension>
     </div>
 
 
