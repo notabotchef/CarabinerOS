@@ -74,21 +74,33 @@ def get_plugin_paths(*subpaths: str) -> List[str]:
     return paths
 
 
-def get_webui_extensions(extension_point:str) -> List[Dict[str, Any]]:
+def get_webui_extensions(extension_point:str, filters:List[str]|None=None) -> List[Dict[str, Any]]:
     entries: List[Dict[str, Any]] = []
+    effective_filters = filters or ["*"]
     for plugin in list_plugins():
         frontend_dir = plugin.path / "extensions" / "webui" / extension_point
         if not frontend_dir.is_dir():
             continue
-        for html_file in sorted(frontend_dir.rglob("*.html"), key=lambda p: p.name):
+        matched_files: List[Path] = []
+        seen: set[str] = set()
+        for pattern in effective_filters:
+            for p in frontend_dir.rglob(pattern):
+                if not p.is_file():
+                    continue
+                p_str = str(p)
+                if p_str in seen:
+                    continue
+                seen.add(p_str)
+                matched_files.append(p)
+
+        for ext_file in sorted(matched_files, key=lambda p: p.name):
             try:
-                rel_path = html_file.relative_to(plugin.path).as_posix()
+                rel_path = files.deabsolute_path(str(ext_file))
                 entry: Dict[str, Any] = {
                     "plugin_id": plugin.id,
-                    "component_url": f"{plugin.path}/{rel_path}",
-                    "html": html_file.read_text(encoding="utf-8"),
+                    "path": rel_path,
                 }
                 entries.append(entry)
             except Exception:
-                print_style.PrintStyle.error(f"Failed to load frontend extension file {html_file}")
+                print_style.PrintStyle.error(f"Failed to load frontend extension file {ext_file}")
     return entries

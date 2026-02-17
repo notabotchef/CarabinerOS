@@ -77,7 +77,7 @@ export async function sendMessage() {
             : "";
 
         // Render user message with attachments
-        setMessages([{ id: messageId, type: "user", heading, content: message, kvps: {
+        await setMessages([{ id: messageId, type: "user", heading, content: message, kvps: {
           // attachments: attachmentsWithUrls, // skip here, let the backend properly log them
         }}]);
 
@@ -211,8 +211,8 @@ async function updateUserTime() {
 updateUserTime();
 setInterval(updateUserTime, 1000);
 
-function setMessages(...params) {
-  return msgs.setMessages(...params);
+async function setMessages(...params) {
+  return await msgs.setMessages(...params);
 }
 
 globalThis.loadKnowledge = async function () {
@@ -332,7 +332,7 @@ export async function applySnapshot(snapshot, options = {}) {
 
   if (lastLogVersion != snapshot.log_version) {
     updated = true;
-    setMessages(snapshot.logs);
+    await setMessages(snapshot.logs);
     afterMessagesUpdate(snapshot.logs);
   }
 

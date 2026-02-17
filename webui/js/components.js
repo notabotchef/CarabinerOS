@@ -30,8 +30,7 @@ export async function importComponent(path, targetElement) {
     targetElement.innerHTML = '<div class="loading"></div>';
 
     // full component url
-    const trimmedPath = path.replace(/^\/+/, "");
-    const componentUrl = trimmedPath.startsWith("components/") ? trimmedPath : "components/" + trimmedPath;
+    const componentUrl = path.startsWith("/") ? path : (path.startsWith("components/") ? path : "components/" + path);
 
     // get html from cache or fetch it
     let html;
