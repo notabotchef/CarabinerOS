@@ -9,8 +9,8 @@
 <body>
     <div x-data >
         <template x-if="$store.welcomeStore && $store.welcomeStore.isVisible">
-            <x-extension id="welcome-screen-start"></x-extension>
             <div x-create="$store.welcomeStore.onCreate()" class="welcome-container">
+                <x-extension id="welcome-screen-start"></x-extension>
                 <div class="welcome-content">
                     <!-- Action Cards -->
                     <div class="welcome-actions">
@@ -96,8 +96,8 @@
                         </template>
                     </div>
                 </div>
+                <x-extension id="welcome-screen-end"></x-extension>
             </div>
-            <x-extension id="welcome-screen-end"></x-extension>
         </template>
     </div>
 
@@ -115,6 +115,9 @@
             min-height: 100vh;
             position: relative;
             overflow: hidden;
+        }
+        .welcome-container > x-extension {
+            display: contents;
         }
 
         .welcome-container::before {
