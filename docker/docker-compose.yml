@@ -1,0 +1,54 @@
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_ENGINE_URL: http://engine:8000
+    depends_on:
+      engine:
+        condition: service_healthy
+
+  engine:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.engine
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://carabiner:carabiner@db:5432/carabiner
+    env_file:
+      - ../engine/.env
+    volumes:
+      - engine_data:/app/engine/agent-zero/usr
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/api/health'); r.raise_for_status()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: carabiner
+      POSTGRES_PASSWORD: carabiner
+      POSTGRES_DB: carabiner
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carabiner"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres_data:
+  engine_data:

@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy engine code and submodule
+COPY engine/ engine/
+
+# Install Agent Zero dependencies
+RUN pip install --no-cache-dir -r engine/agent-zero/requirements.txt 2>/dev/null || true
+
+# Install CarabinerOS engine dependencies
+RUN pip install --no-cache-dir -e engine/
+
+# Set working directory to engine
+WORKDIR /app/engine
+
+EXPOSE 8000
+
+CMD ["python", "main.py"]

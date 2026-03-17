@@ -1,0 +1,3 @@
+[submodule "engine/agent-zero"]
+	path = engine/agent-zero
+	url = https://github.com/agent0ai/agent-zero.git

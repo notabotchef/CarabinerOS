@@ -6,7 +6,23 @@
       "Bash(mkdir -p /Users/estebannunez/Projects/carabiner-os/AgentCarabinerOS/agents/tools_expert/prompts)",
       "Bash(mkdir -p /Users/estebannunez/Projects/carabiner-os/AgentCarabinerOS/agents/orchestrator/prompts)",
       "Bash(mkdir -p /Users/estebannunez/Projects/carabiner-os/AgentCarabinerOS/agents/infrastructure/prompts)",
-      "Bash(mkdir -p /Users/estebannunez/Projects/carabiner-os/AgentCarabinerOS/agents/product_lead/prompts)"
+      "Bash(mkdir -p /Users/estebannunez/Projects/carabiner-os/AgentCarabinerOS/agents/product_lead/prompts)",
+      "Bash(pnpm --version)",
+      "Bash(git --version)",
+      "Bash(rm -rf /tmp/everything-claude-code)",
+      "Bash(git clone:*)",
+      "Read(//private/tmp/everything-claude-code/.agents/skills/**)",
+      "Read(//private/tmp/everything-claude-code/skills/search-first/**)",
+      "Bash(git init:*)",
+      "Bash(mv agent-zero-official:*)",
+      "Bash(git submodule:*)",
+      "Bash(pip install:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python3 -m pip install --user -e \".[dev]\")",
+      "Bash(brew list:*)",
+      "Bash(pyenv versions:*)",
+      "Bash(python3 -m pip install --user pytest pytest-asyncio httpx fastapi pydantic pydantic-settings python-socketio uvicorn)",
+      "Bash(python3:*)"
     ]
   }
 }

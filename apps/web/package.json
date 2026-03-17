@@ -1,0 +1,10 @@
+{
+  "name": "@carabiner-os/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Next.js app - Phase 2'",
+    "build": "echo 'Next.js app - Phase 2'",
+    "lint": "echo 'Next.js app - Phase 2'"
+  }
+}
