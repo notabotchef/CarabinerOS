@@ -2,72 +2,97 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Repository Structure
+## Repository Structure (v2)
 
-This repo contains two directories:
-- `AgentCarabinerOS/` — the active production engine (primary codebase)
-- `agent-zero-official/` — upstream Agent Zero framework (reference/upstream)
+CarabinerOS v2 is a Turborepo monorepo with three layers:
 
-All development work happens in `AgentCarabinerOS/`.
+```
+carabiner-os/
+├── apps/web/                 # Next.js 15 frontend (Phase 2+)
+├── packages/api-types/       # Shared TypeScript types
+├── engine/
+│   ├── agent-zero/           # Git submodule — NEVER modify directly
+│   ├── carabiner/            # CarabinerOS domain layer
+│   │   ├── api/              # FastAPI routers
+│   │   ├── domain/           # Pydantic models + business logic
+│   │   ├── db/               # SQLAlchemy models + Alembic migrations
+│   │   └── agent_overlay/    # Non-invasive Agent Zero customization
+│   │       ├── tools/        # Restaurant tools (discovered via usr/ symlinks)
+│   │       ├── extensions/   # Extension hooks (system_prompt, tool_execute_after, etc.)
+│   │       ├── prompts/      # Prompt overrides
+│   │       └── profiles/     # Agent profiles
+│   ├── bridge.py             # FastAPI <-> Agent Zero bridge
+│   ├── main.py               # FastAPI + Agent Zero boot
+│   └── tests/
+├── docker/
+│   ├── docker-compose.yml    # web + engine + postgres
+│   ├── Dockerfile.engine
+│   └── Dockerfile.web
+├── AgentCarabinerOS/         # Legacy v1 (gitignored, kept for reference)
+└── docs/
+```
 
 ## Commands
 
-From `AgentCarabinerOS/`:
-
 ```bash
-# Run locally (development)
-python run_ui.py
+# Run engine (from engine/)
+python main.py
 
-# Run via Docker (preferred for full environment)
-docker compose -f docker/run/docker-compose.yml up --build
+# Run tests (from engine/)
+python3 -m pytest tests/ -v
 
-# Run tests
-pytest
-pytest -v
-pytest -k "test_websocket"        # filter by pattern
-pytest --asyncio-mode=auto        # for async tests
+# Docker (from docker/)
+docker compose up --build
+
+# Monorepo (from root)
+pnpm install
+pnpm dev
 ```
-
-No linter is configured in the project.
 
 ## Architecture
 
-**Entry point:** `run_ui.py` — Flask/Uvicorn ASGI server with python-socketio for WebSocket support.
+### Agent Zero Integration (Overlay Pattern)
 
-**Core runtime:**
-- `agent.py` — `AgentContext` (session/conversation container) and `Agent` (execution loop). Each Agent has a number; Agent 0 is the primary, can spawn subordinate agents.
-- `models.py` — LLM integration via LiteLLM (unified interface across providers).
-- `python/tools/` — 27 built-in tools (code execution, browser, memory, search, scheduler, etc.). Tools inherit from a `Tool` base class and are discovered via reflection.
-- `python/helpers/` — 80+ helper modules for files, history, memory, WebSocket management, MCP, settings, etc.
-- `python/api/` — 76+ REST API endpoints for chat management, file ops, agent control, settings, etc.
+Agent Zero is a git submodule at `engine/agent-zero/`. It is NEVER modified directly.
 
-**Prompt-driven behavior:**
-- `prompts/` — All agent behavior is defined in `.md` prompt files. System prompts, tool guides, and communication templates are all fully customizable here.
-- `agents/` — Agent profiles (default, developer, hacker, researcher) with role-specific prompt overrides.
+Customization uses the **overlay pattern**:
+1. `bridge.py` creates symlinks from `agent-zero/usr/tools/` -> `carabiner/agent_overlay/tools/`
+2. Same for `usr/extensions/` -> `carabiner/agent_overlay/extensions/`
+3. Agent Zero's `subagents.get_paths()` discovers overlay files via the `usr/` search path
+4. The `usr/` directory is gitignored in Agent Zero, so symlinks are non-invasive
 
-**Frontend:**
-- `webui/` — Vanilla JavaScript, no build tools. Served as static files by Flask. Real-time updates via WebSocket.
+### Engine (FastAPI)
 
-**Key patterns:**
-- Tool extraction: LLM responses contain JSON tool calls that `python/helpers/extract_tools.py` parses (with dirty JSON handling).
-- Memory system: Persistent conversation memory with embedding-based semantic search (FAISS + sentence-transformers).
-- Project isolation: Each project has its own files, instructions, secrets, memory, and knowledge to prevent context bleed.
-- MCP integration: Agent can act as an MCP server and consume external MCP servers as tools (`python/helpers/mcp_handler.py`).
-- A2A protocol: Agent-to-agent communication via `python/helpers/fasta2a_client.py` / `fasta2a_server.py`.
-- Skills system: SKILL.md-compatible portable capabilities, dynamically loaded based on task relevance.
+**Entry point:** `engine/main.py` — FastAPI + Socket.IO ASGI app.
 
-**Configuration:**
-- `usr/` — Runtime data: settings, chats, scheduler state, memory.
-- Environment variables with `A0_SET_*` prefix override settings for deployment automation.
-- `FLASK_SECRET_KEY` required for session security.
+- `bridge.py` — `AgentBridge` class: bootstraps Agent Zero, registers overlay, exposes `communicate()`.
+- `carabiner/api/` — REST endpoints (health, orders, inventory, etc.)
+- `carabiner/domain/` — Pydantic models and business logic (connectors, data builders)
+- `carabiner/db/` — SQLAlchemy 2.0 models + Alembic migrations (Phase 1+)
 
-## Carabiner-Specific Additions
+### Frontend (Next.js — Phase 2+)
 
-Restaurant operations domain logic lives in:
-- `python/helpers/carabiner_connectors.py`
-- `python/helpers/carabiner_data.py`
-- `python/tools/restaurant_ops.py`
+- `apps/web/` — Next.js 15 + shadcn/ui + Tailwind
+- `packages/api-types/` — Shared TypeScript types generated from FastAPI schemas
 
-## Naming Note
+### Key Patterns
 
-The codebase inherits "Agent Zero" naming in some internal files and docs. This is upstream naming being consolidated. The product is CarabinerOS.
+- **Tool discovery:** Agent Zero finds tools via `subagents.get_paths()` searching `usr/ -> python/` hierarchy
+- **Extension hooks:** Extensions at `extensions/<hook_point>/<priority_name>.py` are called during agent lifecycle
+- **Overlay symlinks:** Created at boot by `bridge.py`, non-invasive to submodule
+- **Immutable domain models:** Pydantic `frozen=True` for all domain entities
+
+## Carabiner Domain
+
+Restaurant operations logic (ported from v1):
+- `carabiner/domain/connectors.py` — Provider connectors (Coastal Produce, Prime Meats, Heritage Bakery)
+- `carabiner/agent_overlay/tools/` — Restaurant tools (ping_tool for now, order/inventory/prep/etc in Phase 5)
+- `carabiner/agent_overlay/extensions/system_prompt/` — Injects restaurant context into agent prompts
+
+## Legacy v1
+
+The original monolith lives in `AgentCarabinerOS/` (gitignored). Key reference files:
+- `python/helpers/carabiner_connectors.py` — Original connector logic
+- `python/helpers/carabiner_data.py` — HQ data builder
+- `python/tools/restaurant_ops.py` — Monolithic restaurant tool
+- `webui/components/carabiner/carabiner-store.js` — Frontend state (900+ lines, seed data)

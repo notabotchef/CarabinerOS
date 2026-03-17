@@ -22,7 +22,18 @@
       "Bash(brew list:*)",
       "Bash(pyenv versions:*)",
       "Bash(python3 -m pip install --user pytest pytest-asyncio httpx fastapi pydantic pydantic-settings python-socketio uvicorn)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(rm -rf web)",
+      "Bash(npx create-next-app@latest web --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --use-pnpm --no-turbopack)",
+      "Bash(kill %1)",
+      "Bash(npx --yes create-next-app@latest web --typescript --tailwind --eslint --app --src-dir --import-alias @/* --use-pnpm --no-turbopack --no-react-compiler)",
+      "Bash(npx --yes shadcn@latest init -d --style default --base-color neutral)",
+      "Bash(npx shadcn@latest init -d)",
+      "Bash(npx shadcn@latest add sidebar card sheet badge separator tooltip avatar)",
+      "Bash(pnpm build:*)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(pkill -f \"next-server\")",
+      "Bash(npx skills:*)"
     ]
   }
 }

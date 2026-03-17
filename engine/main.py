@@ -100,7 +100,7 @@ app.add_middleware(
 app.include_router(health_router)
 
 # Mount Socket.IO as ASGI sub-app
-socket_app = socketio.ASGIApp(sio, other_app=app)
+socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
 
 
 @app.get("/api/overlay/status")
