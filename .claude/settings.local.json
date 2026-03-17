@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la /Users/estebannunez/Projects/carabiner-os/agent-zero-official/*.py)",
+      "Bash(mkdir -p /Users/estebannunez/Projects/carabiner-os/AgentCarabinerOS/agents/memory_expert/prompts)",
+      "Bash(mkdir -p /Users/estebannunez/Projects/carabiner-os/AgentCarabinerOS/agents/tools_expert/prompts)",
+      "Bash(mkdir -p /Users/estebannunez/Projects/carabiner-os/AgentCarabinerOS/agents/orchestrator/prompts)",
+      "Bash(mkdir -p /Users/estebannunez/Projects/carabiner-os/AgentCarabinerOS/agents/infrastructure/prompts)",
+      "Bash(mkdir -p /Users/estebannunez/Projects/carabiner-os/AgentCarabinerOS/agents/product_lead/prompts)"
+    ]
+  }
+}
