@@ -23,7 +23,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { MessageSquare, Plus, Trash2, Loader2 } from "lucide-react";
+import {
+  Home,
+  Inbox,
+  ShoppingCart,
+  Receipt,
+  Warehouse,
+  ChefHat,
+  DollarSign,
+  UtensilsCrossed,
+  BarChart3,
+  Megaphone,
+  MapPin,
+  Settings,
+  MessageSquare,
+  Plus,
+  Trash2,
+  Loader2,
+  type LucideIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useCallback } from "react";
 import type { Location } from "@/lib/api";
@@ -36,19 +54,19 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import type { ChatMessage } from "@/lib/chat-helpers";
 
-const MODULES: readonly { id: string; label: string; href: string; icon: string; badge?: number }[] = [
-  { id: "home", label: "Home", href: "/", icon: "H" },
-  { id: "inbox", label: "Inbox", href: "/inbox", icon: "I", badge: 3 },
-  { id: "orders", label: "Orders", href: "/orders", icon: "O" },
-  { id: "invoices", label: "Invoices", href: "/invoices", icon: "$" },
-  { id: "inventory", label: "Inventory", href: "/inventory", icon: "V" },
-  { id: "prep", label: "Prep", href: "/prep", icon: "P" },
-  { id: "food-cost", label: "Food Cost", href: "/food-cost", icon: "F" },
-  { id: "menu", label: "Menu", href: "/menu", icon: "M" },
-  { id: "reporting", label: "Reporting", href: "/reporting", icon: "R" },
-  { id: "marketing", label: "Marketing", href: "/marketing", icon: "K" },
-  { id: "locations", label: "Locations", href: "/locations", icon: "L" },
-  { id: "admin", label: "Admin", href: "/admin", icon: "A" },
+const MODULES: readonly { id: string; label: string; href: string; icon: LucideIcon; badge?: number }[] = [
+  { id: "home", label: "Home", href: "/", icon: Home },
+  { id: "inbox", label: "Inbox", href: "/inbox", icon: Inbox, badge: 3 },
+  { id: "orders", label: "Orders", href: "/orders", icon: ShoppingCart },
+  { id: "invoices", label: "Invoices", href: "/invoices", icon: Receipt },
+  { id: "inventory", label: "Inventory", href: "/inventory", icon: Warehouse },
+  { id: "prep", label: "Prep", href: "/prep", icon: ChefHat },
+  { id: "food-cost", label: "Food Cost", href: "/food-cost", icon: DollarSign },
+  { id: "menu", label: "Menu", href: "/menu", icon: UtensilsCrossed },
+  { id: "reporting", label: "Reporting", href: "/reporting", icon: BarChart3 },
+  { id: "marketing", label: "Marketing", href: "/marketing", icon: Megaphone },
+  { id: "locations", label: "Locations", href: "/locations", icon: MapPin },
+  { id: "admin", label: "Admin", href: "/admin", icon: Settings },
 ];
 
 const FALLBACK_LOCATIONS: Location[] = [
@@ -345,9 +363,7 @@ export function AppSidebar({ locations, orgName }: AppSidebarProps) {
                       isActive={isActive}
                       render={<Link href={mod.href} />}
                     >
-                      <span className="flex h-5 w-5 items-center justify-center rounded text-xs font-medium">
-                        {mod.icon}
-                      </span>
+                      <mod.icon className="size-4" />
                       <span>{mod.label}</span>
                       {mod.badge ? (
                         <Badge
