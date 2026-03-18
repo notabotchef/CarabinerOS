@@ -16,6 +16,7 @@ import type {
   PLSummary,
   TrendPoint,
   BudgetVariance,
+  Metric,
 } from "@/lib/api";
 import type { Conversation } from "@/stores/workspace-store";
 
@@ -138,6 +139,15 @@ export function useInvoices(locationId?: string | null) {
     queryKey: ["invoices", locationId],
     queryFn: () =>
       apiFetch(`/api/invoices${locationId ? `?location_id=${locationId}` : ""}`),
+  });
+}
+
+export function useMetrics(locationId?: string | null) {
+  return useQuery<Metric[]>({
+    queryKey: ["metrics", locationId],
+    queryFn: () =>
+      apiFetch(`/api/metrics${locationId ? `?location_id=${locationId}` : ""}`),
+    retry: false,
   });
 }
 
