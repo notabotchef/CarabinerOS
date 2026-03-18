@@ -65,6 +65,20 @@ def _create_overlay_symlinks() -> None:
 
         target = usr_dir / subdir
 
+        # For agents/profiles: symlink individual profiles into existing usr/agents/
+        if subdir == "agents" and target.exists() and not target.is_symlink():
+            for profile_dir in source_dir.iterdir():
+                if profile_dir.is_dir() and not profile_dir.name.startswith("_"):
+                    profile_target = target / profile_dir.name
+                    if profile_target.is_symlink():
+                        if profile_target.resolve() == profile_dir.resolve():
+                            continue
+                        profile_target.unlink()
+                    if not profile_target.exists():
+                        profile_target.symlink_to(profile_dir)
+                        logger.info("Registered profile: %s -> %s", profile_target, profile_dir)
+            continue
+
         if target.is_symlink():
             existing_target = target.resolve()
             if existing_target == source_dir.resolve():
@@ -135,7 +149,7 @@ class AgentBridge:
         bootstrap_agent_zero()
 
         from python.helpers import dotenv as az_dotenv
-        az_dotenv.load()
+        az_dotenv.load_dotenv()
 
         self._initialized = True
         logger.info("AgentBridge initialized successfully")

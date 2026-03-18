@@ -1,26 +1,28 @@
 services:
-  web:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.web
-    ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_ENGINE_URL: http://engine:8000
-    depends_on:
-      engine:
-        condition: service_healthy
-
   engine:
     build:
       context: ..
       dockerfile: docker/Dockerfile.engine
+    image: carabineros:latest
+    container_name: carabineros-engine
     ports:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://carabiner:carabiner@db:5432/carabiner
-    env_file:
-      - ../engine/.env
+      CHAT_MODEL_PROVIDER: ollama
+      CHAT_MODEL_NAME: qwen3.5:9b
+      CHAT_MODEL_API_BASE: http://host.docker.internal:11434
+      UTILITY_MODEL_PROVIDER: ollama
+      UTILITY_MODEL_NAME: qwen3.5:9b
+      UTILITY_MODEL_API_BASE: http://host.docker.internal:11434
+      EMBEDDINGS_MODEL_PROVIDER: ollama
+      EMBEDDINGS_MODEL_NAME: qwen3.5:9b
+      EMBEDDINGS_MODEL_API_BASE: http://host.docker.internal:11434
+      BROWSER_MODEL_PROVIDER: ollama
+      BROWSER_MODEL_NAME: qwen3.5:9b
+      BROWSER_MODEL_API_BASE: http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - engine_data:/app/engine/agent-zero/usr
     depends_on:
@@ -30,11 +32,12 @@ services:
       test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/api/health'); r.raise_for_status()"]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 15s
+      retries: 5
+      start_period: 30s
 
   db:
     image: postgres:16-alpine
+    container_name: carabineros-db
     environment:
       POSTGRES_USER: carabiner
       POSTGRES_PASSWORD: carabiner
@@ -48,6 +51,19 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    container_name: carabineros-web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_ENGINE_URL: http://engine:8000
+    depends_on:
+      engine:
+        condition: service_healthy
 
 volumes:
   postgres_data:
