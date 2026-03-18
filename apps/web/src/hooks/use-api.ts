@@ -11,6 +11,10 @@ import type {
   FoodCostItem,
   MenuItem,
   Campaign,
+  DailyPLRow,
+  PLSummary,
+  TrendPoint,
+  BudgetVariance,
 } from "@/lib/api";
 
 const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:8000";
@@ -88,5 +92,68 @@ export function useMarketing(locationId?: string | null) {
     queryKey: ["marketing", locationId],
     queryFn: () =>
       apiFetch(`/api/marketing${locationId ? `?location_id=${locationId}` : ""}`),
+  });
+}
+
+// --- Reporting ---
+
+function buildReportingParams(
+  locationId?: string | null,
+  startDate?: string | null,
+  endDate?: string | null,
+): string {
+  const params = new URLSearchParams();
+  if (locationId) params.set("location_id", locationId);
+  if (startDate) params.set("start_date", startDate);
+  if (endDate) params.set("end_date", endDate);
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export function useReportingPL(
+  locationId?: string | null,
+  startDate?: string | null,
+  endDate?: string | null,
+) {
+  return useQuery<DailyPLRow[]>({
+    queryKey: ["reporting-pl", locationId, startDate, endDate],
+    queryFn: () =>
+      apiFetch(`/api/reporting/pl${buildReportingParams(locationId, startDate, endDate)}`),
+  });
+}
+
+export function useReportingSummary(
+  locationId?: string | null,
+  startDate?: string | null,
+  endDate?: string | null,
+) {
+  return useQuery<PLSummary>({
+    queryKey: ["reporting-summary", locationId, startDate, endDate],
+    queryFn: () =>
+      apiFetch(`/api/reporting/pl/summary${buildReportingParams(locationId, startDate, endDate)}`),
+  });
+}
+
+export function useReportingTrends(
+  locationId?: string | null,
+  startDate?: string | null,
+  endDate?: string | null,
+) {
+  return useQuery<TrendPoint[]>({
+    queryKey: ["reporting-trends", locationId, startDate, endDate],
+    queryFn: () =>
+      apiFetch(`/api/reporting/trends${buildReportingParams(locationId, startDate, endDate)}`),
+  });
+}
+
+export function useReportingVariance(
+  locationId?: string | null,
+  startDate?: string | null,
+  endDate?: string | null,
+) {
+  return useQuery<BudgetVariance[]>({
+    queryKey: ["reporting-variance", locationId, startDate, endDate],
+    queryFn: () =>
+      apiFetch(`/api/reporting/variance${buildReportingParams(locationId, startDate, endDate)}`),
   });
 }

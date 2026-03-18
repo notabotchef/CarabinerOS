@@ -125,6 +125,62 @@ export interface Campaign {
   prompt: string | null;
 }
 
+// --- Reporting ---
+
+export interface DailyPLRow {
+  id: string;
+  location_id: string;
+  location_name: string;
+  pl_date: string;
+  beginning_inventory: number;
+  purchases: number;
+  ending_inventory: number;
+  cogs: number;
+  revenue: number;
+  food_cost_pct: number | null;
+  labor_cost: number;
+  labor_pct: number | null;
+  notes: string | null;
+}
+
+export interface PLSummary {
+  period_start: string;
+  period_end: string;
+  location_id: string | null;
+  total_revenue: number;
+  total_cogs: number;
+  avg_food_cost_pct: number;
+  total_labor: number;
+  avg_labor_pct: number;
+  total_purchases: number;
+  days: number;
+}
+
+export interface TrendPoint {
+  date: string;
+  food_cost_pct: number;
+  labor_pct: number;
+  revenue: number;
+  cogs: number;
+}
+
+export interface BudgetVariance {
+  location_id: string;
+  location_name: string;
+  period_start: string;
+  period_end: string;
+  actual_revenue: number;
+  actual_food_cost_pct: number;
+  actual_labor_pct: number;
+  target_revenue: number;
+  target_food_cost_pct: number;
+  target_labor_pct: number;
+  revenue_variance: number;
+  revenue_variance_pct: number;
+  food_cost_variance_pct: number;
+  labor_variance_pct: number;
+}
+
 export interface HQPayload {
   brand: { name: string; tagline: string; theme: string };
   organization: { id: string; name: string; slug: string } | null;
