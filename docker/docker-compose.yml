@@ -25,6 +25,11 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - engine_data:/app/engine/agent-zero/usr
+      - ../engine/bridge.py:/app/engine/bridge.py
+      - ../engine/main.py:/app/engine/main.py
+      - ../engine/carabiner:/app/engine/carabiner
+      - ../engine/tests:/app/engine/tests
+      - ../engine/pyproject.toml:/app/engine/pyproject.toml
     depends_on:
       db:
         condition: service_healthy
