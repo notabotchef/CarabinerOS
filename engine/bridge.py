@@ -204,6 +204,35 @@ class AgentBridge:
         response = await task.result()
         return response
 
+    async def communicate_async(
+        self,
+        context_id: str,
+        message: str,
+        active_location: Optional[dict] = None,
+    ):
+        """Start agent communication and return (context, task) for polling.
+
+        Unlike communicate(), this doesn't wait for completion — caller
+        polls task.is_alive() and reads context.log for real-time updates.
+        """
+        from agent import AgentContext, UserMessage
+
+        context = AgentContext.get(context_id)
+        if context is None:
+            config = self._build_config(profile="gm")
+            context = AgentContext(config=config, id=context_id)
+
+        if active_location:
+            context.agent0.config.additional["active_location_name"] = active_location.get("name", "Unknown")
+            context.agent0.config.additional["active_location_id"] = active_location.get("id")
+            context.agent0.config.additional["active_location_status"] = active_location.get("status", "")
+
+        context.agent0.config.additional["sio"] = self._sio
+
+        user_msg = UserMessage(message=message, attachments=[])
+        task = context.communicate(user_msg)
+        return context, task
+
     def verify_overlay_discovery(self) -> dict[str, list[str]]:
         """Check which overlay files Agent Zero can discover."""
         discovered: dict[str, list[str]] = {"tools": [], "extensions": [], "profiles": []}

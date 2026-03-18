@@ -70,45 +70,79 @@ async def handle_chat_message(sid: str, data: dict) -> None:
     }, to=sid)
 
     if agent_bridge.is_initialized:
-        # Real Agent Zero path
+        # Real Agent Zero path — poll log for real-time updates while task runs
         try:
+            from agent import AgentContext
+
             await sio.emit("status_update", {
                 "context_id": context_id,
                 "status": "thinking",
                 "detail": "Analyzing your request",
             }, to=sid)
 
-            response = await agent_bridge.communicate(
+            # Start the agent task (non-blocking)
+            context, task = await agent_bridge.communicate_async(
                 context_id=context_id,
                 message=message,
             )
 
-            # Keep status pill visible during streaming
-            await sio.emit("status_update", {
-                "context_id": context_id,
-                "status": "thinking",
-                "detail": "Composing response",
-            }, to=sid)
+            # Poll the context log for real-time updates
+            last_log_count = len(context.log.logs) if context.log else 0
+            last_streamed = ""
 
-            # Stream the response word by word
-            full = ""
-            words = response.split(" ")
-            for i, word in enumerate(words):
-                full += word + " "
-                await sio.emit("response_stream", {
-                    "context_id": context_id,
-                    "chunk": word + " ",
-                    "full": full.strip(),
-                }, to=sid)
-                await asyncio.sleep(0.03)
+            while task.is_alive():
+                await asyncio.sleep(0.2)
 
-                # Update status pill periodically during streaming
-                if i == len(words) // 3:
-                    await sio.emit("status_update", {
+                # Check for new log entries
+                if context.log and len(context.log.logs) > last_log_count:
+                    for i in range(last_log_count, len(context.log.logs)):
+                        log_item = context.log.logs[i]
+                        log_type = str(getattr(log_item, 'type', ''))
+                        heading = str(getattr(log_item, 'heading', ''))
+                        content = str(getattr(log_item, 'content', ''))
+
+                        # Emit status updates for agent activity
+                        if log_type in ('agent', 'tool', 'progress'):
+                            detail = heading or content
+                            if detail:
+                                # Clean internal language
+                                detail = detail.replace('Agent 0', 'GM').replace('Agent 1', 'Specialist')
+                                detail = detail[:80]
+                                await sio.emit("status_update", {
+                                    "context_id": context_id,
+                                    "status": "thinking",
+                                    "detail": detail,
+                                }, to=sid)
+
+                    last_log_count = len(context.log.logs)
+
+                # Check for streaming response content
+                if context.streaming_agent:
+                    current = getattr(context.streaming_agent, '_stream_full', '')
+                    if current and current != last_streamed:
+                        new_chunk = current[len(last_streamed):]
+                        if new_chunk:
+                            await sio.emit("response_stream", {
+                                "context_id": context_id,
+                                "chunk": new_chunk,
+                                "full": current,
+                            }, to=sid)
+                            last_streamed = current
+
+            # Get final response
+            response = await task.result()
+
+            # If we didn't stream anything yet, stream the full response
+            if not last_streamed and response:
+                full = ""
+                for word in response.split(" "):
+                    full += word + " "
+                    await sio.emit("response_stream", {
                         "context_id": context_id,
-                        "status": "thinking",
-                        "detail": "Streaming response",
+                        "chunk": word + " ",
+                        "full": full.strip(),
                     }, to=sid)
+                    await asyncio.sleep(0.02)
 
         except Exception as e:
             logger.error("Agent Zero error: %s", e, exc_info=True)
