@@ -1,8 +1,6 @@
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   ClipboardCheck,
@@ -37,19 +35,26 @@ export function MetricCards({ metrics }: MetricCardsProps) {
   const data = metrics ?? FALLBACK_METRICS;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <>
       {data.map((m) => {
         const Icon = ICON_MAP[m.label] ?? Lightbulb;
         const isPositive = m.delta.startsWith("+") || m.delta.includes("launch");
         return (
-          <Card key={m.label}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">{m.label}</CardTitle>
-              <Icon className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{m.value}</div>
-              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Card
+            key={m.label}
+            className="shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_8px_rgba(0,0,0,0.04)] transition-all hover:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_6px_12px_rgba(0,0,0,0.06)] hover:-translate-y-0.5"
+          >
+            <CardContent className="pt-5 pb-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {m.label}
+                </span>
+                <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+                  <Icon className="size-4 text-primary" />
+                </div>
+              </div>
+              <div className="text-3xl font-bold tabular-nums tracking-tight">{m.value}</div>
+              <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1 tabular-nums">
                 {isPositive ? (
                   <TrendingUp className="size-3 text-emerald-500" />
                 ) : (
@@ -61,6 +66,6 @@ export function MetricCards({ metrics }: MetricCardsProps) {
           </Card>
         );
       })}
-    </div>
+    </>
   );
 }
