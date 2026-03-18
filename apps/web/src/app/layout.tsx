@@ -47,9 +47,9 @@ export default async function RootLayout({
         <QueryProvider>
           <SocketProvider>
             <TooltipProvider>
-              <SidebarProvider>
+              <SidebarProvider defaultOpen={false}>
                 <AppSidebar locations={locations} orgName={orgName} />
-                <div className="flex flex-1 flex-col overflow-auto">{children}</div>
+                <div className="flex flex-1 flex-col overflow-hidden h-dvh">{children}</div>
               </SidebarProvider>
             </TooltipProvider>
           </SocketProvider>

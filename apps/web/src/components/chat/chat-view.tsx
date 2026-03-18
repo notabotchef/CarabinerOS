@@ -59,7 +59,7 @@ export function ChatView({ compact }: ChatViewProps) {
   }
 
   return (
-    <div className={`flex flex-col h-full ${compact ? "" : "max-w-3xl mx-auto w-full"}`}>
+    <div className={`flex flex-col min-h-0 flex-1 ${compact ? "" : "max-w-3xl mx-auto w-full"}`}>
       {/* Message area */}
       <div
         ref={scrollRef}
