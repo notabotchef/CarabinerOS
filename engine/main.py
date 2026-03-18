@@ -75,7 +75,7 @@ async def handle_chat_message(sid: str, data: dict) -> None:
             await sio.emit("status_update", {
                 "context_id": context_id,
                 "status": "thinking",
-                "detail": "Delegating to specialist",
+                "detail": "Analyzing your request",
             }, to=sid)
 
             response = await agent_bridge.communicate(
@@ -83,9 +83,17 @@ async def handle_chat_message(sid: str, data: dict) -> None:
                 message=message,
             )
 
+            # Keep status pill visible during streaming
+            await sio.emit("status_update", {
+                "context_id": context_id,
+                "status": "thinking",
+                "detail": "Composing response",
+            }, to=sid)
+
             # Stream the response word by word
             full = ""
-            for word in response.split(" "):
+            words = response.split(" ")
+            for i, word in enumerate(words):
                 full += word + " "
                 await sio.emit("response_stream", {
                     "context_id": context_id,
@@ -93,6 +101,14 @@ async def handle_chat_message(sid: str, data: dict) -> None:
                     "full": full.strip(),
                 }, to=sid)
                 await asyncio.sleep(0.03)
+
+                # Update status pill periodically during streaming
+                if i == len(words) // 3:
+                    await sio.emit("status_update", {
+                        "context_id": context_id,
+                        "status": "thinking",
+                        "detail": "Streaming response",
+                    }, to=sid)
 
         except Exception as e:
             logger.error("Agent Zero error: %s", e, exc_info=True)
