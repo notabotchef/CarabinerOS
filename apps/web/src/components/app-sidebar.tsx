@@ -164,7 +164,7 @@ export function AppSidebar({ locations, orgName }: AppSidebarProps) {
 
       <SidebarFooter className="p-4">
         <p className="text-xs text-muted-foreground">
-          CarabinerOS v2 &middot; Phase 2
+          CarabinerOS v2 &middot; Phase 4
         </p>
       </SidebarFooter>
     </Sidebar>

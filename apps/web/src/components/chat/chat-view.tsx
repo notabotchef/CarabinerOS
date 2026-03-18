@@ -18,7 +18,7 @@ const MODULE_PILLS = [
 ];
 
 interface ChatViewProps {
-  compact?: boolean; // true when rendered inside ChatDock (380px)
+  compact?: boolean;
 }
 
 export function ChatView({ compact }: ChatViewProps) {
@@ -29,7 +29,6 @@ export function ChatView({ compact }: ChatViewProps) {
 
   const hasMessages = messages.length > 0;
 
-  // Auto-scroll on new messages or streaming chunks
   useEffect(() => {
     const el = scrollRef.current;
     if (el) {
@@ -39,9 +38,7 @@ export function ChatView({ compact }: ChatViewProps) {
 
   function handleSend(message: string) {
     const socket = getSocket();
-    if (!socket.connected) {
-      return;
-    }
+    if (!socket.connected) return;
 
     addMessage({
       id: crypto.randomUUID(),
@@ -58,70 +55,77 @@ export function ChatView({ compact }: ChatViewProps) {
     });
   }
 
+  // Empty state: everything grouped and centered
+  if (!hasMessages) {
+    return (
+      <div className={`flex flex-col items-center justify-center flex-1 min-h-0 gap-6 px-4 ${compact ? "" : "max-w-3xl mx-auto w-full"}`}>
+        <div className="flex size-10 items-center justify-center rounded-xl border bg-card text-base font-bold">
+          C
+        </div>
+        <div className="text-center">
+          <h1 className={`font-semibold ${compact ? "text-base" : "text-lg"}`}>
+            Good morning
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            How can I help with operations today?
+          </p>
+        </div>
+
+        {!compact && (
+          <div className="flex flex-wrap justify-center gap-2">
+            {MODULE_PILLS.map((mod) => (
+              <button
+                key={mod.id}
+                onClick={() => router.push(mod.href)}
+                className="rounded-lg border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                {mod.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className={`w-full ${compact ? "" : "max-w-2xl"}`}>
+          <ChatComposer
+            onSend={handleSend}
+            disabled={isStreaming}
+            hasMessages={false}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Active state: messages + composer at bottom
   return (
     <div className={`flex flex-col min-h-0 flex-1 ${compact ? "" : "max-w-3xl mx-auto w-full"}`}>
-      {/* Message area */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto"
         aria-live="polite"
       >
-        {!hasMessages ? (
-          /* Empty state */
-          <div className="flex flex-col items-center justify-end h-full gap-4 px-4 pb-4">
-            <div className="flex size-10 items-center justify-center rounded-xl border bg-card text-base font-bold">
-              C
-            </div>
-            <div className="text-center">
-              <h1 className={`font-semibold ${compact ? "text-base" : "text-lg"}`}>
-                Good morning
-              </h1>
-              <p className="text-xs text-muted-foreground mt-1">
-                How can I help with operations today?
-              </p>
-            </div>
-          </div>
-        ) : (
-          /* Messages */
-          <div className={`space-y-3 ${compact ? "p-3" : "p-6"}`}>
-            {messages.map((msg, i) => (
-              <ChatMessageBubble
-                key={msg.id}
-                role={msg.role}
-                content={msg.content}
-                isStreaming={
-                  isStreaming &&
-                  i === messages.length - 1 &&
-                  msg.role === "assistant"
-                }
-              />
-            ))}
-            <ChatStatusPill status={streamingStatus} />
-          </div>
-        )}
+        <div className={`space-y-3 ${compact ? "p-3" : "p-6"}`}>
+          {messages.map((msg, i) => (
+            <ChatMessageBubble
+              key={msg.id}
+              role={msg.role}
+              content={msg.content}
+              isStreaming={
+                isStreaming &&
+                i === messages.length - 1 &&
+                msg.role === "assistant"
+              }
+            />
+          ))}
+          <ChatStatusPill status={streamingStatus} />
+        </div>
       </div>
 
-      {/* Module pills (empty state only) */}
-      {!hasMessages && !compact && (
-        <div className="flex flex-wrap justify-center gap-2 px-4 pb-2 animate-in fade-in duration-300">
-          {MODULE_PILLS.map((mod) => (
-            <button
-              key={mod.id}
-              onClick={() => router.push(mod.href)}
-              className="rounded-lg border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-            >
-              {mod.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Composer */}
       <div className={compact ? "p-3 border-t" : "py-4"}>
         <ChatComposer
           onSend={handleSend}
           disabled={isStreaming}
-          hasMessages={hasMessages}
+          hasMessages={true}
         />
       </div>
     </div>
