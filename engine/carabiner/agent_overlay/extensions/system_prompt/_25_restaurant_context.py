@@ -6,15 +6,20 @@ the agent config and DB to provide context for every agent interaction.
 
 from __future__ import annotations
 
+from typing import Any
 from python.helpers.extension import Extension
+from agent import LoopData
 
 
 class RestaurantContext(Extension):
-    async def execute(self, **kwargs) -> None:
-        prompt = kwargs.get("system_prompt", "")
-
+    async def execute(
+        self,
+        system_prompt: list[str] = [],
+        loop_data: LoopData = LoopData(),
+        **kwargs: Any,
+    ) -> None:
         context_parts = [
-            "\n\n## Restaurant Operations Context",
+            "## Restaurant Operations Context",
             "You are operating within CarabinerOS, a restaurant operations platform.",
         ]
 
@@ -37,4 +42,4 @@ class RestaurantContext(Extension):
         context_parts.append("Use the available tools to query real operational data before making recommendations.")
         context_parts.append("Always reference specific numbers, items, and locations in your responses.")
 
-        kwargs["system_prompt"] = prompt + "\n".join(context_parts)
+        system_prompt.append("\n".join(context_parts))
