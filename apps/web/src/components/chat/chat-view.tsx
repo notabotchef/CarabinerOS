@@ -68,15 +68,15 @@ export function ChatView({ compact }: ChatViewProps) {
       >
         {!hasMessages ? (
           /* Empty state */
-          <div className="flex flex-col items-center justify-center h-full gap-6 px-4">
-            <div className="flex size-12 items-center justify-center rounded-xl border bg-card text-lg font-bold">
+          <div className="flex flex-col items-center justify-end h-full gap-4 px-4 pb-4">
+            <div className="flex size-10 items-center justify-center rounded-xl border bg-card text-base font-bold">
               C
             </div>
             <div className="text-center">
-              <h1 className={`font-semibold ${compact ? "text-lg" : "text-xl"}`}>
+              <h1 className={`font-semibold ${compact ? "text-base" : "text-lg"}`}>
                 Good morning
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 How can I help with operations today?
               </p>
             </div>
