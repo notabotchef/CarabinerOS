@@ -32,7 +32,6 @@ _LLM_ENV_MAP = {
     "UTILITY_MODEL_API_BASE": "A0_SET_util_model_api_base",
     "EMBEDDINGS_MODEL_PROVIDER": "A0_SET_embed_model_provider",
     "EMBEDDINGS_MODEL_NAME": "A0_SET_embed_model_name",
-    "EMBEDDINGS_MODEL_API_BASE": "A0_SET_embed_model_api_base",
     "BROWSER_MODEL_PROVIDER": "A0_SET_browser_model_provider",
     "BROWSER_MODEL_NAME": "A0_SET_browser_model_name",
     "BROWSER_MODEL_API_BASE": "A0_SET_browser_model_api_base",
