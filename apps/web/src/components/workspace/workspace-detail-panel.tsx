@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import {
   Sheet,
   SheetContent,
@@ -90,16 +91,20 @@ export function WorkspaceDetailPanel({
 
           {fields.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
-              {fields.map((f) => (
-                <div
+              {fields.map((f, i) => (
+                <motion.div
                   key={f.label}
-                  className="rounded-md border bg-muted/50 px-3 py-2"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05, type: "spring", stiffness: 300, damping: 30 }}
                 >
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {f.label}
+                  <div className="rounded-md border bg-muted/50 px-3 py-2">
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {f.label}
+                    </div>
+                    <div className="text-sm font-medium mt-0.5 tabular-nums">{f.value}</div>
                   </div>
-                  <div className="text-sm font-medium mt-0.5">{f.value}</div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}

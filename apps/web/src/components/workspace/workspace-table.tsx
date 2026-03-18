@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   flexRender,
   getCoreRowModel,
@@ -151,26 +152,33 @@ export function WorkspaceTable<T>({
                   </TableCell>
                 </TableRow>
               ) : (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className={onRowClick ? "cursor-pointer" : ""}
-                    onClick={() => onRowClick?.(row.original)}
-                    onKeyDown={(e) => {
-                      if ((e.key === "Enter" || e.key === " ") && onRowClick) {
-                        e.preventDefault();
-                        onRowClick(row.original);
-                      }
-                    }}
-                    tabIndex={onRowClick ? 0 : undefined}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                <AnimatePresence mode="popLayout">
+                  {table.getRowModel().rows.map((row) => (
+                    <motion.tr
+                      key={row.id}
+                      layout
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -12 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                      className={`border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted ${onRowClick ? "cursor-pointer" : ""}`}
+                      onClick={() => onRowClick?.(row.original)}
+                      onKeyDown={(e) => {
+                        if ((e.key === "Enter" || e.key === " ") && onRowClick) {
+                          e.preventDefault();
+                          onRowClick(row.original);
+                        }
+                      }}
+                      tabIndex={onRowClick ? 0 : undefined}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
               )}
             </TableBody>
           </Table>
