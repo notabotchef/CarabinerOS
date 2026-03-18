@@ -31,6 +31,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress noisy uvicorn access logs (health checks every 10s)
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
 # --- Agent Bridge (singleton) ---
 agent_bridge = AgentBridge()
 
