@@ -16,6 +16,15 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useWorkspaceStore } from "@/stores/workspace-store";
+import type { Location } from "@/lib/api";
+import { useEffect } from "react";
 
 const MODULES: readonly { id: string; label: string; href: string; icon: string; badge?: number }[] = [
   { id: "home", label: "Home", href: "/", icon: "H" },
@@ -30,11 +39,11 @@ const MODULES: readonly { id: string; label: string; href: string; icon: string;
   { id: "admin", label: "Admin", href: "/admin", icon: "A" },
 ];
 
-const LOCATIONS = [
-  { id: "river-north", name: "River North", status: "Stable" },
-  { id: "west-loop", name: "West Loop", status: "Attention" },
-  { id: "fulton-market", name: "Fulton Market", status: "Launch week" },
-] as const;
+const FALLBACK_LOCATIONS: Location[] = [
+  { id: "1", slug: "river-north", name: "River North", city: "Chicago", status: "Stable", sales_delta: "+7.2%", labor_delta: "-1.3%" },
+  { id: "2", slug: "west-loop", name: "West Loop", city: "Chicago", status: "Attention", sales_delta: "+2.4%", labor_delta: "+4.9%" },
+  { id: "3", slug: "fulton-market", name: "Fulton Market", city: "Chicago", status: "Launch week", sales_delta: "+12.1%", labor_delta: "+2.0%" },
+];
 
 function statusColor(status: string): string {
   switch (status) {
@@ -49,8 +58,24 @@ function statusColor(status: string): string {
   }
 }
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  locations?: Location[];
+  orgName?: string;
+}
+
+export function AppSidebar({ locations, orgName }: AppSidebarProps) {
   const pathname = usePathname();
+  const locs = locations ?? FALLBACK_LOCATIONS;
+  const { activeLocationId, setActiveLocation } = useWorkspaceStore();
+
+  // Default to first location
+  useEffect(() => {
+    if (!activeLocationId && locs.length > 0) {
+      setActiveLocation(locs[0].id);
+    }
+  }, [activeLocationId, locs, setActiveLocation]);
+
+  const activeLocation = locs.find((l) => l.id === activeLocationId) ?? locs[0];
 
   return (
     <Sidebar>
@@ -62,28 +87,40 @@ export function AppSidebar() {
           <div>
             <p className="text-sm font-semibold">CarabinerOS</p>
             <p className="text-xs text-muted-foreground">
-              Carabiner Restaurant Group
+              {orgName ?? "Carabiner Restaurant Group"}
             </p>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Location Switcher */}
         <SidebarGroup>
-          <SidebarGroupLabel>Locations</SidebarGroupLabel>
+          <SidebarGroupLabel>Location</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {LOCATIONS.map((loc) => (
-                <SidebarMenuItem key={loc.id}>
-                  <SidebarMenuButton size="sm" className="cursor-pointer">
-                    <span
-                      className={`h-2 w-2 rounded-full ${statusColor(loc.status)}`}
-                    />
-                    <span className="text-xs">{loc.name}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-accent">
+                  <span className={`h-2 w-2 rounded-full ${statusColor(activeLocation?.status ?? "")}`} />
+                  <span className="flex-1 font-medium">{activeLocation?.name ?? "Select location"}</span>
+                  <span className="text-[10px] text-muted-foreground">{activeLocation?.sales_delta}</span>
+                  <svg className="size-3 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[220px]">
+                {locs.map((loc) => (
+                  <DropdownMenuItem
+                    key={loc.id}
+                    onClick={() => setActiveLocation(loc.id)}
+                    className="flex items-center gap-2"
+                  >
+                    <span className={`h-2 w-2 rounded-full ${statusColor(loc.status)}`} />
+                    <span className="flex-1">{loc.name}</span>
+                    <span className="text-[10px] text-muted-foreground">{loc.status}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
@@ -127,7 +164,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="p-4">
         <p className="text-xs text-muted-foreground">
-          CarabinerOS v2 &middot; Phase 0
+          CarabinerOS v2 &middot; Phase 2
         </p>
       </SidebarFooter>
     </Sidebar>

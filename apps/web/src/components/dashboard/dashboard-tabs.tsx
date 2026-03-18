@@ -12,8 +12,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { HQPayload } from "@/lib/api";
 
-export function DashboardTabs() {
+interface DashboardTabsProps {
+  hq: HQPayload | null;
+}
+
+export function DashboardTabs({ hq }: DashboardTabsProps) {
   return (
     <Tabs defaultValue="overview">
       <TabsList>
@@ -27,7 +32,7 @@ export function DashboardTabs() {
       </TabsList>
 
       <TabsContent value="overview" className="space-y-6">
-        <MetricCards />
+        <MetricCards metrics={hq?.metrics ?? null} />
 
         <div className="grid gap-6 lg:grid-cols-7">
           <Card className="lg:col-span-4">
@@ -50,12 +55,12 @@ export function DashboardTabs() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <InboxList />
+              <InboxList items={hq?.inbox ?? null} />
             </CardContent>
           </Card>
         </div>
 
-        <SuggestedPrompts />
+        <SuggestedPrompts prompts={hq?.suggested_prompts ?? null} />
       </TabsContent>
     </Tabs>
   );

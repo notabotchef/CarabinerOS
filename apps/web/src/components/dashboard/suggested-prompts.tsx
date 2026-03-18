@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
 
-const SUGGESTED_PROMPTS = [
+const FALLBACK_PROMPTS = [
   "Build today's produce order for River North using par levels and yesterday's sales mix.",
   "Review inventory shortages across all locations and generate an urgent prep list for dinner service.",
   "Calculate food cost pressure for the spring menu and suggest price updates that protect margin.",
@@ -16,7 +16,13 @@ const SUGGESTED_PROMPTS = [
   "Design a menu engineering brief showing stars, puzzles, plowhorses, and dogs.",
 ];
 
-export function SuggestedPrompts() {
+interface SuggestedPromptsProps {
+  prompts: string[] | null;
+}
+
+export function SuggestedPrompts({ prompts }: SuggestedPromptsProps) {
+  const data = prompts ?? FALLBACK_PROMPTS;
+
   return (
     <Card>
       <CardHeader>
@@ -28,7 +34,7 @@ export function SuggestedPrompts() {
       </CardHeader>
       <CardContent>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {SUGGESTED_PROMPTS.map((prompt) => (
+          {data.map((prompt) => (
             <button
               key={prompt}
               className="rounded-lg border p-3 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"

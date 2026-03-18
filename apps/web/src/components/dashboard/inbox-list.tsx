@@ -1,55 +1,30 @@
 import { Badge } from "@/components/ui/badge";
+import type { InboxItem } from "@/lib/api";
 
-const INBOX = [
-  {
-    id: "inbox-1",
-    title: "River North avocados are 14% above target cost",
-    priority: "high" as const,
-    module: "food-cost",
-    time: "2h ago",
-  },
-  {
-    id: "inbox-2",
-    title: "West Loop needs tomorrow's bakery order by 4 PM",
-    priority: "medium" as const,
-    module: "orders",
-    time: "3h ago",
-  },
-  {
-    id: "inbox-3",
-    title: "Fulton Market prep plan is missing brunch counts",
-    priority: "medium" as const,
-    module: "prep",
-    time: "5h ago",
-  },
-  {
-    id: "inbox-4",
-    title: "River North wine inventory below par for weekend",
-    priority: "high" as const,
-    module: "inventory",
-    time: "6h ago",
-  },
-  {
-    id: "inbox-5",
-    title: "West Loop labor schedule needs Thursday coverage",
-    priority: "medium" as const,
-    module: "admin",
-    time: "8h ago",
-  },
+const FALLBACK_INBOX = [
+  { id: "1", title: "Avocado cost spike requires menu action", priority: "High", module: "food-cost" },
+  { id: "2", title: "Bakery cutoff is approaching", priority: "Medium", module: "orders" },
+  { id: "3", title: "Brunch prep counts are incomplete", priority: "Medium", module: "prep" },
 ];
 
 function priorityVariant(priority: string) {
-  return priority === "high" ? ("destructive" as const) : ("secondary" as const);
+  return priority.toLowerCase() === "high" ? ("destructive" as const) : ("secondary" as const);
 }
 
-export function InboxList() {
+interface InboxListProps {
+  items: InboxItem[] | null;
+}
+
+export function InboxList({ items }: InboxListProps) {
+  const data = items ?? FALLBACK_INBOX;
+
   return (
     <div className="space-y-4">
-      {INBOX.map((item) => (
+      {data.map((item) => (
         <div key={item.id} className="flex items-start gap-3">
           <span
             className={`mt-1.5 size-2 shrink-0 rounded-full ${
-              item.priority === "high" ? "bg-destructive" : "bg-amber-500"
+              item.priority.toLowerCase() === "high" ? "bg-destructive" : "bg-amber-500"
             }`}
           />
           <div className="flex-1 space-y-1">
@@ -61,7 +36,6 @@ export function InboxList() {
               <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                 {item.module}
               </Badge>
-              <span className="text-[10px] text-muted-foreground">{item.time}</span>
             </div>
           </div>
         </div>

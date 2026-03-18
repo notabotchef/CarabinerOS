@@ -1,0 +1,76 @@
+const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:8000";
+
+export async function fetchAPI<T>(path: string): Promise<T> {
+  const res = await fetch(`${ENGINE_URL}${path}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+  return res.json();
+}
+
+// --- Types matching API response shapes ---
+
+export interface Location {
+  id: string;
+  slug: string;
+  name: string;
+  city: string;
+  status: string;
+  sales_delta: string | null;
+  labor_delta: string | null;
+}
+
+export interface InboxItem {
+  id: string;
+  location_id: string;
+  title: string;
+  priority: string;
+  owner: string | null;
+  status: string;
+  module: string;
+  summary: string | null;
+  detail_points: string[] | null;
+  prompt: string | null;
+}
+
+export interface Order {
+  id: string;
+  location_id: string;
+  vendor: string;
+  channel: string;
+  status: string;
+  total: string;
+  eta: string | null;
+  summary: string | null;
+  detail_points: string[] | null;
+  prompt: string | null;
+}
+
+export interface Metric {
+  label: string;
+  value: string;
+  delta: string;
+}
+
+export interface Connector {
+  provider_id: string;
+  provider_name: string;
+  channels: string[];
+  default_channel: string;
+  fallback_channel: string | null;
+}
+
+export interface HQPayload {
+  brand: { name: string; tagline: string; theme: string };
+  organization: { id: string; name: string; slug: string } | null;
+  active_location_id: string | null;
+  locations: Location[];
+  modules: { id: string; label: string; icon: string }[];
+  suggested_prompts: string[];
+  metrics: Metric[];
+  inbox: InboxItem[];
+  connectors: Connector[];
+  execution_mode: { default: string; autonomous_enabled: boolean; policy: string };
+}
