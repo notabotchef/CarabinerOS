@@ -212,10 +212,12 @@ async def overlay_status() -> dict:
 
 
 if __name__ == "__main__":
+    # Use asyncio loop (not uvloop) so nest_asyncio can patch it for Agent Zero
     uvicorn.run(
         "main:socket_app",
         host="0.0.0.0",
         port=8000,
         reload=True,
         reload_dirs=[".", "carabiner"],
+        loop="asyncio",
     )
