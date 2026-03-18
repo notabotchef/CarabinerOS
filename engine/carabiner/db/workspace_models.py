@@ -176,6 +176,10 @@ class WorkspaceMenu(TimestampMixin, Base):
     margin_pct: Mapped[str] = mapped_column(String(20), nullable=False)
     recommendation: Mapped[str] = mapped_column(String(200), nullable=False)
     recipe: Mapped[Optional[dict]] = mapped_column(JSONB)
+    recipe_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_recipes.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
     summary: Mapped[Optional[str]] = mapped_column(Text)
     detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
     prompt: Mapped[Optional[str]] = mapped_column(Text)

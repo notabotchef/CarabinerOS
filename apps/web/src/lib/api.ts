@@ -108,6 +108,7 @@ export interface MenuItem {
   margin_pct: string;
   recommendation: string;
   recipe: Record<string, unknown> | null;
+  recipe_id: string | null;
   summary: string | null;
   detail_points: string[] | null;
   prompt: string | null;

@@ -160,6 +160,14 @@ export function useRecipe(id: string | null) {
   });
 }
 
+export function useRecipeLinkedMenuItems(recipeId: string | null) {
+  return useQuery<MenuItem[]>({
+    queryKey: ["recipe-linked-menu", recipeId],
+    queryFn: () => apiFetch(`/api/recipes/${recipeId}/linked-menu-items`),
+    enabled: !!recipeId,
+  });
+}
+
 export function useMetrics(locationId?: string | null) {
   return useQuery<Metric[]>({
     queryKey: ["metrics", locationId],

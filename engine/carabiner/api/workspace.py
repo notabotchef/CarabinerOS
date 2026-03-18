@@ -472,21 +472,97 @@ async def delete_recipe(item_id: uuid.UUID) -> None:
 async def parse_recipe(body: RecipeParseRequest) -> RecipeParseResponse:
     """Parse a recipe from text or image. Returns a draft recipe structure.
 
-    Currently returns a mock parsed recipe. Future integration will use
-    Agent Zero's vision capabilities for OCR and LLM parsing.
+    Currently returns a well-structured mock parsed recipe for UI testing.
+    Future integration will use Agent Zero's vision capabilities for OCR
+    and LLM parsing.
     """
+    from carabiner.api.schemas import (
+        RecipeComponentCreate,
+        RecipeComponentIngredientCreate,
+        RecipeStepCreate,
+    )
+
+    # Generate a richer mock based on input text
+    recipe_name = "Parsed Recipe (Draft)"
+    if body.text:
+        # Use first line or first 60 chars as name
+        first_line = body.text.strip().split("\n")[0][:60]
+        recipe_name = first_line.title() if first_line else recipe_name
+
     mock_draft = RecipeCreate(
         location_id=uuid.UUID("00000000-0000-0000-0001-000000000001"),
-        name="Parsed Recipe (Draft)",
+        name=recipe_name,
         category="Uncategorized",
-        description="This recipe was parsed from the provided input. Please review and edit.",
+        description="This recipe was parsed from the provided input. Please review and edit all fields.",
         status="draft",
         source="llm" if body.text else "ocr",
         yield_quantity=4,
         yield_unit="servings",
-        components=[],
+        equipment=["Mixing bowls", "Sheet pan", "Probe thermometer"],
+        tags=["parsed", "draft", "review"],
+        components=[
+            RecipeComponentCreate(
+                name="Main Component",
+                sort_order=0,
+                ingredients=[
+                    RecipeComponentIngredientCreate(
+                        name="Primary ingredient",
+                        weight_g=500.0,
+                        percentage=100.0,
+                        unit_display="g",
+                        sort_order=0,
+                        notes="Adjust to taste",
+                    ),
+                    RecipeComponentIngredientCreate(
+                        name="Secondary ingredient",
+                        weight_g=250.0,
+                        percentage=50.0,
+                        unit_display="g",
+                        sort_order=1,
+                    ),
+                    RecipeComponentIngredientCreate(
+                        name="Seasoning",
+                        weight_g=15.0,
+                        percentage=3.0,
+                        unit_display="g",
+                        sort_order=2,
+                        notes="To taste",
+                    ),
+                ],
+                steps=[
+                    RecipeStepCreate(
+                        step_number=1,
+                        instruction="Prepare and measure all ingredients.",
+                        technique="Mise en place",
+                    ),
+                    RecipeStepCreate(
+                        step_number=2,
+                        instruction="Combine primary and secondary ingredients.",
+                        duration="5 minutes",
+                        technique="Mix",
+                    ),
+                    RecipeStepCreate(
+                        step_number=3,
+                        instruction="Cook until done.",
+                        temperature="180C / 356F",
+                        duration="25 minutes",
+                        technique="Bake",
+                    ),
+                ],
+            ),
+        ],
     )
     return RecipeParseResponse(draft=mock_draft)
+
+
+@router.get("/recipes/{item_id}/linked-menu-items")
+async def get_recipe_linked_menu_items(item_id: uuid.UUID) -> list:
+    """Get menu items linked to this recipe."""
+    recipe = await repo.get_recipe(item_id)
+    if recipe is None:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    items = await repo.get_menu_items_by_recipe(item_id)
+    return [MenuOut.model_validate(i) for i in items]
 
 
 @router.post("/recipes/{item_id}/calculate-cost")

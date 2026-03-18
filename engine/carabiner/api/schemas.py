@@ -225,6 +225,7 @@ class MenuOut(TimestampSchema):
     margin_pct: str
     recommendation: str
     recipe: Optional[Dict[str, Any]] = None
+    recipe_id: Optional[uuid.UUID] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
@@ -250,6 +251,7 @@ class MenuUpdate(BaseModel):
     margin_pct: Optional[str] = None
     recommendation: Optional[str] = None
     recipe: Optional[Dict[str, Any]] = None
+    recipe_id: Optional[uuid.UUID] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
 

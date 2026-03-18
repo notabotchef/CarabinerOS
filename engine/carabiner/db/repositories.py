@@ -280,6 +280,14 @@ async def delete_invoice(item_id: uuid.UUID) -> bool:
     return await _delete(WorkspaceInvoice, item_id)
 
 
+async def get_menu_items_by_recipe(recipe_id: uuid.UUID) -> Sequence[WorkspaceMenu]:
+    """Get all menu items linked to a specific recipe."""
+    async with get_session() as session:
+        stmt = select(WorkspaceMenu).where(WorkspaceMenu.recipe_id == recipe_id)
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+
 async def list_action_log(location_id: Optional[uuid.UUID] = None) -> Sequence[ActionLog]:
     return await _list_all(ActionLog, location_id)
 

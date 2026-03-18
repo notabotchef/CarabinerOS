@@ -1,9 +1,10 @@
 "use client";
 
 import { type ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Pencil } from "lucide-react";
+import { DollarSign, Pencil, BookOpen } from "lucide-react";
 import type { MenuItem } from "@/lib/api";
 
 function perfVariant(p: string) {
@@ -46,6 +47,29 @@ export function getMenuColumns(
       ),
     },
     { accessorKey: "margin_pct", header: "Margin" },
+    {
+      id: "recipe",
+      header: "Recipe",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const item = row.original;
+        if (item.recipe_id) {
+          return (
+            <Link
+              href={`/recipes/${item.recipe_id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+            >
+              <BookOpen className="size-3" />
+              View Recipe
+            </Link>
+          );
+        }
+        return (
+          <span className="text-xs text-muted-foreground/40">No recipe</span>
+        );
+      },
+    },
     { accessorKey: "recommendation", header: "Recommendation" },
     {
       accessorKey: "summary",
