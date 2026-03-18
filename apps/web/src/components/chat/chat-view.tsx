@@ -66,7 +66,7 @@ export function ChatView({ compact }: ChatViewProps) {
   if (!hasMessages) {
     return (
       <div className={`flex flex-col items-center justify-center flex-1 min-h-0 gap-6 px-4 ${compact ? "" : "max-w-3xl mx-auto w-full"}`}>
-        <div className="flex h-14 px-5 items-center justify-center rounded-2xl text-white text-xl font-bold tracking-tight" style={{ backgroundColor: "#D32F2F" }}>
+        <div className="text-3xl font-bold tracking-tight text-foreground">
           cOS
         </div>
         <div className="text-center">
