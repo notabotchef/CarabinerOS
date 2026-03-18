@@ -457,6 +457,28 @@ class PosProductMix(TimestampMixin, LocationScopedMixin, Base):
 # Reporting / Budgets
 # ---------------------------------------------------------------------------
 
+class DailyPL(TimestampMixin, LocationScopedMixin, Base):
+    """Daily Profit & Loss snapshot for a location."""
+    __tablename__ = "daily_pl"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pl_date: Mapped[date] = mapped_column(Date, nullable=False)
+    beginning_inventory: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    purchases: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    ending_inventory: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    cogs: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    revenue: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    food_cost_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))
+    labor_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
+    labor_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    __table_args__ = (
+        UniqueConstraint("location_id", "pl_date", name="uq_daily_pl_loc_date"),
+        Index("ix_daily_pl_location_date", "location_id", "pl_date"),
+    )
+
+
 class BudgetPeriod(TimestampMixin, LocationScopedMixin, Base):
     __tablename__ = "budget_periods"
 

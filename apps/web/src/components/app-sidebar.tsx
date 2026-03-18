@@ -38,6 +38,7 @@ const MODULES: readonly { id: string; label: string; href: string; icon: string;
   { id: "prep", label: "Prep", href: "/prep", icon: "P" },
   { id: "food-cost", label: "Food Cost", href: "/food-cost", icon: "F" },
   { id: "menu", label: "Menu", href: "/menu", icon: "M" },
+  { id: "reporting", label: "Reporting", href: "/reporting", icon: "R" },
   { id: "marketing", label: "Marketing", href: "/marketing", icon: "K" },
   { id: "locations", label: "Locations", href: "/locations", icon: "L" },
   { id: "admin", label: "Admin", href: "/admin", icon: "A" },

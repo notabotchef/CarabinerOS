@@ -22,6 +22,7 @@ from bridge import AgentBridge
 from carabiner.api.health import router as health_router
 from carabiner.api.hq import router as hq_router
 from carabiner.api.locations import router as locations_router
+from carabiner.api.reporting import router as reporting_router
 from carabiner.api.workspace import router as workspace_router
 from carabiner.db.engine import init_db, close_db
 
@@ -90,6 +91,7 @@ def _clean_status_detail(detail: str) -> str:
     d = d.replace("order_tool", "Managing orders")
     d = d.replace("prep_tool", "Checking prep")
     d = d.replace("food_cost_tool", "Analyzing food cost")
+    d = d.replace("reporting_tool", "Checking P&L reports")
     d = d.replace("menu_tool", "Reviewing menu")
     d = d.replace("invoice_tool", "Processing invoices")
     d = d.replace("marketing_tool", "Reviewing campaigns")
@@ -335,6 +337,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(hq_router)
 app.include_router(locations_router)
+app.include_router(reporting_router)
 app.include_router(workspace_router)
 
 # Mount Socket.IO as ASGI sub-app
