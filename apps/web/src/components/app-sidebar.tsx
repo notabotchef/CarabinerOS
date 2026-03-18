@@ -105,13 +105,13 @@ function ChatHistory() {
                 </SidebarMenuButton>
                 <button
                   onClick={handleTrashClick}
-                  className="flex items-center gap-1 px-1.5 py-1 rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                  className="flex items-center px-1 rounded opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity"
                   title={confirmDelete ? "Click again to delete" : "Delete conversation"}
                 >
                   {confirmDelete ? (
-                    <span className="text-[10px] text-destructive font-medium">delete</span>
+                    <span className="text-[9px] text-destructive">delete</span>
                   ) : (
-                    <Trash2 className="size-3.5" />
+                    <Trash2 className="size-3 text-muted-foreground" />
                   )}
                 </button>
               </div>
