@@ -207,8 +207,8 @@ function ScanRecipeButton() {
 
 export default function RecipesPage() {
   const router = useRouter();
-  const locationId = useWorkspaceStore((s) => s.activeLocationId);
-  const { data, isLoading } = useRecipes(locationId);
+  // Recipes are shared across the restaurant group — don't filter by location
+  const { data, isLoading } = useRecipes();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
 
