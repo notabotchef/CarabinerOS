@@ -3,6 +3,7 @@
 import { ChatView } from "@/components/chat/chat-view";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { useLocations, useMetrics } from "@/hooks/use-api";
 import { AIBriefingCard } from "@/components/dashboard/ai-briefing-card";
@@ -35,7 +36,8 @@ export default function HomePage() {
             <span className="text-sm text-muted-foreground">{activeName}</span>
           </>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
           <kbd className="hidden sm:inline-flex h-6 select-none items-center gap-1 rounded border bg-muted px-2 font-mono text-[10px] text-muted-foreground">
             <span className="text-xs">&#x2318;</span>K
           </kbd>
