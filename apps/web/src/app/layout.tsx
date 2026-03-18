@@ -8,6 +8,7 @@ import { fetchAPI, type Location } from "@/lib/api";
 import { QueryProvider } from "@/lib/query-provider";
 import { SocketProvider } from "@/lib/socket-provider";
 import { ToastProvider } from "@/components/ui/toast";
+import { CommandPalette } from "@/components/command-palette";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-inter",
@@ -51,6 +52,7 @@ export default async function RootLayout({
               <TooltipProvider>
                 <SidebarProvider defaultOpen={false}>
                   <AppSidebar locations={locations} orgName={orgName} />
+                  <CommandPalette />
                   <div className="flex flex-1 flex-col overflow-hidden h-dvh">{children}</div>
                 </SidebarProvider>
               </TooltipProvider>
