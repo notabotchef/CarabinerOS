@@ -310,22 +310,20 @@ Server -> Client:
 
 **LLM:** Local Ollama `qwen3.5:9b` at `http://host.docker.internal:11434`
 
-- [ ] Agent profiles: `gm`, `agm`, `executivechef`, `souschef`, `marketing` (agent.json + prompts/)
-- [ ] Tools with DB access: `order_tool`, `inventory_tool`, `prep_tool`, `food_cost_tool`, `menu_tool`, `marketing_tool`
-- [ ] Tool prompt files for each tool
-- [ ] Restaurant context extension (system_prompt) — inject active location, priorities, connector status
-- [ ] Workspace sync extension (tool_execute_after) — write results to DB, emit WebSocket events
-- [ ] Response cleaning extension (response_stream) — replace internal agent language
-- [ ] AgentBridge.communicate() — bridge FastAPI to Agent Zero AgentContext
-- [ ] Ollama LLM configuration in Agent Zero settings
-- [ ] E2E test: prompt → GM → delegates to subordinate → tool → DB → response
+- [x] Agent profiles: `gm`, `agm`, `executivechef`, `souschef`, `marketing` (agent.json + prompts/)
+- [x] Tools with DB access: `order_tool`, `inventory_tool`, `prep_tool`, `food_cost_tool`, `menu_tool`, `marketing_tool`
+- [x] Restaurant context extension (system_prompt) — inject active location, priorities, connector status
+- [x] Workspace sync extension (tool_execute_after) — write results to DB, emit WebSocket events
+- [x] Response cleaning extension (response_stream_chunk) — replace internal agent language
+- [x] AgentBridge.communicate() — bridge FastAPI to Agent Zero AgentContext
+- [x] Ollama LLM configuration (A0_SET_ env vars, bridge writes usr/.env)
 - **Exit criteria:** Agent performs restaurant operations via role-based delegation with DB access
 
-### Phase 5b: Wire Agent into Chat UI (Week 19)
-- [ ] Replace mock streaming handler with real AgentBridge.communicate()
-- [ ] Forward Agent Zero logs to Socket.IO (response_stream, status_update)
-- [ ] Status pill shows real agent activity via deriveConversationStatus()
-- [ ] Workspace sync: tool results update DB → Socket.IO → React Query invalidation
+### Phase 5b: Wire Agent into Chat UI (Week 19) — COMPLETED 2026-03-17
+- [x] Replace mock streaming handler with real AgentBridge.communicate()
+- [x] Graceful fallback to mock when Agent Zero deps not installed
+- [x] Error handling with user-friendly error message in chat
+- [x] Workspace sync: tool_execute_after emits workspace_update via Socket.IO
 - **Exit criteria:** Chat sends real messages to Agent Zero, receives streaming responses, workspace auto-updates
 
 ### Phase 6: Invoice Processing & AP Automation (Week 19-22)

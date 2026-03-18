@@ -55,58 +55,84 @@ async def disconnect(sid: str) -> None:
 
 @sio.on("chat_message")
 async def handle_chat_message(sid: str, data: dict) -> None:
-    """Mock streaming handler — simulates Agent Zero status transitions and word-by-word response."""
+    """Handle chat messages — routes to Agent Zero if initialized, otherwise mock fallback."""
     import asyncio
 
     message = data.get("message", "")
     context_id = data.get("context_id", "default")
     logger.info("Chat message from %s: %s", sid, message[:100])
 
-    # 1. Acknowledge
+    # Emit thinking status
     await sio.emit("status_update", {
         "context_id": context_id,
         "status": "thinking",
         "detail": "Processing your request",
     }, to=sid)
 
-    # 2. Simulate status transitions
-    await asyncio.sleep(0.5)
-    await sio.emit("status_update", {
-        "context_id": context_id,
-        "status": "thinking",
-        "detail": "Checking inventory levels",
-    }, to=sid)
+    if agent_bridge.is_initialized:
+        # Real Agent Zero path
+        try:
+            await sio.emit("status_update", {
+                "context_id": context_id,
+                "status": "thinking",
+                "detail": "Delegating to specialist",
+            }, to=sid)
 
-    await asyncio.sleep(0.5)
-    await sio.emit("status_update", {
-        "context_id": context_id,
-        "status": "thinking",
-        "detail": "Drafting response",
-    }, to=sid)
+            response = await agent_bridge.communicate(
+                context_id=context_id,
+                message=message,
+            )
 
-    await asyncio.sleep(0.3)
+            # Stream the response word by word
+            full = ""
+            for word in response.split(" "):
+                full += word + " "
+                await sio.emit("response_stream", {
+                    "context_id": context_id,
+                    "chunk": word + " ",
+                    "full": full.strip(),
+                }, to=sid)
+                await asyncio.sleep(0.03)
 
-    # 3. Stream response word by word
-    response = (
-        f'I\'ve analyzed your request: "{message[:80]}"\n\n'
-        "Here's what I found:\n\n"
-        "- **Inventory check** completed for the active location\n"
-        "- **Par levels** are within normal range for 3 of 5 key items\n"
-        "- **Two items** are below par and may need replenishment\n\n"
-        "Would you like me to draft an order for the items that need restocking?"
-    )
-
-    full = ""
-    for word in response.split(" "):
-        full += word + " "
-        await sio.emit("response_stream", {
+        except Exception as e:
+            logger.error("Agent Zero error: %s", e, exc_info=True)
+            error_msg = f"I encountered an issue processing your request. Please try again.\n\nError: {str(e)[:200]}"
+            await sio.emit("response_stream", {
+                "context_id": context_id,
+                "chunk": error_msg,
+                "full": error_msg,
+            }, to=sid)
+    else:
+        # Mock fallback when Agent Zero deps aren't installed
+        await asyncio.sleep(0.5)
+        await sio.emit("status_update", {
             "context_id": context_id,
-            "chunk": word + " ",
-            "full": full.strip(),
+            "status": "thinking",
+            "detail": "Checking inventory levels",
         }, to=sid)
-        await asyncio.sleep(0.05)
 
-    # 4. Done
+        await asyncio.sleep(0.5)
+        response = (
+            f'I\'ve analyzed your request: "{message[:80]}"\n\n'
+            "Here's what I found:\n\n"
+            "- **Inventory check** completed for the active location\n"
+            "- **Par levels** are within normal range for 3 of 5 key items\n"
+            "- **Two items** are below par and may need replenishment\n\n"
+            "Would you like me to draft an order for the items that need restocking?\n\n"
+            "*Note: Running in mock mode — Agent Zero is not connected.*"
+        )
+
+        full = ""
+        for word in response.split(" "):
+            full += word + " "
+            await sio.emit("response_stream", {
+                "context_id": context_id,
+                "chunk": word + " ",
+                "full": full.strip(),
+            }, to=sid)
+            await asyncio.sleep(0.05)
+
+    # Done
     await sio.emit("status_update", {
         "context_id": context_id,
         "status": "waiting",
