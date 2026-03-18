@@ -25,26 +25,101 @@ def _context_summary(ctx: Any) -> dict:
     }
 
 
+def _clean_content(content: Any) -> str | None:
+    """Extract the human-readable text from an Agent Zero message content.
+
+    Agent Zero messages can be:
+    - Plain strings
+    - JSON strings containing {thoughts, tool_name, tool_args: {text}}
+    - Dicts with the same structure
+    - Dicts with {user_message: "..."}
+    """
+    import json
+
+    # Already a string — try to parse as JSON first
+    if isinstance(content, str):
+        text = content.strip()
+        if not text:
+            return None
+        # Try parsing JSON-encoded agent output
+        if text.startswith("{"):
+            try:
+                parsed = json.loads(text)
+                return _extract_text_from_parsed(parsed)
+            except (json.JSONDecodeError, ValueError):
+                pass
+        return text
+
+    if isinstance(content, dict):
+        return _extract_text_from_parsed(content)
+
+    if isinstance(content, list):
+        # Multimodal content — extract text parts
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict) and item.get("type") == "text":
+                parts.append(item.get("text", ""))
+        return "\n".join(parts).strip() or None
+
+    return str(content) if content else None
+
+
+def _extract_text_from_parsed(data: dict) -> str | None:
+    """Extract clean text from a parsed Agent Zero message dict."""
+    # Response tool call: {tool_name: "response", tool_args: {text: "..."}}
+    if data.get("tool_name") == "response":
+        tool_args = data.get("tool_args", {})
+        if isinstance(tool_args, dict):
+            text = tool_args.get("text", "")
+            if text:
+                return text
+
+    # User message: {user_message: "..."}
+    if "user_message" in data:
+        return data["user_message"]
+
+    # Message with a "text" field directly
+    if "text" in data and isinstance(data["text"], str):
+        return data["text"]
+
+    # Message with a "content" field
+    if "content" in data and isinstance(data["content"], str):
+        return data["content"]
+
+    # Raw content with preview
+    if "preview" in data and isinstance(data["preview"], str):
+        return data["preview"]
+
+    # Last resort: if there's a "raw_content" that's a list, extract text parts
+    if "raw_content" in data and isinstance(data["raw_content"], list):
+        parts = []
+        for item in data["raw_content"]:
+            if isinstance(item, dict) and item.get("type") == "text":
+                parts.append(item.get("text", ""))
+        if parts:
+            return "\n".join(parts).strip()
+
+    return None
+
+
 def _extract_messages(ctx: Any) -> list[dict]:
     """Extract chat messages from a context's root agent history.
 
-    Walks the history output and converts to {role, content} dicts.
+    Walks the history output and converts to {role, content} dicts,
+    stripping internal Agent Zero mechanics (thoughts, tool calls, etc.)
+    to return only human-readable conversation text.
     """
     messages: list[dict] = []
     try:
         outputs = ctx.agent0.history.output()
         for out in outputs:
             role = "assistant" if out.get("ai") else "user"
-            content = out.get("content", "")
-            # Stringify non-string content
-            if not isinstance(content, str):
-                import json
-                try:
-                    content = json.dumps(content, ensure_ascii=False)
-                except Exception:
-                    content = str(content)
-            if content.strip():
-                messages.append({"role": role, "content": content})
+            raw_content = out.get("content", "")
+            content = _clean_content(raw_content)
+            if content and content.strip():
+                messages.append({"role": role, "content": content.strip()})
     except Exception as e:
         logger.warning("Failed to extract messages from context %s: %s", ctx.id, e)
     return messages
@@ -106,9 +181,18 @@ async def create_chat() -> dict:
         from agent import AgentContext
 
         # Import bridge to build config with the correct profile
+        # _build_config includes sio reference for socket event emission
         from bridge import agent_bridge
         config = agent_bridge._build_config(profile="gm")
         ctx = AgentContext(config=config)
+
+        # Persist the new (empty) context so it survives engine restarts
+        try:
+            from python.helpers import persist_chat
+            persist_chat.save_tmp_chat(ctx)
+        except Exception as e:
+            logger.debug("Could not persist new chat %s: %s", ctx.id, e)
+
         logger.info("Created new chat context: %s", ctx.id)
         return _context_summary(ctx)
     except ImportError:
