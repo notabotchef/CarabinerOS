@@ -284,13 +284,15 @@ Server -> Client:
 - [ ] **Error states**: Toast notifications with retry, optimistic updates on mutations
 - **Exit criteria:** All modules support CRUD actions, status transitions, and filtering — not just read-only display
 
-### Phase 4: Chat Interface (Week 13-15)
-- [ ] Composer with file upload
-- [ ] Message list with markdown rendering + auto-scroll
-- [ ] Response streaming via Socket.IO
-- [ ] Status pill (agent state)
-- [ ] Port rendering helpers (`deriveConversationStatus`, `mapInternalAgentToRestaurantRole`, `cleanOperationalCopy`)
-- [ ] Conversation history + docked chat panel alongside workspace
+### Phase 4: Chat Interface (Week 13-15) — COMPLETED 2026-03-17
+- [x] Chat-first homepage replaces dashboard as primary interface
+- [x] Bubble-style messages with markdown rendering + auto-scroll
+- [x] Mock streaming backend with word-by-word response via Socket.IO
+- [x] Status pill with role mapping (GM, Head Chef, Assistant GM, etc.)
+- [x] Rendering helpers ported (cleanOperationalCopy, mapInternalAgentToRestaurantRole, deriveConversationStatus)
+- [x] Rotating suggested prompts inside composer (Enter to execute, typing replaces)
+- [x] Docked chat panel on workspace pages shares components + state with homepage
+- [x] Conversation appears in sidebar with auto-name + two-click delete
 - **Exit criteria:** Full streaming chat experience integrated with workspace
 
 ### Phase 5: Agent Tools + Prompts (Week 16-18)
