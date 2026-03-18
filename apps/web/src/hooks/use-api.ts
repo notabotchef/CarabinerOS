@@ -11,6 +11,7 @@ import type {
   FoodCostItem,
   MenuItem,
   Campaign,
+  Invoice,
 } from "@/lib/api";
 
 const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:8000";
@@ -88,5 +89,13 @@ export function useMarketing(locationId?: string | null) {
     queryKey: ["marketing", locationId],
     queryFn: () =>
       apiFetch(`/api/marketing${locationId ? `?location_id=${locationId}` : ""}`),
+  });
+}
+
+export function useInvoices(locationId?: string | null) {
+  return useQuery<Invoice[]>({
+    queryKey: ["invoices", locationId],
+    queryFn: () =>
+      apiFetch(`/api/invoices${locationId ? `?location_id=${locationId}` : ""}`),
   });
 }

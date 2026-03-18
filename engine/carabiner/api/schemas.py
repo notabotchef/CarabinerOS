@@ -181,6 +181,61 @@ class CampaignOut(TimestampSchema):
     prompt: Optional[str] = None
 
 
+# --- Invoices ---
+
+class InvoiceOut(TimestampSchema):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    vendor: str
+    invoice_number: Optional[str] = None
+    invoice_date: str
+    due_date: Optional[str] = None
+    status: str
+    total: str
+    line_items: Optional[Any] = None
+    gl_codes: Optional[Any] = None
+    po_match_id: Optional[str] = None
+    variance_notes: Optional[str] = None
+    file_path: Optional[str] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+    prompt: Optional[str] = None
+
+
+class InvoiceCreate(BaseModel):
+    location_id: uuid.UUID
+    vendor: str
+    invoice_number: Optional[str] = None
+    invoice_date: str
+    due_date: Optional[str] = None
+    status: str = "Uploaded"
+    total: str
+    line_items: Optional[Any] = None
+    gl_codes: Optional[Any] = None
+    po_match_id: Optional[str] = None
+    variance_notes: Optional[str] = None
+    file_path: Optional[str] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+    prompt: Optional[str] = None
+
+
+class InvoiceUpdate(BaseModel):
+    vendor: Optional[str] = None
+    invoice_number: Optional[str] = None
+    invoice_date: Optional[str] = None
+    due_date: Optional[str] = None
+    status: Optional[str] = None
+    total: Optional[str] = None
+    line_items: Optional[Any] = None
+    gl_codes: Optional[Any] = None
+    po_match_id: Optional[str] = None
+    variance_notes: Optional[str] = None
+    file_path: Optional[str] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+
+
 # --- HQ Payload ---
 
 class MetricOut(BaseModel):

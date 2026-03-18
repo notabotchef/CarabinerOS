@@ -16,6 +16,7 @@ from carabiner.db.workspace_models import (
     WorkspaceCampaign,
     WorkspaceFoodCost,
     WorkspaceInventory,
+    WorkspaceInvoice,
     WorkspaceLocation,
     WorkspaceMenu,
     WorkspaceOrder,
@@ -209,6 +210,22 @@ async def create_campaign(data: Dict[str, Any]) -> WorkspaceCampaign:
 
 async def update_campaign(item_id: uuid.UUID, data: Dict[str, Any]) -> Optional[WorkspaceCampaign]:
     return await _update(WorkspaceCampaign, item_id, data)
+
+
+async def list_invoices(location_id: Optional[uuid.UUID] = None) -> Sequence[WorkspaceInvoice]:
+    return await _list_all(WorkspaceInvoice, location_id)
+
+async def get_invoice(item_id: uuid.UUID) -> Optional[WorkspaceInvoice]:
+    return await _get_by_id(WorkspaceInvoice, item_id)
+
+async def create_invoice(data: Dict[str, Any]) -> WorkspaceInvoice:
+    return await _create(WorkspaceInvoice, data)
+
+async def update_invoice(item_id: uuid.UUID, data: Dict[str, Any]) -> Optional[WorkspaceInvoice]:
+    return await _update(WorkspaceInvoice, item_id, data)
+
+async def delete_invoice(item_id: uuid.UUID) -> bool:
+    return await _delete(WorkspaceInvoice, item_id)
 
 
 async def list_action_log(location_id: Optional[uuid.UUID] = None) -> Sequence[ActionLog]:
