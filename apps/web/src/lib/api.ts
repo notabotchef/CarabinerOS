@@ -158,6 +158,66 @@ export interface Invoice {
   prompt: string | null;
 }
 
+// --- Recipes (Modernist Cuisine) ---
+
+export interface RecipeStep {
+  id: string;
+  component_id: string;
+  step_number: number;
+  instruction: string;
+  temperature: string | null;
+  duration: string | null;
+  technique: string | null;
+}
+
+export interface RecipeComponentIngredient {
+  id: string;
+  component_id: string;
+  item_id: string | null;
+  name: string;
+  weight_g: number;
+  percentage: number | null;
+  unit_display: string;
+  sort_order: number;
+  notes: string | null;
+}
+
+export interface RecipeComponent {
+  id: string;
+  recipe_id: string;
+  name: string;
+  sort_order: number;
+  yield_quantity: number | null;
+  yield_unit: string | null;
+  ingredients: RecipeComponentIngredient[];
+  steps: RecipeStep[];
+}
+
+export interface Recipe {
+  id: string;
+  location_id: string;
+  name: string;
+  category: string;
+  description: string | null;
+  status: string;
+  yield_quantity: number | null;
+  yield_unit: string | null;
+  total_weight_g: number | null;
+  total_cost: number | null;
+  cost_per_serving: number | null;
+  image_url: string | null;
+  source: string | null;
+  equipment: string[] | null;
+  notes: string | null;
+  tags: string[] | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface RecipeDetail extends Recipe {
+  components: RecipeComponent[];
+}
+
 // --- Reporting ---
 
 export interface DailyPLRow {

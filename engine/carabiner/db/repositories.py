@@ -13,6 +13,9 @@ from carabiner.db.workspace_models import (
     ActionLog,
     InboxItem,
     Organization,
+    RecipeComponent,
+    RecipeComponentIngredient,
+    RecipeStep,
     WorkspaceCampaign,
     WorkspaceFoodCost,
     WorkspaceInventory,
@@ -21,6 +24,7 @@ from carabiner.db.workspace_models import (
     WorkspaceMenu,
     WorkspaceOrder,
     WorkspacePrep,
+    WorkspaceRecipe,
 )
 
 T = TypeVar("T")
@@ -281,3 +285,120 @@ async def list_action_log(location_id: Optional[uuid.UUID] = None) -> Sequence[A
 
 async def create_action_log(data: Dict[str, Any]) -> ActionLog:
     return await _create(ActionLog, data)
+
+
+# ---------------------------------------------------------------------------
+# Recipes (Modernist Cuisine)
+# ---------------------------------------------------------------------------
+
+async def list_recipes(
+    location_id: Optional[uuid.UUID] = None,
+    status: Optional[str] = None,
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+) -> Sequence[WorkspaceRecipe]:
+    async with get_session() as session:
+        from sqlalchemy.orm import selectinload
+        stmt = select(WorkspaceRecipe)
+        if location_id:
+            stmt = stmt.where(WorkspaceRecipe.location_id == location_id)
+        if status:
+            stmt = stmt.where(WorkspaceRecipe.status == status)
+        if category:
+            stmt = stmt.where(WorkspaceRecipe.category == category)
+        if search:
+            stmt = stmt.where(WorkspaceRecipe.name.ilike(f"%{search}%"))
+        stmt = stmt.order_by(WorkspaceRecipe.created_at)
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+
+async def get_recipe(item_id: uuid.UUID) -> Optional[WorkspaceRecipe]:
+    """Get recipe with full nested components, ingredients, and steps."""
+    from sqlalchemy.orm import selectinload
+    async with get_session() as session:
+        stmt = (
+            select(WorkspaceRecipe)
+            .where(WorkspaceRecipe.id == item_id)
+            .options(
+                selectinload(WorkspaceRecipe.components)
+                .selectinload(RecipeComponent.ingredients),
+                selectinload(WorkspaceRecipe.components)
+                .selectinload(RecipeComponent.steps),
+            )
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+
+async def create_recipe(data: Dict[str, Any]) -> WorkspaceRecipe:
+    """Create recipe with nested components, ingredients, and steps."""
+    async with get_session() as session:
+        components_data = data.pop("components", [])
+        recipe = WorkspaceRecipe(**data)
+        session.add(recipe)
+        await session.flush()
+
+        for comp_data in components_data:
+            ingredients_data = comp_data.pop("ingredients", [])
+            steps_data = comp_data.pop("steps", [])
+            component = RecipeComponent(recipe_id=recipe.id, **comp_data)
+            session.add(component)
+            await session.flush()
+
+            for ing_data in ingredients_data:
+                ingredient = RecipeComponentIngredient(component_id=component.id, **ing_data)
+                session.add(ingredient)
+
+            for step_data in steps_data:
+                step = RecipeStep(component_id=component.id, **step_data)
+                session.add(step)
+
+        await session.commit()
+        # Re-fetch with relationships
+        return await get_recipe(recipe.id)  # type: ignore[return-value]
+
+
+async def update_recipe(item_id: uuid.UUID, data: Dict[str, Any]) -> Optional[WorkspaceRecipe]:
+    """Update recipe. If components are provided, replaces all components."""
+    async with get_session() as session:
+        result = await session.execute(
+            select(WorkspaceRecipe).where(WorkspaceRecipe.id == item_id)
+        )
+        recipe = result.scalar_one_or_none()
+        if recipe is None:
+            return None
+
+        components_data = data.pop("components", None)
+
+        for key, value in data.items():
+            setattr(recipe, key, value)
+
+        if components_data is not None:
+            # Delete existing components (cascade deletes ingredients + steps)
+            await session.execute(
+                delete(RecipeComponent).where(RecipeComponent.recipe_id == item_id)
+            )
+            await session.flush()
+
+            for comp_data in components_data:
+                ingredients_data = comp_data.pop("ingredients", [])
+                steps_data = comp_data.pop("steps", [])
+                component = RecipeComponent(recipe_id=item_id, **comp_data)
+                session.add(component)
+                await session.flush()
+
+                for ing_data in ingredients_data:
+                    ingredient = RecipeComponentIngredient(component_id=component.id, **ing_data)
+                    session.add(ingredient)
+
+                for step_data in steps_data:
+                    step = RecipeStep(component_id=component.id, **step_data)
+                    session.add(step)
+
+        await session.commit()
+        return await get_recipe(item_id)
+
+
+async def delete_recipe(item_id: uuid.UUID) -> bool:
+    return await _delete(WorkspaceRecipe, item_id)

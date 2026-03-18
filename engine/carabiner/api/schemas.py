@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TimestampSchema(BaseModel):
@@ -392,3 +392,137 @@ class HQPayload(BaseModel):
     inbox: List[InboxItemOut]
     connectors: List[ConnectorOut]
     execution_mode: Dict[str, Any]
+
+
+# --- Recipes (Modernist Cuisine format) ---
+
+class RecipeStepOut(TimestampSchema):
+    id: uuid.UUID
+    component_id: uuid.UUID
+    step_number: int
+    instruction: str
+    temperature: Optional[str] = None
+    duration: Optional[str] = None
+    technique: Optional[str] = None
+
+
+class RecipeComponentIngredientOut(TimestampSchema):
+    id: uuid.UUID
+    component_id: uuid.UUID
+    item_id: Optional[uuid.UUID] = None
+    name: str
+    weight_g: float
+    percentage: Optional[float] = None
+    unit_display: str = "g"
+    sort_order: int = 0
+    notes: Optional[str] = None
+
+
+class RecipeComponentOut(TimestampSchema):
+    id: uuid.UUID
+    recipe_id: uuid.UUID
+    name: str
+    sort_order: int = 0
+    yield_quantity: Optional[float] = None
+    yield_unit: Optional[str] = None
+    ingredients: List[RecipeComponentIngredientOut] = []
+    steps: List[RecipeStepOut] = []
+
+
+class RecipeOut(TimestampSchema):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    name: str
+    category: str
+    description: Optional[str] = None
+    status: str = "draft"
+    yield_quantity: Optional[float] = None
+    yield_unit: Optional[str] = None
+    total_weight_g: Optional[float] = None
+    total_cost: Optional[float] = None
+    cost_per_serving: Optional[float] = None
+    image_url: Optional[str] = None
+    source: Optional[str] = "manual"
+    equipment: Optional[List[str]] = None
+    notes: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+class RecipeDetailOut(RecipeOut):
+    """Full recipe detail including nested components, ingredients, and steps."""
+    components: List[RecipeComponentOut] = []
+
+
+class RecipeStepCreate(BaseModel):
+    step_number: int
+    instruction: str
+    temperature: Optional[str] = None
+    duration: Optional[str] = None
+    technique: Optional[str] = None
+
+
+class RecipeComponentIngredientCreate(BaseModel):
+    item_id: Optional[uuid.UUID] = None
+    name: str
+    weight_g: float
+    percentage: Optional[float] = None
+    unit_display: str = "g"
+    sort_order: int = 0
+    notes: Optional[str] = None
+
+
+class RecipeComponentCreate(BaseModel):
+    name: str
+    sort_order: int = 0
+    yield_quantity: Optional[float] = None
+    yield_unit: Optional[str] = None
+    ingredients: List[RecipeComponentIngredientCreate] = []
+    steps: List[RecipeStepCreate] = []
+
+
+class RecipeCreate(BaseModel):
+    location_id: uuid.UUID
+    name: str
+    category: str
+    description: Optional[str] = None
+    status: str = "draft"
+    yield_quantity: Optional[float] = None
+    yield_unit: Optional[str] = None
+    total_weight_g: Optional[float] = None
+    total_cost: Optional[float] = None
+    cost_per_serving: Optional[float] = None
+    image_url: Optional[str] = None
+    source: str = "manual"
+    equipment: Optional[List[str]] = None
+    notes: Optional[str] = None
+    tags: Optional[List[str]] = None
+    components: List[RecipeComponentCreate] = []
+
+
+class RecipeUpdate(BaseModel):
+    name: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    yield_quantity: Optional[float] = None
+    yield_unit: Optional[str] = None
+    total_weight_g: Optional[float] = None
+    total_cost: Optional[float] = None
+    cost_per_serving: Optional[float] = None
+    image_url: Optional[str] = None
+    source: Optional[str] = None
+    equipment: Optional[List[str]] = None
+    notes: Optional[str] = None
+    tags: Optional[List[str]] = None
+    components: Optional[List[RecipeComponentCreate]] = None
+
+
+class RecipeParseRequest(BaseModel):
+    """Request body for recipe parsing. Either text or image_url should be provided."""
+    text: Optional[str] = None
+    image_url: Optional[str] = None
+
+
+class RecipeParseResponse(BaseModel):
+    """Mock parsed recipe from OCR/LLM."""
+    draft: RecipeCreate

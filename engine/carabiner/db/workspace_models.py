@@ -10,9 +10,10 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 
+import sqlalchemy as sa
 from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from carabiner.db.base import Base, TimestampMixin
 
@@ -230,6 +231,99 @@ class WorkspaceInvoice(TimestampMixin, Base):
     summary: Mapped[Optional[str]] = mapped_column(Text)
     detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
     prompt: Mapped[Optional[str]] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
+# Workspace Recipes (Modernist Cuisine format)
+# ---------------------------------------------------------------------------
+
+class WorkspaceRecipe(TimestampMixin, Base):
+    __tablename__ = "workspace_recipes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    category: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="draft")
+    yield_quantity: Mapped[Optional[float]] = mapped_column(sa.Numeric(12, 4))
+    yield_unit: Mapped[Optional[str]] = mapped_column(String(50))
+    total_weight_g: Mapped[Optional[float]] = mapped_column(sa.Numeric(12, 2))
+    total_cost: Mapped[Optional[float]] = mapped_column(sa.Numeric(12, 2))
+    cost_per_serving: Mapped[Optional[float]] = mapped_column(sa.Numeric(12, 2))
+    image_url: Mapped[Optional[str]] = mapped_column(String(500))
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
+    equipment: Mapped[Optional[list]] = mapped_column(JSONB, default=list)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    tags: Mapped[Optional[list]] = mapped_column(JSONB, default=list)
+
+    components: Mapped[list["RecipeComponent"]] = relationship(
+        back_populates="recipe", cascade="all, delete-orphan",
+        order_by="RecipeComponent.sort_order",
+    )
+
+
+class RecipeComponent(TimestampMixin, Base):
+    __tablename__ = "recipe_components"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_recipes.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    sort_order: Mapped[int] = mapped_column(sa.Integer, default=0)
+    yield_quantity: Mapped[Optional[float]] = mapped_column(sa.Numeric(12, 4))
+    yield_unit: Mapped[Optional[str]] = mapped_column(String(50))
+
+    recipe: Mapped[WorkspaceRecipe] = relationship(back_populates="components")
+    ingredients: Mapped[list["RecipeComponentIngredient"]] = relationship(
+        back_populates="component", cascade="all, delete-orphan",
+        order_by="RecipeComponentIngredient.sort_order",
+    )
+    steps: Mapped[list["RecipeStep"]] = relationship(
+        back_populates="component", cascade="all, delete-orphan",
+        order_by="RecipeStep.step_number",
+    )
+
+
+class RecipeComponentIngredient(TimestampMixin, Base):
+    __tablename__ = "recipe_component_ingredients"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    component_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe_components.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    item_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id"))
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    weight_g: Mapped[float] = mapped_column(sa.Numeric(12, 4), nullable=False)
+    percentage: Mapped[Optional[float]] = mapped_column(sa.Numeric(8, 2))
+    unit_display: Mapped[str] = mapped_column(String(20), default="g")
+    sort_order: Mapped[int] = mapped_column(sa.Integer, default=0)
+    notes: Mapped[Optional[str]] = mapped_column(String(300))
+
+    component: Mapped[RecipeComponent] = relationship(back_populates="ingredients")
+
+
+class RecipeStep(TimestampMixin, Base):
+    __tablename__ = "recipe_steps"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    component_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe_components.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    step_number: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    instruction: Mapped[str] = mapped_column(Text, nullable=False)
+    temperature: Mapped[Optional[str]] = mapped_column(String(50))
+    duration: Mapped[Optional[str]] = mapped_column(String(50))
+    technique: Mapped[Optional[str]] = mapped_column(String(100))
+
+    component: Mapped[RecipeComponent] = relationship(back_populates="steps")
 
 
 # ---------------------------------------------------------------------------

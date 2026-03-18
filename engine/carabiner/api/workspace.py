@@ -35,6 +35,12 @@ from carabiner.api.schemas import (
     PrepCreate,
     PrepOut,
     PrepUpdate,
+    RecipeCreate,
+    RecipeDetailOut,
+    RecipeOut,
+    RecipeParseRequest,
+    RecipeParseResponse,
+    RecipeUpdate,
 )
 from carabiner.db import repositories as repo
 
@@ -416,6 +422,96 @@ async def invoice_email_webhook(body: EmailWebhookPayload) -> InvoiceOut:
         },
     })
     return InvoiceOut.model_validate(invoice)
+
+
+# ---------------------------------------------------------------------------
+# Recipes (Modernist Cuisine)
+# ---------------------------------------------------------------------------
+
+@router.get("/recipes", response_model=List[RecipeOut])
+async def list_recipes(
+    location_id: Optional[uuid.UUID] = Query(None),
+    status: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+) -> list:
+    items = await repo.list_recipes(location_id, status=status, category=category, search=search)
+    return [RecipeOut.model_validate(i) for i in items]
+
+
+@router.get("/recipes/{item_id}", response_model=RecipeDetailOut)
+async def get_recipe(item_id: uuid.UUID) -> RecipeDetailOut:
+    item = await repo.get_recipe(item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return RecipeDetailOut.model_validate(item)
+
+
+@router.post("/recipes", response_model=RecipeDetailOut, status_code=201)
+async def create_recipe(body: RecipeCreate) -> RecipeDetailOut:
+    item = await repo.create_recipe(body.model_dump())
+    return RecipeDetailOut.model_validate(item)
+
+
+@router.patch("/recipes/{item_id}", response_model=RecipeDetailOut)
+async def update_recipe(item_id: uuid.UUID, body: RecipeUpdate) -> RecipeDetailOut:
+    item = await repo.update_recipe(item_id, body.model_dump(exclude_unset=True))
+    if item is None:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    return RecipeDetailOut.model_validate(item)
+
+
+@router.delete("/recipes/{item_id}", status_code=204)
+async def delete_recipe(item_id: uuid.UUID) -> None:
+    deleted = await repo.delete_recipe(item_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+
+@router.post("/recipes/parse", response_model=RecipeParseResponse)
+async def parse_recipe(body: RecipeParseRequest) -> RecipeParseResponse:
+    """Parse a recipe from text or image. Returns a draft recipe structure.
+
+    Currently returns a mock parsed recipe. Future integration will use
+    Agent Zero's vision capabilities for OCR and LLM parsing.
+    """
+    mock_draft = RecipeCreate(
+        location_id=uuid.UUID("00000000-0000-0000-0001-000000000001"),
+        name="Parsed Recipe (Draft)",
+        category="Uncategorized",
+        description="This recipe was parsed from the provided input. Please review and edit.",
+        status="draft",
+        source="llm" if body.text else "ocr",
+        yield_quantity=4,
+        yield_unit="servings",
+        components=[],
+    )
+    return RecipeParseResponse(draft=mock_draft)
+
+
+@router.post("/recipes/{item_id}/calculate-cost")
+async def calculate_recipe_cost(item_id: uuid.UUID) -> dict:
+    """Recalculate food cost for a recipe by looking up inventory item prices.
+
+    Currently returns mock cost data. Future integration will look up
+    actual item prices from the inventory system.
+    """
+    recipe = await repo.get_recipe(item_id)
+    if recipe is None:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # Mock cost calculation — future: look up Item.last_known_price for each linked ingredient
+    total_cost = float(recipe.total_cost) if recipe.total_cost else 0.0
+    yield_qty = float(recipe.yield_quantity) if recipe.yield_quantity else 1.0
+    cost_per_serving = total_cost / yield_qty if yield_qty > 0 else 0.0
+
+    return {
+        "recipe_id": str(recipe.id),
+        "total_cost": round(total_cost, 2),
+        "cost_per_serving": round(cost_per_serving, 2),
+        "yield_quantity": yield_qty,
+        "note": "Cost data is currently based on stored values. Live inventory price lookup coming soon.",
+    }
 
 
 # ---------------------------------------------------------------------------

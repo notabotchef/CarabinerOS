@@ -12,6 +12,8 @@ import type {
   MenuItem,
   Campaign,
   Invoice,
+  Recipe,
+  RecipeDetail,
   DailyPLRow,
   PLSummary,
   TrendPoint,
@@ -139,6 +141,22 @@ export function useInvoices(locationId?: string | null) {
     queryKey: ["invoices", locationId],
     queryFn: () =>
       apiFetch(`/api/invoices${locationId ? `?location_id=${locationId}` : ""}`),
+  });
+}
+
+export function useRecipes(locationId?: string | null) {
+  return useQuery<Recipe[]>({
+    queryKey: ["recipes", locationId],
+    queryFn: () =>
+      apiFetch(`/api/recipes${locationId ? `?location_id=${locationId}` : ""}`),
+  });
+}
+
+export function useRecipe(id: string | null) {
+  return useQuery<RecipeDetail>({
+    queryKey: ["recipe", id],
+    queryFn: () => apiFetch(`/api/recipes/${id}`),
+    enabled: !!id,
   });
 }
 

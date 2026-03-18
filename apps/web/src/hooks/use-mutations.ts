@@ -10,6 +10,8 @@ import type {
   MenuItem,
   Campaign,
   Location,
+  Recipe,
+  RecipeDetail,
 } from "@/lib/api";
 
 const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:8000";
@@ -425,6 +427,69 @@ export function useUpdateLocation() {
       }
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["locations"] }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Recipe mutations
+// ---------------------------------------------------------------------------
+
+export function useCreateRecipe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) =>
+      apiPost<RecipeDetail>("/api/recipes", data),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["recipes"] }),
+  });
+}
+
+export function useUpdateRecipe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string } & Record<string, unknown>) =>
+      apiPatch<RecipeDetail>(`/api/recipes/${id}`, data),
+    onMutate: async ({ id, ...data }) => {
+      await qc.cancelQueries({ queryKey: ["recipes"] });
+      const prev = qc.getQueriesData<Recipe[]>({ queryKey: ["recipes"] });
+      qc.setQueriesData<Recipe[]>({ queryKey: ["recipes"] }, (old) =>
+        old?.map((item) => (item.id === id ? { ...item, ...data } : item))
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        for (const [key, data] of context.prev) {
+          qc.setQueryData(key, data);
+        }
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["recipes"] });
+      qc.invalidateQueries({ queryKey: ["recipe"] });
+    },
+  });
+}
+
+export function useDeleteRecipe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/api/recipes/${id}`),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["recipes"] });
+      const prev = qc.getQueriesData<Recipe[]>({ queryKey: ["recipes"] });
+      qc.setQueriesData<Recipe[]>({ queryKey: ["recipes"] }, (old) =>
+        old?.filter((item) => item.id !== id)
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        for (const [key, data] of context.prev) {
+          qc.setQueryData(key, data);
+        }
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["recipes"] }),
   });
 }
 
