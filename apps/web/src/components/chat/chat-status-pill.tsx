@@ -9,17 +9,28 @@ interface ChatStatusPillProps {
 export function ChatStatusPill({ status }: ChatStatusPillProps) {
   if (!status || status.state === "waiting") return null;
 
+  const stateStyles = {
+    thinking: "border-primary/20 bg-primary/5 text-primary",
+    waiting: "border-border bg-muted text-muted-foreground",
+    error: "border-destructive/20 bg-destructive/5 text-destructive",
+  };
+
   return (
-    <div className="flex justify-center py-2 animate-in fade-in duration-200">
-      <div className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5">
-        <span
-          className={`size-1.5 rounded-full ${
-            status.state === "error" ? "bg-destructive" : "bg-amber-500"
-          } animate-pulse`}
-        />
-        <span className="text-xs text-muted-foreground">
-          {status.role} &middot; {status.text}
-        </span>
+    <div className="flex justify-start">
+      <div
+        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${stateStyles[status.state]}`}
+      >
+        {status.state === "thinking" && (
+          <span className="relative flex size-2">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-40" />
+            <span className="relative inline-flex size-2 rounded-full bg-primary" />
+          </span>
+        )}
+        {status.state === "error" && (
+          <span className="size-2 rounded-full bg-destructive" />
+        )}
+        <span className="font-medium">{status.role}</span>
+        <span className="text-muted-foreground">{status.text}</span>
       </div>
     </div>
   );

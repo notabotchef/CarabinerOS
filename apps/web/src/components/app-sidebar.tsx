@@ -117,11 +117,6 @@ function ChatHistory() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  // Sync conversations into the store for other components
-  const setConversations = useWorkspaceStore((s) => s.setConversations);
-  useEffect(() => {
-    setConversations(conversations);
-  }, [conversations, setConversations]);
 
   const handleNewChat = useCallback(async () => {
     clearMessages();
