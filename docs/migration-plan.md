@@ -4,6 +4,21 @@
 
 CarabinerOS is a restaurant operations platform powered by an AI agent (Agent Zero). The current implementation (`AgentCarabinerOS/`) is a monolith where the agent framework, restaurant domain logic, and a vanilla JS frontend are all intertwined. This makes it hard to update Agent Zero from upstream, hard to scale the frontend, and impossible to persist real restaurant data. The goal is to rebuild as a clean three-layer architecture: **Next.js frontend** | **CarabinerOS API (FastAPI)** | **Agent Zero engine (git submodule)**.
 
+### Competitive Positioning
+
+CarabinerOS competes with MarginEdge ($330/mo), Restaurant365 (enterprise), and xtraCHEF (by Toast). All three are **form-based CRUD tools** — operators click through screens to enter invoices, check inventory, build orders.
+
+**CarabinerOS is natural language first.** Every feature these competitors offer through forms, CarabinerOS delivers through conversation with an AI agent. The same data, the same operations, but the interface is "Build today's produce order" instead of navigating 15 screens.
+
+Core feature parity targets (Phases 6-10):
+- **Invoice processing & AP automation** — "Process these invoices" (MarginEdge, R365, xtraCHEF core)
+- **Daily P&L & reporting** — "What's my food cost this week?" (all three)
+- **POS integration & sales** — "How did River North do last night?" (MarginEdge, R365)
+- **Recipe management & costing** — "Cost out the new menu" (all three)
+- **Budgets & forecasting** — "Are we hitting our numbers?" (R365, xtraCHEF)
+
+See `docs/competitive-analysis.md` for the full feature mapping.
+
 ---
 
 ## Repository Structure
@@ -221,39 +236,36 @@ Server -> Client:
 
 ## Migration Phases
 
-### Phase 0: Foundation (Week 1-2) -- COMPLETED 2026-03-17
-- [x] Create monorepo structure (Turborepo + pnpm)
-- [x] Add `agent-zero-official` as git submodule at `engine/agent-zero/`
-- [x] Write `engine/main.py` (FastAPI boots Agent Zero from submodule)
-- [x] Create overlay directory structure
-- [x] Verify one test tool + one test extension are discovered
-- [x] Docker Compose with PostgreSQL
-- **Exit criteria:** Agent Zero runs from submodule and discovers overlay tools
+### Phase 0: Foundation — COMPLETED 2026-03-17
+- [x] Turborepo monorepo + pnpm workspaces
+- [x] Agent Zero as git submodule at `engine/agent-zero/`
+- [x] FastAPI engine with overlay symlinks into `usr/`
+- [x] Test tool (ping_tool) + test extension (restaurant_context)
+- [x] Docker Compose with PostgreSQL 16
+- [x] Domain connectors ported to Pydantic
+- **Exit criteria:** Agent Zero discovers overlay tools from submodule
 
-### Phase 1: API + Database (Week 3-5)
-- [ ] Pydantic models + SQLAlchemy models + Alembic migrations
-- [ ] Seed data migration (from `carabiner-store.js` hardcoded data)
-- [ ] Repository layer for all entities
-- [ ] FastAPI routers for all CRUD endpoints
-- [ ] `AgentBridge` connecting FastAPI to Agent Zero
-- [ ] Socket.IO on FastAPI
-- [ ] Port `carabiner_connectors.py` to `carabiner/domain/connectors.py`
-- [ ] TypeScript types in `packages/api-types`
-- **Exit criteria:** REST API serves restaurant data from PostgreSQL
+### Phase 1: API + Database — COMPLETED 2026-03-17
+- [x] 10 workspace SQLAlchemy models + Alembic migration 002
+- [x] Seed data (21 records across 3 locations, 7 modules)
+- [x] Async repository layer (generic CRUD)
+- [x] FastAPI CRUD routers for all workspace modules
+- [x] `/api/hq` aggregated endpoint
+- [x] Database init/close wired into FastAPI lifespan
+- **Exit criteria:** `curl /api/orders` returns seeded data from PostgreSQL
 
-### Phase 2: Next.js Shell (Week 6-8)
+### Phase 2: Next.js Shell — COMPLETED 2026-03-17
 - [x] Next.js 15 + shadcn/ui + Tailwind
-- [x] Sidebar navigation (modules + conversations)
-- [ ] Location switcher
-- [ ] Zustand stores + React Query setup
-- [x] Home page (metrics + suggested prompts)
-- [ ] Socket.IO client connection
-- [ ] Port design language from `carabiner.css` to Tailwind theme
+- [x] Sidebar navigation with location switcher (Zustand)
+- [x] Carabiner warm palette ported to Tailwind CSS tokens
+- [x] React Query hooks for all workspace modules
+- [x] Socket.IO client with cache invalidation
+- [x] Home page fetching from live API with fallbacks
 - **Exit criteria:** Navigable app shell with sidebar, home page, real-time connection
 
 ### Phase 3: Workspace Modules (Week 9-12)
 - [ ] For each module: page + data fetching + TanStack Table/Board + KPI cards + detail panel
-- [ ] "Ask CarabinerOS" wiring (workspace item -> chat)
+- [ ] "Ask CarabinerOS" wiring (workspace item -> chat prompt)
 - [ ] Admin page
 - [ ] Right rail (metrics, action log, inbox)
 - **Exit criteria:** All 10 workspace modules functional with real API data
@@ -269,21 +281,74 @@ Server -> Client:
 
 ### Phase 5: Agent Tools + Prompts (Week 16-18)
 - [ ] Split `restaurant_ops.py` into focused tools with DB access
-- [ ] Tool prompt files
-- [ ] Restaurant context extension (system_prompt)
-- [ ] Workspace sync extension (tool_execute_after)
-- [ ] Response cleaning extension (response_stream)
+- [ ] Tool prompt files for each tool
+- [ ] Restaurant context extension (system_prompt) — inject active location, priorities, connector status
+- [ ] Workspace sync extension (tool_execute_after) — write results to DB, emit WebSocket events
+- [ ] Response cleaning extension (response_stream) — replace internal agent language
 - [ ] CarabinerOS agent profile
 - [ ] E2E test: prompt -> agent -> tool -> DB -> frontend update
 - **Exit criteria:** Agent performs all restaurant operations with persistent, real-time results
 
-### Phase 6: Production Polish (Week 19-22)
+### Phase 6: Invoice Processing & AP Automation (Week 19-22)
+> *Competitive parity: MarginEdge, R365, xtraCHEF all have this as core*
+- [ ] Invoice upload endpoint (PDF/image)
+- [ ] OCR/extraction pipeline (agent-driven: "Process this invoice")
+- [ ] Invoice line item matching to items/vendors
+- [ ] PO matching and variance flagging
+- [ ] GL account auto-categorization
+- [ ] Invoice approval workflow (agent can draft, human approves)
+- [ ] Agent tool: `invoice_tool.py` — process, match, approve, dispute
+- [ ] Frontend: Invoice list page + detail panel + upload dropzone
+- **Exit criteria:** "Process these invoices" → agent extracts, matches, categorizes, flags variances
+
+### Phase 7: Reporting & Daily P&L (Week 23-25)
+> *Competitive parity: all three competitors offer real-time P&L*
+- [ ] Daily P&L calculation engine (beginning inventory + purchases - ending inventory = COGS)
+- [ ] Theoretical vs. actual food cost comparison
+- [ ] Cost trend dashboards (recharts)
+- [ ] Budget vs. actual variance reporting
+- [ ] Agent tool: `reporting_tool.py` — "What's my food cost this week?" / "Show me the P&L for West Loop"
+- [ ] Frontend: Reporting page with date range picker, location filter, exportable tables
+- **Exit criteria:** "What's driving food cost up?" → agent queries P&L data, identifies top variances
+
+### Phase 8: POS Integration & Sales Data (Week 26-28)
+> *Competitive parity: MarginEdge + R365 pull POS data automatically*
+- [ ] POS adapter interface (abstract connector for Square, Toast, Clover, etc.)
+- [ ] Sales import pipeline (daily totals, product mix, guest counts)
+- [ ] Product mix analysis tied to menu engineering
+- [ ] Sales forecasting (trend-based, used by prep + ordering tools)
+- [ ] Agent tool: `sales_tool.py` — "How did River North do last night?" / "Forecast covers for Friday"
+- [ ] Frontend: Sales dashboard, product mix table, forecast visualization
+- **Exit criteria:** POS data flows in automatically, agent can forecast and answer sales questions
+
+### Phase 9: Recipe Management & Costing (Week 29-31)
+> *Competitive parity: all three competitors have recipe costing*
+- [ ] Recipe builder with sub-recipes and yield tracking
+- [ ] Real-time ingredient costing (pulled from latest invoice prices)
+- [ ] Plate cost calculation + menu price recommendations
+- [ ] Recipe scaling for prep quantities
+- [ ] Agent tool: `recipe_tool.py` — "What does the short rib pappardelle cost to make?" / "Scale the brunch prep for 200 covers"
+- [ ] Frontend: Recipe editor page, cost breakdown panel, scaling calculator
+- **Exit criteria:** "Cost out the new menu" → agent calculates plate costs using real ingredient prices
+
+### Phase 10: Budgets, Forecasting & Advanced Analytics (Week 32-34)
+> *Competitive parity: R365 + xtraCHEF*
+- [ ] Budget creation by period/location (revenue, food cost %, labor %)
+- [ ] Forecast engine using historical sales + seasonality
+- [ ] Variance alerts (budget vs. actual) feeding into inbox
+- [ ] Agent tool: `budget_tool.py` — "Am I on track for March food cost target?" / "Build next quarter's budget"
+- [ ] Frontend: Budget planning page, variance heatmap, forecast charts
+- **Exit criteria:** "Are we hitting our numbers?" → agent compares actuals to budget, surfaces risks
+
+### Phase 11: Production Polish (Week 35-38)
 - [ ] Authentication (NextAuth.js)
-- [ ] Error handling + loading states
+- [ ] Role-based access (owner, manager, chef, viewer)
+- [ ] Error handling + loading states across all pages
 - [ ] Mobile responsiveness
 - [ ] Docker production builds
 - [ ] CI/CD pipeline
 - [ ] Monitoring + structured logging
+- [ ] Onboarding flow for new organizations
 
 ---
 
