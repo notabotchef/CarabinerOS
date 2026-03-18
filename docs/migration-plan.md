@@ -263,12 +263,26 @@ Server -> Client:
 - [x] Home page fetching from live API with fallbacks
 - **Exit criteria:** Navigable app shell with sidebar, home page, real-time connection
 
-### Phase 3: Workspace Modules (Week 9-12)
-- [ ] For each module: page + data fetching + TanStack Table/Board + KPI cards + detail panel
-- [ ] "Ask CarabinerOS" wiring (workspace item -> docked chat panel with pre-filled prompt)
-- [ ] Admin page (placeholder) + Locations page (read-only table)
-- [ ] ChatDock (docked right sidebar, replaces right rail — cross-module metrics stay on Home dashboard)
+### Phase 3: Workspace Modules (Week 9-12) — COMPLETED 2026-03-17
+- [x] For each module: page + data fetching + TanStack Table/Board + KPI cards + detail panel
+- [x] "Ask CarabinerOS" wiring (workspace item -> docked chat panel with pre-filled prompt)
+- [x] Admin page (placeholder) + Locations page (read-only table)
+- [x] ChatDock (docked right sidebar, replaces right rail — cross-module metrics stay on Home dashboard)
 - **Exit criteria:** All 10 workspace modules functional with real API data
+
+### Phase 3b: Workspace Interactivity (after Phase 5)
+> *Current modules are read-only data displays. This phase makes them feel like real operational tools.*
+- [ ] **Orders**: Send/approve buttons, status transitions (Drafting → Ready → Sent), inline line-item editing
+- [ ] **Inbox**: Resolve/dismiss/escalate actions, priority reassignment, bulk actions
+- [ ] **Inventory**: Inline count editing, variance highlighting with thresholds, import counts from CSV/scan
+- [ ] **Prep**: Drag-and-drop card reordering, mark tasks complete, readiness toggle
+- [ ] **Food Cost**: Action execution buttons (reprice, source swap, retrain), link to menu item
+- [ ] **Menu**: Performance badge editing, price adjustment inline, recipe link
+- [ ] **Marketing**: Stage transitions (Research → Drafting → Review → Live), deliverable upload
+- [ ] **Locations**: Status editing, add/remove locations
+- [ ] **Cross-module**: Table sorting, column filtering, search, date range pickers
+- [ ] **Error states**: Toast notifications with retry, optimistic updates on mutations
+- **Exit criteria:** All modules support CRUD actions, status transitions, and filtering — not just read-only display
 
 ### Phase 4: Chat Interface (Week 13-15)
 - [ ] Composer with file upload
