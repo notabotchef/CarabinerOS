@@ -101,25 +101,25 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4">
-      <div className="relative flex items-end gap-2 rounded-2xl border bg-card p-2">
+      <div className="relative flex items-center gap-2 rounded-2xl border bg-card p-2">
         {/* Attach button */}
         <button
           type="button"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:bg-accent"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition-colors hover:bg-accent self-center"
           aria-label="Attach file"
         >
           <Plus className="size-4" />
         </button>
 
         {/* Input area */}
-        <div className="relative flex-1 min-h-[36px]">
+        <div className="relative flex-1 min-h-[36px] flex items-center">
           {showPrompts && !value && (
             <div
               className="absolute inset-0 flex items-center pointer-events-none px-1 transition-opacity duration-400"
               style={{ opacity: promptVisible ? 0.4 : 0 }}
               aria-live="off"
             >
-              <span className="text-sm text-muted-foreground line-clamp-2">
+              <span className="text-sm text-muted-foreground">
                 {SUGGESTED_PROMPTS[promptIndex]}
               </span>
             </div>
@@ -143,7 +143,7 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
           type="button"
           onClick={handleSend}
           disabled={disabled}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/80 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/80 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 self-center"
           aria-label="Send message"
         >
           <svg

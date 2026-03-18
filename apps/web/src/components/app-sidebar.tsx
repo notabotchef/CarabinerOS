@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { MessageSquare } from "lucide-react";
 import type { Location } from "@/lib/api";
 import { useEffect } from "react";
 
@@ -56,6 +57,42 @@ function statusColor(status: string): string {
     default:
       return "bg-neutral-500";
   }
+}
+
+function ChatHistory() {
+  const messages = useWorkspaceStore((s) => s.messages);
+
+  if (messages.length === 0) return null;
+
+  // Derive name from first user message
+  const firstUserMsg = messages.find((m) => m.role === "user");
+  const chatName = firstUserMsg
+    ? firstUserMsg.content.length > 30
+      ? firstUserMsg.content.slice(0, 30) + "..."
+      : firstUserMsg.content
+    : "New conversation";
+
+  return (
+    <>
+      <SidebarSeparator />
+      <SidebarGroup>
+        <SidebarGroupLabel>Conversations</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive
+                render={<Link href="/" />}
+              >
+                <MessageSquare className="size-4" />
+                <span className="truncate">{chatName}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    </>
+  );
 }
 
 interface AppSidebarProps {
@@ -160,6 +197,8 @@ export function AppSidebar({ locations, orgName }: AppSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <ChatHistory />
       </SidebarContent>
 
       <SidebarFooter className="p-4">

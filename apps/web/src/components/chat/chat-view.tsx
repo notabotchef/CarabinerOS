@@ -17,6 +17,13 @@ const MODULE_PILLS = [
   { id: "marketing", label: "Marketing", href: "/marketing" },
 ];
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 interface ChatViewProps {
   compact?: boolean;
 }
@@ -59,14 +66,14 @@ export function ChatView({ compact }: ChatViewProps) {
   if (!hasMessages) {
     return (
       <div className={`flex flex-col items-center justify-center flex-1 min-h-0 gap-6 px-4 ${compact ? "" : "max-w-3xl mx-auto w-full"}`}>
-        <div className="flex size-10 items-center justify-center rounded-xl border bg-card text-base font-bold">
+        <div className="flex size-16 items-center justify-center rounded-2xl border bg-card text-2xl font-bold">
           C
         </div>
         <div className="text-center">
-          <h1 className={`font-semibold ${compact ? "text-base" : "text-lg"}`}>
-            Good morning
+          <h1 className={`font-semibold ${compact ? "text-base" : "text-xl"}`}>
+            {getGreeting()}
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             How can I help with operations today?
           </p>
         </div>
