@@ -177,10 +177,9 @@ class AgentBridge:
     ) -> str:
         """Send a message to Agent Zero and return the response.
 
-        Args:
-            context_id: Unique conversation context ID
-            message: User message
-            active_location: Dict with name, id, status for context injection
+        Uses AgentContext.communicate() which runs the agent in a separate
+        thread with its own event loop (via DeferredTask), avoiding
+        nest_asyncio/uvloop conflicts.
         """
         from agent import AgentContext, UserMessage
 
@@ -198,11 +197,12 @@ class AgentBridge:
         # Ensure sio is set
         context.agent0.config.additional["sio"] = self._sio
 
-        # Add user message and run monologue
-        context.agent0.hist_add_user_message(
-            UserMessage(message=message, attachments=[])
-        )
-        response = await context.agent0.monologue()
+        # Use AgentContext.communicate() — runs in DeferredTask thread
+        user_msg = UserMessage(message=message, attachments=[])
+        task = context.communicate(user_msg)
+
+        # Await the deferred task result
+        response = await task.result()
         return response
 
     def verify_overlay_discovery(self) -> dict[str, list[str]]:
