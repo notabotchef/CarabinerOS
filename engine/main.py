@@ -165,9 +165,10 @@ async def handle_chat_message(sid: str, data: dict) -> None:
             # Poll the context log for real-time updates
             last_log_count = len(context.log.logs) if context.log else 0
             last_streamed = ""
+            last_progress = ""
 
             while task.is_alive():
-                await asyncio.sleep(0.2)
+                await asyncio.sleep(0.15)
 
                 # Check for new log entries
                 if context.log and len(context.log.logs) > last_log_count:
@@ -177,39 +178,49 @@ async def handle_chat_message(sid: str, data: dict) -> None:
                         heading = str(getattr(log_item, 'heading', ''))
                         content = str(getattr(log_item, 'content', ''))
 
-                        # Emit status updates for agent activity
-                        if log_type in ('agent', 'tool', 'progress', 'response'):
+                        # Emit status updates for all meaningful log types
+                        detail = ""
+                        if log_type == 'tool':
                             detail = heading or content
-                            if detail:
-                                # Map agent numbers to role names
-                                detail = _clean_status_detail(detail)
-                                if detail:
-                                    await sio.emit("status_update", {
-                                        "context_id": context_id,
-                                        "status": "thinking",
-                                        "detail": detail[:100],
-                                    }, to=sid)
+                        elif log_type == 'agent':
+                            detail = heading or content
+                        elif log_type == 'progress':
+                            detail = content or heading
+                        elif log_type == 'response':
+                            detail = "Composing response"
+                        elif log_type == 'user':
+                            continue  # skip user messages
+
+                        if detail:
+                            detail = _clean_status_detail(detail)
+                            if detail and detail != last_progress:
+                                last_progress = detail
+                                await sio.emit("status_update", {
+                                    "context_id": context_id,
+                                    "status": "thinking",
+                                    "detail": detail[:120],
+                                }, to=sid)
 
                     last_log_count = len(context.log.logs)
 
-                # Check for streaming response content
-                if context.streaming_agent:
-                    current = getattr(context.streaming_agent, '_stream_full', '')
-                    if current and current != last_streamed:
-                        new_chunk = current[len(last_streamed):]
-                        if new_chunk:
-                            await sio.emit("response_stream", {
+                # Check context.log.progress for live reasoning updates
+                if context.log:
+                    progress = getattr(context.log, 'progress', '') or ''
+                    if progress and progress != last_progress:
+                        cleaned = _clean_status_detail(progress)
+                        if cleaned:
+                            last_progress = progress
+                            await sio.emit("status_update", {
                                 "context_id": context_id,
-                                "chunk": new_chunk,
-                                "full": current,
+                                "status": "thinking",
+                                "detail": cleaned[:120],
                             }, to=sid)
-                            last_streamed = current
 
             # Get final response
             response = await task.result()
 
-            # If we didn't stream anything yet, stream the full response
-            if not last_streamed and response:
+            # Clean and stream the response
+            if response:
                 response = _clean_response(response)
                 full = ""
                 for word in response.split(" "):
