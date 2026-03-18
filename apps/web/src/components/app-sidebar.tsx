@@ -23,7 +23,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { MessageSquare, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Location } from "@/lib/api";
 import { useEffect } from "react";
@@ -95,6 +96,20 @@ function ChatHistory() {
     }
   }
 
+  const router = useRouter();
+
+  function handleNewChat() {
+    clearMessages();
+    try {
+      const { getSocket } = require("@/lib/socket");
+      const socket = getSocket();
+      if (socket.connected) {
+        socket.emit("clear_chat", { context_id: "default" });
+      }
+    } catch {}
+    router.push("/");
+  }
+
   return (
     <>
       <SidebarSeparator />
@@ -102,6 +117,12 @@ function ChatHistory() {
         <SidebarGroupLabel>Conversations</SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={handleNewChat} className="text-muted-foreground">
+                <Plus className="size-4" />
+                <span>New Chat</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <div className="flex items-center group">
                 <SidebarMenuButton
