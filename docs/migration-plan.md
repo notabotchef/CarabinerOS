@@ -295,15 +295,38 @@ Server -> Client:
 - [x] Conversation appears in sidebar with auto-name + two-click delete
 - **Exit criteria:** Full streaming chat experience integrated with workspace
 
-### Phase 5: Agent Tools + Prompts (Week 16-18)
-- [ ] Split `restaurant_ops.py` into focused tools with DB access
+### Phase 5a: Agent Profiles + Tools + DB Wiring (Week 16-18)
+> *Role-based agent architecture. GM delegates to specialist subordinates.*
+
+**Agent Profiles** (one per restaurant management role):
+| Profile | Role | Tools |
+|---------|------|-------|
+| `gm` | General Manager (Agent 0) | All tools (fallback), delegates to specialists |
+| `agm` | Assistant GM | `order_tool`, `inventory_tool` |
+| `executivechef` | Executive Chef | `food_cost_tool`, `menu_tool` |
+| `souschef` | Sous Chef | `prep_tool` |
+| `marketing` | Marketing Manager | `marketing_tool` |
+| `accountant` | Senior Accountant | `invoice_tool` (Phase 6) |
+
+**LLM:** Local Ollama `qwen3.5:9b` at `http://host.docker.internal:11434`
+
+- [ ] Agent profiles: `gm`, `agm`, `executivechef`, `souschef`, `marketing` (agent.json + prompts/)
+- [ ] Tools with DB access: `order_tool`, `inventory_tool`, `prep_tool`, `food_cost_tool`, `menu_tool`, `marketing_tool`
 - [ ] Tool prompt files for each tool
 - [ ] Restaurant context extension (system_prompt) — inject active location, priorities, connector status
 - [ ] Workspace sync extension (tool_execute_after) — write results to DB, emit WebSocket events
 - [ ] Response cleaning extension (response_stream) — replace internal agent language
-- [ ] CarabinerOS agent profile
-- [ ] E2E test: prompt -> agent -> tool -> DB -> frontend update
-- **Exit criteria:** Agent performs all restaurant operations with persistent, real-time results
+- [ ] AgentBridge.communicate() — bridge FastAPI to Agent Zero AgentContext
+- [ ] Ollama LLM configuration in Agent Zero settings
+- [ ] E2E test: prompt → GM → delegates to subordinate → tool → DB → response
+- **Exit criteria:** Agent performs restaurant operations via role-based delegation with DB access
+
+### Phase 5b: Wire Agent into Chat UI (Week 19)
+- [ ] Replace mock streaming handler with real AgentBridge.communicate()
+- [ ] Forward Agent Zero logs to Socket.IO (response_stream, status_update)
+- [ ] Status pill shows real agent activity via deriveConversationStatus()
+- [ ] Workspace sync: tool results update DB → Socket.IO → React Query invalidation
+- **Exit criteria:** Chat sends real messages to Agent Zero, receives streaming responses, workspace auto-updates
 
 ### Phase 6: Invoice Processing & AP Automation (Week 19-22)
 > *Competitive parity: MarginEdge, R365, xtraCHEF all have this as core*
