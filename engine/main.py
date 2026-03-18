@@ -56,6 +56,64 @@ async def disconnect(sid: str) -> None:
     logger.info("Client disconnected: %s", sid)
 
 
+_AGENT_ROLE_MAP = {
+    "0": "GM",
+    "1": "Assistant GM",
+    "2": "Executive Chef",
+    "3": "Sous Chef",
+    "4": "Marketing Manager",
+}
+
+_AGENT_NAME_MAP = {
+    "agm": "Assistant GM",
+    "executivechef": "Executive Chef",
+    "souschef": "Sous Chef",
+    "marketing": "Marketing Manager",
+    "gm": "GM",
+}
+
+import re as _re
+
+def _clean_status_detail(detail: str) -> str:
+    """Clean internal agent language from status pill text."""
+    d = detail
+    # Map agent numbers to roles
+    for num, role in _AGENT_ROLE_MAP.items():
+        d = d.replace(f"Agent {num}", role)
+        d = d.replace(f"A{num}", role)
+    # Map profile names
+    for profile, role in _AGENT_NAME_MAP.items():
+        d = _re.sub(rf"\b{profile}\b", role, d, flags=_re.IGNORECASE)
+    # Clean tool names
+    d = d.replace("call_subordinate", "Delegating to")
+    d = d.replace("inventory_tool", "Checking inventory")
+    d = d.replace("order_tool", "Managing orders")
+    d = d.replace("prep_tool", "Checking prep")
+    d = d.replace("food_cost_tool", "Analyzing food cost")
+    d = d.replace("menu_tool", "Reviewing menu")
+    d = d.replace("marketing_tool", "Reviewing campaigns")
+    d = d.replace("code_execution_tool", "Processing data")
+    d = d.replace("response", "Composing response")
+    # Clean prefixes
+    d = _re.sub(r"^(icon://\S+\s*)", "", d)
+    d = _re.sub(r"Using tool '([^']+)'", r"Using \1", d)
+    d = _re.sub(r"\s{2,}", " ", d).strip()
+    return d
+
+
+def _clean_response(text: str) -> str:
+    """Clean internal artifacts from the final response text."""
+    t = text
+    t = _re.sub(r"§§[^\n]*", "", t)
+    t = _re.sub(r"(?:response |order response |result )?from (?:subordinate|sub) ?(?:agent)?:?\s*", "", t, flags=_re.IGNORECASE)
+    for num, role in _AGENT_ROLE_MAP.items():
+        t = t.replace(f"Agent {num}", role)
+        t = t.replace(f"A{num}", role)
+    t = _re.sub(r"\b(subordinate|subagent|superior)\s*(agent)?\b", "", t, flags=_re.IGNORECASE)
+    t = _re.sub(r"\n{3,}", "\n\n", t)
+    return t.strip()
+
+
 @sio.on("clear_chat")
 async def handle_clear_chat(sid: str, data: dict) -> None:
     """Clear an agent context and its persisted chat data."""
@@ -120,17 +178,17 @@ async def handle_chat_message(sid: str, data: dict) -> None:
                         content = str(getattr(log_item, 'content', ''))
 
                         # Emit status updates for agent activity
-                        if log_type in ('agent', 'tool', 'progress'):
+                        if log_type in ('agent', 'tool', 'progress', 'response'):
                             detail = heading or content
                             if detail:
-                                # Clean internal language
-                                detail = detail.replace('Agent 0', 'GM').replace('Agent 1', 'Specialist')
-                                detail = detail[:80]
-                                await sio.emit("status_update", {
-                                    "context_id": context_id,
-                                    "status": "thinking",
-                                    "detail": detail,
-                                }, to=sid)
+                                # Map agent numbers to role names
+                                detail = _clean_status_detail(detail)
+                                if detail:
+                                    await sio.emit("status_update", {
+                                        "context_id": context_id,
+                                        "status": "thinking",
+                                        "detail": detail[:100],
+                                    }, to=sid)
 
                     last_log_count = len(context.log.logs)
 
@@ -152,6 +210,7 @@ async def handle_chat_message(sid: str, data: dict) -> None:
 
             # If we didn't stream anything yet, stream the full response
             if not last_streamed and response:
+                response = _clean_response(response)
                 full = ""
                 for word in response.split(" "):
                     full += word + " "
