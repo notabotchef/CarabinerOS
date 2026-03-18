@@ -15,9 +15,8 @@ services:
       UTILITY_MODEL_PROVIDER: ollama
       UTILITY_MODEL_NAME: qwen3.5:9b
       UTILITY_MODEL_API_BASE: http://host.docker.internal:11434
-      EMBEDDINGS_MODEL_PROVIDER: ollama
-      EMBEDDINGS_MODEL_NAME: qwen3.5:9b
-      EMBEDDINGS_MODEL_API_BASE: http://host.docker.internal:11434
+      EMBEDDINGS_MODEL_PROVIDER: huggingface
+      EMBEDDINGS_MODEL_NAME: sentence-transformers/all-MiniLM-L6-v2
       BROWSER_MODEL_PROVIDER: ollama
       BROWSER_MODEL_NAME: qwen3.5:9b
       BROWSER_MODEL_API_BASE: http://host.docker.internal:11434
