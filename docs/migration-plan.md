@@ -417,6 +417,66 @@ Production: Frontend on Vercel (or Cloud Run), Engine on Railway/Cloud Run, Data
 
 ---
 
+## Agent Zero Upstream Updates Strategy
+
+### The Problem
+Agent Zero is under active development. Upstream changes to the submodule (new extension hooks, API changes, tool discovery changes, Python version requirements) can break our overlay integration. We need a strategy to absorb updates without rework.
+
+### Current Integration Points (Risk Surface)
+| Integration Point | Where We Touch It | Risk Level |
+|---|---|---|
+| `AgentContext.communicate()` | bridge.py calls it directly | **High** — API signature could change |
+| `UserMessage` dataclass | bridge.py constructs it | Medium — fields could be added |
+| `initialize_agent()` | bridge.py calls for config | **High** — settings format could change |
+| `settings.json` format | Written to usr/ at boot | **High** — keys rename frequently |
+| Tool base class `Tool` | All 7 overlay tools inherit from it | Medium — execute() signature stable |
+| Extension base class `Extension` | All 3 overlay extensions inherit | Medium — execute() signature stable |
+| `subagents.get_paths()` | Relies on usr/ search path | Low — core discovery pattern unlikely to change |
+| `python.helpers.*` imports | All overlay files import from it | Medium — module reorganization possible |
+| Log system (`context.log`) | main.py polls for real-time updates | **High** — log structure could change |
+
+### Update Process
+```bash
+# 1. Update submodule to latest upstream
+cd engine/agent-zero
+git fetch origin
+git checkout <new-tag-or-commit>
+cd ../..
+git add engine/agent-zero
+git commit -m "chore: update agent-zero submodule to <version>"
+
+# 2. Run compatibility tests
+cd engine && python3 -m pytest tests/ -v
+
+# 3. Check for breaking changes
+# - Does settings.json format still work?
+# - Do overlay imports (python.helpers.*) still resolve?
+# - Does AgentContext.communicate() still accept UserMessage?
+# - Does initialize_agent() still return AgentConfig?
+
+# 4. Fix any breakage, commit, rebuild Docker
+docker build -t carabineros:latest -f docker/Dockerfile.engine .
+```
+
+### Making Updates Easier
+1. **Compatibility test suite** (`tests/test_agent_zero_compat.py`) — tests that verify our integration points still work after an update. Run before committing any submodule bump.
+2. **Thin bridge layer** — bridge.py is the ONLY file that imports from Agent Zero directly. All other CarabinerOS code goes through bridge. If an upstream API changes, only bridge.py needs updating.
+3. **Overlay-only customization** — we never modify files inside `engine/agent-zero/`. Everything is in `carabiner/agent_overlay/` via symlinks into `usr/`. This means `git submodule update` is always clean.
+4. **Pin submodule to tags** — don't track `main`. Pin to release tags (e.g., `v0.9.8-6`) and update deliberately.
+5. **settings.json versioning** — Agent Zero includes a `version` field. When we update, compare our settings.json version against the new default and merge new keys.
+6. **Document upstream assumptions** — when we rely on an internal API (like `context.log.logs`), document the assumption so it's easy to find when debugging post-update breakage.
+
+### What Would Force a Major Rewrite
+- Agent Zero removes the `usr/` overlay search path (unlikely — it's a core feature)
+- Agent Zero switches from Socket.IO to a different real-time protocol
+- Agent Zero changes from Python to another language
+- Tool/Extension base class signatures change fundamentally (unlikely — they've been stable)
+
+### Recommendation
+Update Agent Zero submodule **monthly** after each upstream release. Run the compatibility test suite. Budget 1-2 hours per update for any breakage fixes. Most updates should be zero-effort since we only touch the overlay pattern.
+
+---
+
 ## Key Architecture Decisions
 
 | Decision | Choice | Why |
