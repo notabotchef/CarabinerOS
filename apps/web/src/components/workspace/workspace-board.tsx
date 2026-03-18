@@ -1,20 +1,25 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CheckCircle, RotateCw } from "lucide-react";
 import type { PrepTask } from "@/lib/api";
 
 interface WorkspaceBoardProps {
   items: PrepTask[];
   isLoading: boolean;
   onCardClick?: (item: PrepTask) => void;
+  onToggleReadiness?: (item: PrepTask) => void;
 }
 
 function readinessBadgeVariant(readiness: string) {
   switch (readiness.toLowerCase()) {
     case "ready":
+      return "default" as const;
+    case "complete":
       return "default" as const;
     case "at risk":
       return "secondary" as const;
@@ -29,6 +34,7 @@ export function WorkspaceBoard({
   items,
   isLoading,
   onCardClick,
+  onToggleReadiness,
 }: WorkspaceBoardProps) {
   const lanes = items.reduce<Record<string, PrepTask[]>>((acc, item) => {
     const lane = item.service_lane;
@@ -96,9 +102,30 @@ export function WorkspaceBoard({
                     tabIndex={onCardClick ? 0 : undefined}
                   >
                     <CardContent className="p-3 space-y-1">
-                      <Badge variant={readinessBadgeVariant(item.readiness)}>
-                        {item.readiness}
-                      </Badge>
+                      <div className="flex items-center justify-between">
+                        <Badge
+                          variant={readinessBadgeVariant(item.readiness)}
+                        >
+                          {item.readiness}
+                        </Badge>
+                        {onToggleReadiness &&
+                          item.readiness.toLowerCase() !== "complete" && (
+                            <Button
+                              variant="ghost"
+                              size="icon-xs"
+                              title="Toggle readiness"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleReadiness(item);
+                              }}
+                            >
+                              <RotateCw className="size-3" />
+                            </Button>
+                          )}
+                        {item.readiness.toLowerCase() === "complete" && (
+                          <CheckCircle className="size-3.5 text-emerald-500" />
+                        )}
+                      </div>
                       <p className="text-sm font-medium">{item.task}</p>
                       <p className="text-xs text-muted-foreground">
                         {item.station}

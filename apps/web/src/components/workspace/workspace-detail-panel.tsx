@@ -16,6 +16,12 @@ interface DetailField {
   value: string;
 }
 
+interface DetailAction {
+  label: string;
+  variant: "default" | "secondary" | "destructive" | "outline" | "ghost";
+  onClick: () => void;
+}
+
 interface WorkspaceDetailPanelProps {
   open: boolean;
   onClose: () => void;
@@ -26,6 +32,7 @@ interface WorkspaceDetailPanelProps {
   summary: string | null;
   detailPoints: string[] | null;
   prompt: string | null;
+  actions?: DetailAction[];
 }
 
 export function WorkspaceDetailPanel({
@@ -38,6 +45,7 @@ export function WorkspaceDetailPanel({
   summary,
   detailPoints,
   prompt,
+  actions,
 }: WorkspaceDetailPanelProps) {
   const { setChatOpen, setChatPrompt } = useWorkspaceStore();
 
@@ -64,6 +72,22 @@ export function WorkspaceDetailPanel({
         </SheetHeader>
 
         <div className="mt-6 space-y-4">
+          {/* Action buttons */}
+          {actions && actions.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {actions.map((action) => (
+                <Button
+                  key={action.label}
+                  variant={action.variant}
+                  size="sm"
+                  onClick={action.onClick}
+                >
+                  {action.label}
+                </Button>
+              ))}
+            </div>
+          )}
+
           {fields.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {fields.map((f) => (

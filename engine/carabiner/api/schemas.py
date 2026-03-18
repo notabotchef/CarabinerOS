@@ -104,6 +104,7 @@ class OrderUpdate(BaseModel):
     status: Optional[str] = None
     total: Optional[str] = None
     eta: Optional[str] = None
+    line_items: Optional[Any] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
 
@@ -122,6 +123,26 @@ class InventoryOut(TimestampSchema):
     prompt: Optional[str] = None
 
 
+class InventoryCreate(BaseModel):
+    location_id: uuid.UUID
+    item_name: str
+    on_hand: str
+    par: str
+    variance: str
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+    prompt: Optional[str] = None
+
+
+class InventoryUpdate(BaseModel):
+    item_name: Optional[str] = None
+    on_hand: Optional[str] = None
+    par: Optional[str] = None
+    variance: Optional[str] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+
+
 # --- Prep ---
 
 class PrepOut(TimestampSchema):
@@ -137,6 +158,28 @@ class PrepOut(TimestampSchema):
     prompt: Optional[str] = None
 
 
+class PrepCreate(BaseModel):
+    location_id: uuid.UUID
+    service_lane: str
+    task: str
+    station: str
+    readiness: str = "Ready"
+    shortage: Optional[str] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+    prompt: Optional[str] = None
+
+
+class PrepUpdate(BaseModel):
+    service_lane: Optional[str] = None
+    task: Optional[str] = None
+    station: Optional[str] = None
+    readiness: Optional[str] = None
+    shortage: Optional[str] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+
+
 # --- Food Cost ---
 
 class FoodCostOut(TimestampSchema):
@@ -149,6 +192,26 @@ class FoodCostOut(TimestampSchema):
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
+
+
+class FoodCostCreate(BaseModel):
+    location_id: uuid.UUID
+    menu_item_name: str
+    pressure: str
+    current_cost_pct: str
+    action: str
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+    prompt: Optional[str] = None
+
+
+class FoodCostUpdate(BaseModel):
+    menu_item_name: Optional[str] = None
+    pressure: Optional[str] = None
+    current_cost_pct: Optional[str] = None
+    action: Optional[str] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
 
 
 # --- Menu ---
@@ -167,6 +230,30 @@ class MenuOut(TimestampSchema):
     prompt: Optional[str] = None
 
 
+class MenuCreate(BaseModel):
+    location_id: uuid.UUID
+    item_name: str
+    category: str
+    performance: str
+    margin_pct: str
+    recommendation: str
+    recipe: Optional[Dict[str, Any]] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+    prompt: Optional[str] = None
+
+
+class MenuUpdate(BaseModel):
+    item_name: Optional[str] = None
+    category: Optional[str] = None
+    performance: Optional[str] = None
+    margin_pct: Optional[str] = None
+    recommendation: Optional[str] = None
+    recipe: Optional[Dict[str, Any]] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+
+
 # --- Marketing / Campaigns ---
 
 class CampaignOut(TimestampSchema):
@@ -179,6 +266,46 @@ class CampaignOut(TimestampSchema):
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
+
+
+class CampaignCreate(BaseModel):
+    location_id: uuid.UUID
+    campaign_name: str
+    channel: str
+    stage: str = "Drafting"
+    deliverable: str
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+    prompt: Optional[str] = None
+
+
+class CampaignUpdate(BaseModel):
+    campaign_name: Optional[str] = None
+    channel: Optional[str] = None
+    stage: Optional[str] = None
+    deliverable: Optional[str] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+
+
+# --- Locations ---
+
+class LocationCreate(BaseModel):
+    org_id: uuid.UUID
+    slug: str
+    name: str
+    city: str
+    status: str = "Stable"
+    sales_delta: Optional[str] = None
+    labor_delta: Optional[str] = None
+
+
+class LocationUpdate(BaseModel):
+    name: Optional[str] = None
+    city: Optional[str] = None
+    status: Optional[str] = None
+    sales_delta: Optional[str] = None
+    labor_delta: Optional[str] = None
 
 
 # --- HQ Payload ---

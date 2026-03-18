@@ -158,6 +158,9 @@ async def create_inventory(data: Dict[str, Any]) -> WorkspaceInventory:
 async def update_inventory(item_id: uuid.UUID, data: Dict[str, Any]) -> Optional[WorkspaceInventory]:
     return await _update(WorkspaceInventory, item_id, data)
 
+async def delete_inventory(item_id: uuid.UUID) -> bool:
+    return await _delete(WorkspaceInventory, item_id)
+
 
 async def list_prep(location_id: Optional[uuid.UUID] = None) -> Sequence[WorkspacePrep]:
     return await _list_all(WorkspacePrep, location_id)
@@ -170,6 +173,9 @@ async def create_prep(data: Dict[str, Any]) -> WorkspacePrep:
 
 async def update_prep(item_id: uuid.UUID, data: Dict[str, Any]) -> Optional[WorkspacePrep]:
     return await _update(WorkspacePrep, item_id, data)
+
+async def delete_prep(item_id: uuid.UUID) -> bool:
+    return await _delete(WorkspacePrep, item_id)
 
 
 async def list_food_cost(location_id: Optional[uuid.UUID] = None) -> Sequence[WorkspaceFoodCost]:
@@ -184,6 +190,9 @@ async def create_food_cost(data: Dict[str, Any]) -> WorkspaceFoodCost:
 async def update_food_cost(item_id: uuid.UUID, data: Dict[str, Any]) -> Optional[WorkspaceFoodCost]:
     return await _update(WorkspaceFoodCost, item_id, data)
 
+async def delete_food_cost(item_id: uuid.UUID) -> bool:
+    return await _delete(WorkspaceFoodCost, item_id)
+
 
 async def list_menu(location_id: Optional[uuid.UUID] = None) -> Sequence[WorkspaceMenu]:
     return await _list_all(WorkspaceMenu, location_id)
@@ -197,6 +206,9 @@ async def create_menu(data: Dict[str, Any]) -> WorkspaceMenu:
 async def update_menu(item_id: uuid.UUID, data: Dict[str, Any]) -> Optional[WorkspaceMenu]:
     return await _update(WorkspaceMenu, item_id, data)
 
+async def delete_menu(item_id: uuid.UUID) -> bool:
+    return await _delete(WorkspaceMenu, item_id)
+
 
 async def list_campaigns(location_id: Optional[uuid.UUID] = None) -> Sequence[WorkspaceCampaign]:
     return await _list_all(WorkspaceCampaign, location_id)
@@ -209,6 +221,26 @@ async def create_campaign(data: Dict[str, Any]) -> WorkspaceCampaign:
 
 async def update_campaign(item_id: uuid.UUID, data: Dict[str, Any]) -> Optional[WorkspaceCampaign]:
     return await _update(WorkspaceCampaign, item_id, data)
+
+async def delete_campaign(item_id: uuid.UUID) -> bool:
+    return await _delete(WorkspaceCampaign, item_id)
+
+
+# ---------------------------------------------------------------------------
+# Locations CRUD
+# ---------------------------------------------------------------------------
+
+async def get_location(item_id: uuid.UUID) -> Optional[WorkspaceLocation]:
+    return await _get_by_id(WorkspaceLocation, item_id)
+
+async def create_location(data: Dict[str, Any]) -> WorkspaceLocation:
+    return await _create(WorkspaceLocation, data)
+
+async def update_location(item_id: uuid.UUID, data: Dict[str, Any]) -> Optional[WorkspaceLocation]:
+    return await _update(WorkspaceLocation, item_id, data)
+
+async def delete_location(item_id: uuid.UUID) -> bool:
+    return await _delete(WorkspaceLocation, item_id)
 
 
 async def list_action_log(location_id: Optional[uuid.UUID] = None) -> Sequence[ActionLog]:

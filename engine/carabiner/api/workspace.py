@@ -8,17 +8,27 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 
 from carabiner.api.schemas import (
+    CampaignCreate,
     CampaignOut,
+    CampaignUpdate,
+    FoodCostCreate,
     FoodCostOut,
+    FoodCostUpdate,
     InboxItemCreate,
     InboxItemOut,
     InboxItemUpdate,
+    InventoryCreate,
     InventoryOut,
+    InventoryUpdate,
+    MenuCreate,
     MenuOut,
+    MenuUpdate,
     OrderCreate,
     OrderOut,
     OrderUpdate,
+    PrepCreate,
     PrepOut,
+    PrepUpdate,
 )
 from carabiner.db import repositories as repo
 
@@ -121,6 +131,27 @@ async def get_inventory(item_id: uuid.UUID) -> InventoryOut:
     return InventoryOut.model_validate(item)
 
 
+@router.post("/inventory", response_model=InventoryOut, status_code=201)
+async def create_inventory(body: InventoryCreate) -> InventoryOut:
+    item = await repo.create_inventory(body.model_dump())
+    return InventoryOut.model_validate(item)
+
+
+@router.patch("/inventory/{item_id}", response_model=InventoryOut)
+async def update_inventory(item_id: uuid.UUID, body: InventoryUpdate) -> InventoryOut:
+    item = await repo.update_inventory(item_id, body.model_dump(exclude_unset=True))
+    if item is None:
+        raise HTTPException(status_code=404, detail="Inventory item not found")
+    return InventoryOut.model_validate(item)
+
+
+@router.delete("/inventory/{item_id}", status_code=204)
+async def delete_inventory(item_id: uuid.UUID) -> None:
+    deleted = await repo.delete_inventory(item_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Inventory item not found")
+
+
 # ---------------------------------------------------------------------------
 # Prep
 # ---------------------------------------------------------------------------
@@ -137,6 +168,27 @@ async def get_prep(item_id: uuid.UUID) -> PrepOut:
     if item is None:
         raise HTTPException(status_code=404, detail="Prep task not found")
     return PrepOut.model_validate(item)
+
+
+@router.post("/prep", response_model=PrepOut, status_code=201)
+async def create_prep(body: PrepCreate) -> PrepOut:
+    item = await repo.create_prep(body.model_dump())
+    return PrepOut.model_validate(item)
+
+
+@router.patch("/prep/{item_id}", response_model=PrepOut)
+async def update_prep(item_id: uuid.UUID, body: PrepUpdate) -> PrepOut:
+    item = await repo.update_prep(item_id, body.model_dump(exclude_unset=True))
+    if item is None:
+        raise HTTPException(status_code=404, detail="Prep task not found")
+    return PrepOut.model_validate(item)
+
+
+@router.delete("/prep/{item_id}", status_code=204)
+async def delete_prep(item_id: uuid.UUID) -> None:
+    deleted = await repo.delete_prep(item_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Prep task not found")
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +209,27 @@ async def get_food_cost(item_id: uuid.UUID) -> FoodCostOut:
     return FoodCostOut.model_validate(item)
 
 
+@router.post("/food-cost", response_model=FoodCostOut, status_code=201)
+async def create_food_cost(body: FoodCostCreate) -> FoodCostOut:
+    item = await repo.create_food_cost(body.model_dump())
+    return FoodCostOut.model_validate(item)
+
+
+@router.patch("/food-cost/{item_id}", response_model=FoodCostOut)
+async def update_food_cost(item_id: uuid.UUID, body: FoodCostUpdate) -> FoodCostOut:
+    item = await repo.update_food_cost(item_id, body.model_dump(exclude_unset=True))
+    if item is None:
+        raise HTTPException(status_code=404, detail="Food cost item not found")
+    return FoodCostOut.model_validate(item)
+
+
+@router.delete("/food-cost/{item_id}", status_code=204)
+async def delete_food_cost(item_id: uuid.UUID) -> None:
+    deleted = await repo.delete_food_cost(item_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Food cost item not found")
+
+
 # ---------------------------------------------------------------------------
 # Menu
 # ---------------------------------------------------------------------------
@@ -175,6 +248,27 @@ async def get_menu(item_id: uuid.UUID) -> MenuOut:
     return MenuOut.model_validate(item)
 
 
+@router.post("/menu", response_model=MenuOut, status_code=201)
+async def create_menu(body: MenuCreate) -> MenuOut:
+    item = await repo.create_menu(body.model_dump())
+    return MenuOut.model_validate(item)
+
+
+@router.patch("/menu/{item_id}", response_model=MenuOut)
+async def update_menu(item_id: uuid.UUID, body: MenuUpdate) -> MenuOut:
+    item = await repo.update_menu(item_id, body.model_dump(exclude_unset=True))
+    if item is None:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    return MenuOut.model_validate(item)
+
+
+@router.delete("/menu/{item_id}", status_code=204)
+async def delete_menu(item_id: uuid.UUID) -> None:
+    deleted = await repo.delete_menu(item_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+
+
 # ---------------------------------------------------------------------------
 # Marketing (Campaigns)
 # ---------------------------------------------------------------------------
@@ -191,6 +285,27 @@ async def get_campaign(item_id: uuid.UUID) -> CampaignOut:
     if item is None:
         raise HTTPException(status_code=404, detail="Campaign not found")
     return CampaignOut.model_validate(item)
+
+
+@router.post("/marketing", response_model=CampaignOut, status_code=201)
+async def create_campaign(body: CampaignCreate) -> CampaignOut:
+    item = await repo.create_campaign(body.model_dump())
+    return CampaignOut.model_validate(item)
+
+
+@router.patch("/marketing/{item_id}", response_model=CampaignOut)
+async def update_campaign(item_id: uuid.UUID, body: CampaignUpdate) -> CampaignOut:
+    item = await repo.update_campaign(item_id, body.model_dump(exclude_unset=True))
+    if item is None:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    return CampaignOut.model_validate(item)
+
+
+@router.delete("/marketing/{item_id}", status_code=204)
+async def delete_campaign(item_id: uuid.UUID) -> None:
+    deleted = await repo.delete_campaign(item_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Campaign not found")
 
 
 # ---------------------------------------------------------------------------
