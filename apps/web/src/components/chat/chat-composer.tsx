@@ -101,7 +101,7 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4">
-      <div className="relative flex items-center gap-2 rounded-2xl border bg-card p-2">
+      <div className="relative flex items-center gap-2 rounded-2xl border bg-card p-2 transition-shadow focus-within:shadow-[0_0_0_1px_hsl(var(--primary)/0.3),0_0_12px_hsl(var(--primary)/0.1)]">
         {/* Attach button */}
         <button
           type="button"
@@ -143,8 +143,7 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
           type="button"
           onClick={handleSend}
           disabled={disabled}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-80 disabled:opacity-30 self-center"
-          style={{ backgroundColor: "#D32F2F" }}
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-all hover:opacity-90 hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100 self-center"
           aria-label="Send message"
         >
           <svg
