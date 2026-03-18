@@ -236,34 +236,6 @@ class WorkspaceInvoice(TimestampMixin, Base):
 # Action Log
 # ---------------------------------------------------------------------------
 
-class WorkspaceInvoice(TimestampMixin, Base):
-    __tablename__ = "workspace_invoices"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    location_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
-        nullable=False, index=True,
-    )
-    vendor: Mapped[str] = mapped_column(String(200), nullable=False)
-    invoice_number: Mapped[Optional[str]] = mapped_column(String(100))
-    invoice_date: Mapped[str] = mapped_column(String(30), nullable=False)
-    due_date: Mapped[Optional[str]] = mapped_column(String(30))
-    status: Mapped[str] = mapped_column(String(30), nullable=False, default="Uploaded")
-    total: Mapped[str] = mapped_column(String(50), nullable=False)
-    line_items: Mapped[Optional[dict]] = mapped_column(JSONB, default=list)
-    gl_codes: Mapped[Optional[dict]] = mapped_column(JSONB, default=list)
-    po_match_id: Mapped[Optional[str]] = mapped_column(String(200))
-    variance_notes: Mapped[Optional[str]] = mapped_column(Text)
-    file_path: Mapped[Optional[str]] = mapped_column(String(500))
-    summary: Mapped[Optional[str]] = mapped_column(Text)
-    detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
-    prompt: Mapped[Optional[str]] = mapped_column(Text)
-
-
-# ---------------------------------------------------------------------------
-# Action Log
-# ---------------------------------------------------------------------------
-
 class ActionLog(TimestampMixin, Base):
     __tablename__ = "action_log"
 
