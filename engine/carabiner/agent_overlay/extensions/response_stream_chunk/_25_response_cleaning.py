@@ -7,7 +7,7 @@ operator sees clean, restaurant-context output.
 from __future__ import annotations
 
 import re
-from helpers.extension import Extension
+from python.helpers.extension import Extension
 
 
 class ResponseCleaning(Extension):

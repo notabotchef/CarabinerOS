@@ -6,7 +6,7 @@ the agent config and DB to provide context for every agent interaction.
 
 from __future__ import annotations
 
-from helpers.extension import Extension
+from python.helpers.extension import Extension
 
 
 class RestaurantContext(Extension):
