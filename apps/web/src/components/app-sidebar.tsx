@@ -65,6 +65,7 @@ function ChatHistory() {
   const messages = useWorkspaceStore((s) => s.messages);
   const clearMessages = useWorkspaceStore((s) => s.clearMessages);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const router = useRouter();
 
   if (messages.length === 0) return null;
 
@@ -95,8 +96,6 @@ function ChatHistory() {
       setTimeout(() => setConfirmDelete(false), 3000);
     }
   }
-
-  const router = useRouter();
 
   function handleNewChat() {
     clearMessages();
