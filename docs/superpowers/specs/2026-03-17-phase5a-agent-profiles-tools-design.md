@@ -31,24 +31,28 @@ User message → AgentBridge.communicate(context_id, message)
 
 ## LLM Configuration
 
+Agent Zero reads settings from `usr/.env` (relative to agent-zero root) with `A0_SET_` prefix:
+
 ```env
-# engine/.env
-CHAT_MODEL_PROVIDER=ollama
-CHAT_MODEL_NAME=qwen3.5:9b
-CHAT_API_BASE=http://host.docker.internal:11434
+# engine/agent-zero/usr/.env (created by bridge at boot, gitignored)
+A0_SET_chat_model_provider=ollama
+A0_SET_chat_model_name=qwen3.5:9b
+A0_SET_chat_model_api_base=http://host.docker.internal:11434
 
-UTILITY_MODEL_PROVIDER=ollama
-UTILITY_MODEL_NAME=qwen3.5:9b
-UTILITY_API_BASE=http://host.docker.internal:11434
+A0_SET_util_model_provider=ollama
+A0_SET_util_model_name=qwen3.5:9b
+A0_SET_util_model_api_base=http://host.docker.internal:11434
 
-EMBEDDINGS_MODEL_PROVIDER=ollama
-EMBEDDINGS_MODEL_NAME=qwen3.5:9b
-EMBEDDINGS_API_BASE=http://host.docker.internal:11434
+A0_SET_embed_model_provider=ollama
+A0_SET_embed_model_name=qwen3.5:9b
+A0_SET_embed_model_api_base=http://host.docker.internal:11434
 
-BROWSER_MODEL_PROVIDER=ollama
-BROWSER_MODEL_NAME=qwen3.5:9b
-BROWSER_API_BASE=http://host.docker.internal:11434
+A0_SET_browser_model_provider=ollama
+A0_SET_browser_model_name=qwen3.5:9b
+A0_SET_browser_model_api_base=http://host.docker.internal:11434
 ```
+
+The bridge writes this file during `bootstrap_agent_zero()` from `engine/.env` values.
 
 ## File Structure
 
@@ -90,8 +94,8 @@ carabiner/agent_overlay/extensions/
 │   └── _25_restaurant_context.py           — UPDATED: inject real location + priorities
 ├── tool_execute_after/
 │   └── _25_workspace_sync.py              — sync tool results to DB + emit events
-└── response_stream/
-    └── _25_response_cleaning.py           — clean internal agent language
+└── response_stream_chunk/
+    └── _25_response_cleaning.py           — clean internal agent language per chunk
 
 engine/.env                                 — Ollama LLM configuration
 ```
@@ -204,10 +208,23 @@ class OrderTool(Tool):
 
 Each tool follows this structure:
 1. Parse `method` and `location_id` from `self.args`
-2. Call the appropriate repository function
-3. Format the result as a human-readable JSON or markdown string
-4. Return `Response(message=..., break_loop=False, additional={...})`
-5. The `additional` dict carries metadata for the `tool_execute_after` extension
+2. Wrap DB calls in try/except — return a meaningful error Response on failure
+3. Call the appropriate repository function
+4. Format the result as a human-readable JSON or markdown string
+5. Return `Response(message=..., break_loop=False, additional={...})`
+6. The `additional` dict carries metadata for the `tool_execute_after` extension
+
+```python
+async def execute(self, **kwargs) -> Response:
+    try:
+        from carabiner.db import repositories as repo
+        # ... tool logic
+    except Exception as e:
+        return Response(
+            message=f"Error accessing data: {str(e)}",
+            break_loop=False,
+        )
+```
 
 ## Extension Specifications
 
@@ -229,7 +246,7 @@ Runs after any tool execution. Responsibilities:
 - If the tool modified data (create/update), emits a `workspace_update` Socket.IO event
 - Event payload: `{ module: "orders", action: "update", item: {...} }`
 
-Access to Socket.IO via the bridge singleton (imported from `main.py` or passed via agent config).
+Access to Socket.IO via `self.agent.config.additional["sio"]` (stored during AgentBridge initialization, avoids circular imports).
 
 ### response_stream/_25_response_cleaning.py (NEW)
 
@@ -239,6 +256,12 @@ Runs on every response stream chunk. Applies `cleanOperationalCopy` logic server
 - Removes agent references (A0-A9, subordinate, superior)
 
 This ensures even raw terminal output is clean, not just the frontend rendering.
+
+## Deferred Tools
+
+The migration plan lists `connector_tool` and `inbox_tool` in the full tool inventory. These are deferred:
+- `connector_tool` — deferred until connector execution is implemented (Phase 3b interactivity)
+- `inbox_tool` — deferred until inbox CRUD mutations are wired (Phase 3b interactivity)
 
 ## AgentBridge Updates
 
@@ -254,35 +277,48 @@ async def communicate(
 ) -> str:
     """Send a message to Agent Zero and return the response.
 
-    Args:
-        context_id: Unique conversation context ID
-        message: User message
-        on_log: Callback for agent log entries (status updates)
-        on_stream: Callback for response stream chunks
+    Uses Agent Zero's actual API:
+    - UserMessage dataclass to wrap user input
+    - hist_add_user_message() to add to history
+    - monologue() (no args) to run the agent loop
     """
+    from agent import AgentContext, Agent, UserMessage
+
     # Get or create AgentContext
     context = AgentContext.get(context_id)
     if context is None:
         config = self._build_config(profile="gm")
         context = AgentContext(config=config, id=context_id)
 
-    # Set active location in agent config
-    context.agent0.config.additional["active_location"] = ...
+    # Set active location context
+    context.agent0.config.additional["active_location_name"] = ...
+    context.agent0.config.additional["sio"] = sio  # for extensions
 
-    # Send message and collect response
-    response = await context.agent0.monologue(message)
+    # Add user message to history, then run monologue
+    context.agent0.hist_add_user_message(
+        UserMessage(message=message, attachments=[])
+    )
+    response = await context.agent0.monologue()
     return response
 ```
 
 ### _build_config() method
 
-Creates an `AgentConfig` with:
-- `chat_model`: Ollama qwen3.5:9b
-- `utility_model`: same
-- `embeddings_model`: same
-- `browser_model`: same
-- `profile`: "gm" (or specified)
-- `additional`: active location, org context
+Uses Agent Zero's `initialize_agent()` to get a properly configured `AgentConfig`, then overrides the profile:
+
+```python
+def _build_config(self, profile: str = "gm") -> AgentConfig:
+    from initialize import initialize_agent
+    config = initialize_agent()
+    config.profile = profile
+    config.additional = {
+        "organization_name": "Carabiner Restaurant Group",
+        "sio": None,  # set later
+    }
+    return config
+```
+
+This ensures all Agent Zero defaults (SSH, runtime, settings normalization) are properly applied.
 
 ## Profile Registration
 

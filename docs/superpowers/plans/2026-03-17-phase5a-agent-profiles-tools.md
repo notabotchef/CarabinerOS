@@ -33,7 +33,7 @@ engine/carabiner/agent_overlay/tools/food_cost_tool.py
 engine/carabiner/agent_overlay/tools/menu_tool.py
 engine/carabiner/agent_overlay/tools/marketing_tool.py
 engine/carabiner/agent_overlay/extensions/tool_execute_after/_25_workspace_sync.py
-engine/carabiner/agent_overlay/extensions/response_stream/_25_response_cleaning.py
+engine/carabiner/agent_overlay/extensions/response_stream_chunk/_25_response_cleaning.py
 engine/.env
 ```
 
@@ -48,23 +48,25 @@ engine/carabiner/agent_overlay/extensions/system_prompt/_25_restaurant_context.p
 ## Task 1: Ollama LLM Configuration
 
 **Files:**
-- Create: `engine/.env`
+- Create: `engine/.env` (for CarabinerOS settings like DATABASE_URL)
+- Note: Agent Zero reads from `engine/agent-zero/usr/.env` with `A0_SET_` prefix. The bridge will write this file at boot from engine/.env values.
 
 - [ ] **Step 1: Create .env with Ollama config**
 
 ```env
 # engine/.env
+# Agent Zero LLM settings (bridge copies these to agent-zero/usr/.env with A0_SET_ prefix)
 CHAT_MODEL_PROVIDER=ollama
 CHAT_MODEL_NAME=qwen3.5:9b
-CHAT_API_BASE=http://host.docker.internal:11434
+CHAT_MODEL_API_BASE=http://host.docker.internal:11434
 
 UTILITY_MODEL_PROVIDER=ollama
 UTILITY_MODEL_NAME=qwen3.5:9b
-UTILITY_API_BASE=http://host.docker.internal:11434
+UTILITY_MODEL_API_BASE=http://host.docker.internal:11434
 
 EMBEDDINGS_MODEL_PROVIDER=ollama
 EMBEDDINGS_MODEL_NAME=qwen3.5:9b
-EMBEDDINGS_API_BASE=http://host.docker.internal:11434
+EMBEDDINGS_MODEL_API_BASE=http://host.docker.internal:11434
 
 BROWSER_MODEL_PROVIDER=ollama
 BROWSER_MODEL_NAME=qwen3.5:9b
@@ -298,6 +300,12 @@ from helpers.tool import Response, Tool
 
 class OrderTool(Tool):
     async def execute(self, **kwargs) -> Response:
+        try:
+            return await self._run(**kwargs)
+        except Exception as e:
+            return Response(message=f"Error accessing order data: {str(e)}", break_loop=False)
+
+    async def _run(self, **kwargs) -> Response:
         from carabiner.db import repositories as repo
 
         method = self.args.get("method", "list")
@@ -604,7 +612,7 @@ git commit -m "feat: add 6 restaurant tools with DB access (order, inventory, pr
 **Files:**
 - Modify: `engine/carabiner/agent_overlay/extensions/system_prompt/_25_restaurant_context.py`
 - Create: `engine/carabiner/agent_overlay/extensions/tool_execute_after/_25_workspace_sync.py`
-- Create: `engine/carabiner/agent_overlay/extensions/response_stream/_25_response_cleaning.py`
+- Create: `engine/carabiner/agent_overlay/extensions/response_stream_chunk/_25_response_cleaning.py`
 
 - [ ] **Step 1: Update system_prompt extension with real context**
 
@@ -685,9 +693,11 @@ class WorkspaceSync(Extension):
         except Exception as e:
             logger.warning("Failed to log action: %s", e)
 
-        # Emit workspace_update event via Socket.IO
+        # Emit workspace_update event via Socket.IO (stored in agent config to avoid circular imports)
         try:
-            from main import sio
+            sio = self.agent.config.additional.get("sio")
+            if not sio:
+                return
             await sio.emit("workspace_update", {
                 "module": module,
                 "action": action or "update",
@@ -700,11 +710,11 @@ class WorkspaceSync(Extension):
 - [ ] **Step 3: Create response_stream extension**
 
 ```bash
-mkdir -p engine/carabiner/agent_overlay/extensions/response_stream
+mkdir -p engine/carabiner/agent_overlay/extensions/response_stream_chunk
 ```
 
 ```python
-# engine/carabiner/agent_overlay/extensions/response_stream/_25_response_cleaning.py
+# engine/carabiner/agent_overlay/extensions/response_stream_chunk/_25_response_cleaning.py
 """Clean internal agent language from response streams."""
 
 from __future__ import annotations
