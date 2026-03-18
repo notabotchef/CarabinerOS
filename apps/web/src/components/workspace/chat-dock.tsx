@@ -1,16 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { X, MessageSquare, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { ChatView } from "@/components/chat/chat-view";
+import { getModulePrompts } from "@/lib/chat-helpers";
 
 type DockMode = "chat" | "activity";
 
 export function ChatDock() {
   const { isChatOpen, setChatOpen, setChatPrompt } = useWorkspaceStore();
   const [mode, setMode] = useState<DockMode>("chat");
+  const pathname = usePathname();
+  const modulePrompts = getModulePrompts(pathname);
 
   if (!isChatOpen) return null;
 
@@ -57,7 +61,7 @@ export function ChatDock() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {mode === "chat" && <ChatView compact />}
+        {mode === "chat" && <ChatView compact suggestedPrompts={modulePrompts} />}
         {mode === "activity" && (
           <div className="flex flex-col items-center justify-center h-full text-center px-6">
             <Activity className="size-8 text-muted-foreground/30 mb-3" />

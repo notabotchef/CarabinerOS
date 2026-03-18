@@ -7,7 +7,7 @@ export default function WorkspaceLayout({
 }) {
   return (
     <div className="flex flex-1 overflow-hidden">
-      <div className="flex flex-1 flex-col overflow-auto">{children}</div>
+      <div className="flex flex-1 flex-col overflow-auto min-w-0">{children}</div>
       <ChatDock />
     </div>
   );

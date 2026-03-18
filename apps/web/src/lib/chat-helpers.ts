@@ -140,3 +140,43 @@ export const SUGGESTED_PROMPTS = [
   "Summarize vendor issues from this week and draft follow-up actions by provider.",
   "Design a menu engineering brief showing stars, puzzles, plowhorses, and dogs.",
 ];
+
+export function getModulePrompts(pathname: string): string[] {
+  if (pathname.startsWith("/orders")) return [
+    "Draft a produce order for this week based on par levels.",
+    "Which orders are still pending approval?",
+    "Compare this week's order totals to last week.",
+  ];
+  if (pathname.startsWith("/inventory")) return [
+    "What items are below par right now?",
+    "Show me the biggest price changes this month.",
+    "Generate a count sheet for the walk-in cooler.",
+  ];
+  if (pathname.startsWith("/invoices")) return [
+    "Reconcile today's invoices against purchase orders.",
+    "Flag any invoices with price variances over 10%.",
+    "What's our AP aging look like this week?",
+  ];
+  if (pathname.startsWith("/prep")) return [
+    "Build tomorrow's prep list based on reservations.",
+    "What items need to be prepped before dinner service?",
+    "How does today's prep compare to last Saturday?",
+  ];
+  if (pathname.startsWith("/food-cost")) return [
+    "What's driving food cost up this week?",
+    "Show me the top 5 most expensive menu items by cost ratio.",
+    "Compare theoretical vs actual food cost for this period.",
+  ];
+  if (pathname.startsWith("/menu")) return [
+    "Which menu items have the best margin?",
+    "Identify underperforming items — puzzles and dogs.",
+    "Suggest price adjustments to hit 30% food cost target.",
+  ];
+  if (pathname.startsWith("/marketing")) return [
+    "Draft a campaign idea for the upcoming holiday weekend.",
+    "What promotions drove the most covers last month?",
+    "Research three happy hour concepts for West Loop.",
+  ];
+  // Default — home page prompts
+  return SUGGESTED_PROMPTS;
+}

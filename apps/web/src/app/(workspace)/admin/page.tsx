@@ -11,7 +11,7 @@ export default function AdminPage() {
   return (
     <>
       <WorkspaceHeader title="Admin" subtitle="Settings & configuration" />
-      <div className="p-6">
+      <div className="p-4 lg:p-6">
         <Card>
           <CardHeader>
             <CardTitle>Settings</CardTitle>

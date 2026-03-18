@@ -84,7 +84,7 @@ export default function MarketingPage() {
   return (
     <>
       <WorkspaceHeader title="Marketing" subtitle="Campaign management" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 lg:p-6 space-y-6">
         <WorkspaceKPICards cards={kpis} />
         <WorkspaceTable
           columns={columns}

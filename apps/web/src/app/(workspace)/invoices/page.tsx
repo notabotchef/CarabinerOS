@@ -80,7 +80,7 @@ export default function InvoicesPage() {
         title="Invoices"
         subtitle="Invoice processing & accounts payable"
       />
-      <div className="p-6 space-y-6">
+      <div className="p-4 lg:p-6 space-y-6">
         <WorkspaceKPICards cards={kpis} />
         <WorkspaceTable
           columns={invoicesColumns}

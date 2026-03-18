@@ -9,9 +9,10 @@ interface ChatComposerProps {
   onSend: (message: string) => void;
   disabled?: boolean;
   hasMessages?: boolean;
+  suggestedPrompts?: string[];
 }
 
-export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProps) {
+export function ChatComposer({ onSend, disabled, hasMessages, suggestedPrompts }: ChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState("");
   const [promptIndex, setPromptIndex] = useState(0);
@@ -19,6 +20,7 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
   const [promptVisible, setPromptVisible] = useState(true);
   const chatPrompt = useWorkspaceStore((s) => s.chatPrompt);
   const setChatPrompt = useWorkspaceStore((s) => s.setChatPrompt);
+  const prompts = suggestedPrompts ?? SUGGESTED_PROMPTS;
 
   // Consume chatPrompt from workspace store (e.g., from "Ask CarabinerOS" button)
   useEffect(() => {
@@ -41,12 +43,12 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
     const interval = setInterval(() => {
       setPromptVisible(false);
       setTimeout(() => {
-        setPromptIndex((i) => (i + 1) % SUGGESTED_PROMPTS.length);
+        setPromptIndex((i) => (i + 1) % prompts.length);
         setPromptVisible(true);
       }, 400);
     }, 8000);
     return () => clearInterval(interval);
-  }, [showPrompts]);
+  }, [showPrompts, prompts]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -58,7 +60,7 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
   }, [value]);
 
   const handleSend = useCallback(() => {
-    const text = showPrompts && !value ? SUGGESTED_PROMPTS[promptIndex] : value.trim();
+    const text = showPrompts && !value ? prompts[promptIndex] : value.trim();
     if (!text) return;
     onSend(text);
     setValue("");
@@ -76,7 +78,7 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
         e.preventDefault();
         setPromptVisible(false);
         setTimeout(() => {
-          setPromptIndex((i) => (i - 1 + SUGGESTED_PROMPTS.length) % SUGGESTED_PROMPTS.length);
+          setPromptIndex((i) => (i - 1 + prompts.length) % prompts.length);
           setPromptVisible(true);
         }, 200);
         return;
@@ -85,7 +87,7 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
         e.preventDefault();
         setPromptVisible(false);
         setTimeout(() => {
-          setPromptIndex((i) => (i + 1) % SUGGESTED_PROMPTS.length);
+          setPromptIndex((i) => (i + 1) % prompts.length);
           setPromptVisible(true);
         }, 200);
         return;
@@ -120,7 +122,7 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
               aria-live="off"
             >
               <span className="text-sm text-muted-foreground">
-                {SUGGESTED_PROMPTS[promptIndex]}
+                {prompts[promptIndex]}
               </span>
             </div>
           )}

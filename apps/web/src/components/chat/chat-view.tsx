@@ -8,7 +8,8 @@ import { ChatMessageBubble } from "./chat-message";
 import { ChatComposer } from "./chat-composer";
 import { ChatStatusPill } from "./chat-status-pill";
 import { getSocket } from "@/lib/socket";
-import { apiCreateChat } from "@/hooks/use-api";
+import { apiCreateChat, useConversations } from "@/hooks/use-api";
+import type { ChatMessage } from "@/lib/chat-helpers";
 
 const MODULE_PILLS = [
   { id: "orders", label: "Orders", href: "/orders" },
@@ -29,16 +30,53 @@ function getGreeting(): string {
 interface ChatViewProps {
   compact?: boolean;
   bottomContent?: React.ReactNode;
+  suggestedPrompts?: string[];
 }
 
-export function ChatView({ compact, bottomContent }: ChatViewProps) {
+const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:8000";
+
+export function ChatView({ compact, bottomContent, suggestedPrompts }: ChatViewProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages, isStreaming, streamingStatus, addMessage, activeContextId, setActiveContextId } =
+  const restoredRef = useRef(false);
+  const { messages, isStreaming, streamingStatus, addMessage, activeContextId, setActiveContextId, loadConversation } =
     useWorkspaceStore();
+  const { data: conversations } = useConversations();
 
   const hasMessages = messages.length > 0;
+
+  // Auto-restore the most recent conversation on page load/refresh
+  useEffect(() => {
+    if (restoredRef.current) return;
+    if (activeContextId || messages.length > 0) return;
+    if (!conversations || conversations.length === 0) return;
+
+    // Pick the most recent conversation (list is sorted by last_message desc)
+    const mostRecent = conversations[0];
+    restoredRef.current = true;
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `${ENGINE_URL}/api/chats/${mostRecent.id}/messages`
+        );
+        if (!res.ok) return;
+        const msgs: { role: "user" | "assistant"; content: string }[] =
+          await res.json();
+        if (msgs.length === 0) return;
+        const chatMessages: ChatMessage[] = msgs.map((m, i) => ({
+          id: `${mostRecent.id}-${i}`,
+          role: m.role,
+          content: m.content,
+          timestamp: Date.now() - (msgs.length - i) * 1000,
+        }));
+        loadConversation(mostRecent.id, chatMessages);
+      } catch {
+        // Silently fail — user can manually select a conversation
+      }
+    })();
+  }, [activeContextId, messages.length, conversations, loadConversation]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -124,6 +162,7 @@ export function ChatView({ compact, bottomContent }: ChatViewProps) {
             onSend={handleSend}
             disabled={isStreaming}
             hasMessages={false}
+            suggestedPrompts={suggestedPrompts}
           />
         </div>
 
@@ -166,6 +205,7 @@ export function ChatView({ compact, bottomContent }: ChatViewProps) {
           onSend={handleSend}
           disabled={isStreaming}
           hasMessages={true}
+          suggestedPrompts={suggestedPrompts}
         />
       </div>
     </div>

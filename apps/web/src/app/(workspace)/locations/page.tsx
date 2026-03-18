@@ -140,7 +140,7 @@ export default function LocationsPage() {
   return (
     <>
       <WorkspaceHeader title="Locations" subtitle="Multi-location overview" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 lg:p-6 space-y-6">
         <WorkspaceKPICards cards={kpis} />
         <WorkspaceTable
           columns={locationColumns}

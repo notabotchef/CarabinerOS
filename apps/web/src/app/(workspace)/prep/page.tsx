@@ -97,7 +97,7 @@ export default function PrepPage() {
   return (
     <>
       <WorkspaceHeader title="Prep" subtitle="Prep tasks by service lane" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 lg:p-6 space-y-6">
         <WorkspaceKPICards cards={kpis} />
         <WorkspaceBoard
           items={items}

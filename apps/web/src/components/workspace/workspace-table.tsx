@@ -59,7 +59,7 @@ export function WorkspaceTable<T>({
     return (
       <div className="space-y-3">
         <Skeleton className="h-8 w-64" />
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -108,7 +108,7 @@ export function WorkspaceTable<T>({
           </p>
         </div>
       ) : (
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (

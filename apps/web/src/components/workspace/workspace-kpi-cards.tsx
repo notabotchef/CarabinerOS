@@ -34,7 +34,7 @@ function parseNumericValue(val: string | number): { num: number; prefix: string;
 
 export function WorkspaceKPICards({ cards }: WorkspaceKPICardsProps) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
       {cards.map((card, i) => {
         const parsed = parseNumericValue(card.value);
         return (
@@ -47,12 +47,12 @@ export function WorkspaceKPICards({ cards }: WorkspaceKPICardsProps) {
           >
             <Card className="shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_8px_rgba(0,0,0,0.04),0_12px_24px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_6px_12px_rgba(0,0,0,0.06),0_16px_32px_rgba(0,0,0,0.08)]">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardTitle className="text-sm font-medium text-muted-foreground truncate">
                   {card.label}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold tabular-nums">
+                <div className="text-xl font-bold tabular-nums">
                   {parsed ? (
                     <AnimatedNumber
                       value={parsed.num}

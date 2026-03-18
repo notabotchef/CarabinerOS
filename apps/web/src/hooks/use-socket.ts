@@ -53,8 +53,14 @@ export function useSocket() {
     });
 
     // Chat streaming
-    socket.on("response_stream", (data: { chunk: string; full: string }) => {
+    socket.on("response_stream", (data: { chunk: string; full: string; context_id?: string }) => {
       const store = useWorkspaceStore.getState();
+
+      // Only accept chunks for the active conversation (or if no context_id filter)
+      if (data.context_id && store.activeContextId && data.context_id !== store.activeContextId) {
+        return;
+      }
+
       store.appendToLastMessage(data.chunk);
 
       // Reset streaming timeout
@@ -72,6 +78,11 @@ export function useSocket() {
     // Status updates
     socket.on("status_update", (data: { status: string; detail?: string; context_id?: string }) => {
       const store = useWorkspaceStore.getState();
+
+      // Only accept status updates for the active conversation (or if no context_id filter)
+      if (data.context_id && store.activeContextId && data.context_id !== store.activeContextId) {
+        return;
+      }
 
       if (data.status === "waiting") {
         store.setStreaming(false);
