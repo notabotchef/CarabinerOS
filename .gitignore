@@ -45,3 +45,4 @@ engine/tmp/
 
 # Legacy directories (kept for reference, not part of v2)
 AgentCarabinerOS/
+.superpowers/

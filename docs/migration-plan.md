@@ -265,9 +265,9 @@ Server -> Client:
 
 ### Phase 3: Workspace Modules (Week 9-12)
 - [ ] For each module: page + data fetching + TanStack Table/Board + KPI cards + detail panel
-- [ ] "Ask CarabinerOS" wiring (workspace item -> chat prompt)
-- [ ] Admin page
-- [ ] Right rail (metrics, action log, inbox)
+- [ ] "Ask CarabinerOS" wiring (workspace item -> docked chat panel with pre-filled prompt)
+- [ ] Admin page (placeholder) + Locations page (read-only table)
+- [ ] ChatDock (docked right sidebar, replaces right rail — cross-module metrics stay on Home dashboard)
 - **Exit criteria:** All 10 workspace modules functional with real API data
 
 ### Phase 4: Chat Interface (Week 13-15)
