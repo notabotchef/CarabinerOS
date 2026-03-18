@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import os
 import uuid
+from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 
 from carabiner.api.schemas import (
     CampaignCreate,
     CampaignOut,
     CampaignUpdate,
+    EmailWebhookPayload,
     FoodCostCreate,
     FoodCostOut,
     FoodCostUpdate,
@@ -36,6 +39,13 @@ from carabiner.api.schemas import (
 from carabiner.db import repositories as repo
 
 router = APIRouter(prefix="/api", tags=["workspace"])
+
+# Uploads directory for invoice files
+UPLOADS_DIR = Path(os.environ.get("UPLOADS_DIR", Path(__file__).resolve().parents[2] / "uploads"))
+INVOICES_DIR = UPLOADS_DIR / "invoices"
+
+# Allowed MIME types for invoice uploads
+ALLOWED_INVOICE_MIMES = {"application/pdf", "image/jpeg", "image/png"}
 
 
 # ---------------------------------------------------------------------------
@@ -329,10 +339,44 @@ async def get_invoice(item_id: uuid.UUID) -> InvoiceOut:
     return InvoiceOut.model_validate(item)
 
 
-@router.post("/invoices", response_model=InvoiceOut, status_code=201)
-async def create_invoice(body: InvoiceCreate) -> InvoiceOut:
-    item = await repo.create_invoice(body.model_dump())
-    return InvoiceOut.model_validate(item)
+@router.post("/invoices/upload", response_model=InvoiceOut, status_code=201)
+async def upload_invoice(
+    location_id: uuid.UUID = Query(...),
+    file: UploadFile = File(...),
+) -> InvoiceOut:
+    """Upload an invoice PDF or image for processing."""
+    # Validate MIME type
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_INVOICE_MIMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: {content_type}. Allowed: PDF, JPEG, PNG.",
+        )
+
+    # Ensure uploads directory exists
+    INVOICES_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Generate unique filename preserving extension
+    ext_map = {"application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png"}
+    ext = ext_map.get(content_type, "")
+    file_id = uuid.uuid4()
+    filename = f"{file_id}{ext}"
+    dest = INVOICES_DIR / filename
+
+    # Write file to disk
+    contents = await file.read()
+    dest.write_bytes(contents)
+
+    # Create invoice record
+    invoice = await repo.create_invoice({
+        "location_id": location_id,
+        "status": "uploaded",
+        "source": "upload",
+        "file_path": str(dest),
+        "file_mime": content_type,
+        "summary": f"Uploaded invoice: {file.filename or filename}",
+    })
+    return InvoiceOut.model_validate(invoice)
 
 
 @router.patch("/invoices/{item_id}", response_model=InvoiceOut)
@@ -350,35 +394,28 @@ async def delete_invoice(item_id: uuid.UUID) -> None:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
 
-@router.post("/invoices/upload", response_model=InvoiceOut, status_code=201)
-async def upload_invoice(
-    location_id: uuid.UUID = Query(...),
-    vendor: str = Query("Unknown Vendor"),
-):
-    """Upload an invoice file. For now, creates a stub invoice in 'Uploaded' status.
+@router.post("/invoices/email-webhook", response_model=InvoiceOut, status_code=201)
+async def invoice_email_webhook(body: EmailWebhookPayload) -> InvoiceOut:
+    """Stub endpoint for email-forwarded invoices.
 
-    In a full implementation this would accept a multipart file upload,
-    store it, and kick off the OCR/extraction pipeline.
+    Accepts a JSON payload simulating an email forward and creates an invoice
+    record with status ``uploaded``. The attachment is not downloaded yet —
+    this is a placeholder for future email integration.
     """
-    import uuid as _uuid
-    from datetime import date
-
-    invoice_data = {
-        "location_id": location_id,
-        "vendor": vendor,
-        "invoice_date": date.today().isoformat(),
-        "status": "Uploaded",
-        "total": "$0.00",
-        "summary": "Invoice uploaded and awaiting processing.",
-        "detail_points": [
-            "File received and stored.",
-            "OCR extraction has not yet been run.",
-            "Use the agent to process this invoice.",
-        ],
-        "prompt": f"Process the newly uploaded invoice from {vendor}.",
-    }
-    item = await repo.create_invoice(invoice_data)
-    return InvoiceOut.model_validate(item)
+    invoice = await repo.create_invoice({
+        "location_id": body.location_id,
+        "status": "uploaded",
+        "source": "email",
+        "vendor_name": body.from_address,
+        "summary": f"Email invoice: {body.subject}",
+        "extracted_data": {
+            "email_from": body.from_address,
+            "email_subject": body.subject,
+            "email_body": body.body,
+            "attachment_url": body.attachment_url,
+        },
+    })
+    return InvoiceOut.model_validate(invoice)
 
 
 # ---------------------------------------------------------------------------

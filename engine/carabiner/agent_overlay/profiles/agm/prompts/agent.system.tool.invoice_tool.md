@@ -1,84 +1,76 @@
 ## Tool: invoice_tool
 
-Manages invoice processing, PO matching, and AP workflow for the active location.
+Manages vendor invoices — upload, extract data via vision/OCR, match to orders, approve or dispute.
 
 ### Methods
 
-**list** -- List all invoices
+**list** — List all invoices
 ```json
 {
   "method": "list",
   "location_id": "optional-uuid"
 }
 ```
-Returns: Array of invoices with vendor, invoice_number, date, status, total, summary.
+Returns: Array of invoices with vendor_name, invoice_number, status, total, source, summary.
 
-**get** -- Get a specific invoice with full details
+**get** — Get full invoice details
 ```json
 {
   "method": "get",
   "invoice_id": "uuid-of-invoice"
 }
 ```
-Returns: Full invoice details including line_items, gl_codes, po_match_id, variance_notes.
+Returns: Complete invoice including line_items, gl_codes, extracted_data.
 
-**process** -- Start OCR extraction on an uploaded invoice
+**process** — Extract data from an uploaded invoice using vision (images) or OCR (PDFs)
 ```json
 {
   "method": "process",
   "invoice_id": "uuid-of-invoice"
 }
 ```
-Transitions invoice from "Uploaded" to "Processing". Extracts line items and matches to inventory.
+Returns: Extraction results with vendor, total, line items count, new status.
+The tool will automatically detect the file type and use the appropriate extraction method:
+- Images (JPG/PNG): compressed and sent to the LLM as a vision message
+- PDFs: text/tables extracted via PyMuPDF + Tesseract OCR, then parsed by LLM
 
-**match** -- Match an invoice to a purchase order
+**match** — Compare extracted invoice data against existing vendor orders
 ```json
 {
   "method": "match",
-  "invoice_id": "uuid-of-invoice",
-  "po_id": "PO-XX-NNNN",
-  "variance_notes": "optional notes about price variances"
+  "invoice_id": "uuid-of-invoice"
 }
 ```
-Transitions invoice to "Matched" status with PO reference.
+Returns: Matching orders (if any) or a review flag if no match found.
 
-**approve** -- Approve a matched invoice for payment
+**approve** — Mark an invoice as approved
 ```json
 {
   "method": "approve",
   "invoice_id": "uuid-of-invoice"
 }
 ```
-Transitions invoice from "Matched" to "Approved".
 
-**dispute** -- Flag an invoice for dispute
+**dispute** — Flag an invoice as disputed
 ```json
 {
   "method": "dispute",
   "invoice_id": "uuid-of-invoice",
-  "reason": "Description of the dispute"
-}
-```
-Transitions invoice to "Disputed" status.
-
-**update** -- Update invoice fields
-```json
-{
-  "method": "update",
-  "invoice_id": "uuid-of-invoice",
-  "status": "Matched",
-  "total": "$1,500"
+  "reason": "Line item pricing does not match PO"
 }
 ```
 
-### Status Workflow
-Uploaded -> Processing -> Matched -> Approved -> Paid
-Any status (except Paid) can be moved to "Disputed".
-Disputed invoices can be reprocessed (back to "Processing").
+### Workflow
+1. Invoice is uploaded (via REST endpoint or email webhook) with status "uploaded"
+2. Call **process** to extract structured data → status becomes "matched" or "review"
+3. Call **match** to compare against existing orders
+4. Call **approve** or **dispute** to finalize
 
-### Notes
-- Always specify location_id when listing to get location-specific results
-- Status values: "Uploaded", "Processing", "Matched", "Approved", "Paid", "Disputed"
-- Line items include description, qty, unit_price, total, and gl_code
-- GL codes are auto-assigned based on item category when available
-- Variance notes flag price differences between invoice and PO
+### Status values
+- `uploaded` — File received, not yet processed
+- `processing` — Extraction in progress
+- `matched` — Extracted and matched to an order
+- `review` — Needs manual review (no match or partial extraction)
+- `approved` — Approved for payment
+- `disputed` — Flagged for discrepancy
+- `error` — Extraction failed

@@ -202,6 +202,37 @@ class WorkspaceCampaign(TimestampMixin, Base):
 
 
 # ---------------------------------------------------------------------------
+# Workspace Invoices
+# ---------------------------------------------------------------------------
+
+class WorkspaceInvoice(TimestampMixin, Base):
+    __tablename__ = "workspace_invoices"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    vendor_name: Mapped[Optional[str]] = mapped_column(String(200))
+    invoice_number: Mapped[Optional[str]] = mapped_column(String(100))
+    invoice_date: Mapped[Optional[str]] = mapped_column(String(50))
+    due_date: Mapped[Optional[str]] = mapped_column(String(50))
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="uploaded")
+    file_path: Mapped[Optional[str]] = mapped_column(String(500))
+    file_mime: Mapped[Optional[str]] = mapped_column(String(100))
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="upload")
+    subtotal: Mapped[Optional[str]] = mapped_column(String(50))
+    tax: Mapped[Optional[str]] = mapped_column(String(50))
+    total: Mapped[Optional[str]] = mapped_column(String(50))
+    line_items: Mapped[Optional[dict]] = mapped_column(JSONB, default=list)
+    gl_codes: Mapped[Optional[dict]] = mapped_column(JSONB, default=dict)
+    extracted_data: Mapped[Optional[dict]] = mapped_column(JSONB, default=dict)
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
+    prompt: Mapped[Optional[str]] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
 # Action Log
 # ---------------------------------------------------------------------------
 
