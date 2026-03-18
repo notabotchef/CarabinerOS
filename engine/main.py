@@ -16,8 +16,14 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import os
+
 from bridge import AgentBridge
 from carabiner.api.health import router as health_router
+from carabiner.api.hq import router as hq_router
+from carabiner.api.locations import router as locations_router
+from carabiner.api.workspace import router as workspace_router
+from carabiner.db.engine import init_db, close_db
 
 logging.basicConfig(
     level=logging.INFO,
@@ -64,6 +70,18 @@ async def lifespan(app: FastAPI):
     """Initialize Agent Zero bridge on startup."""
     logger.info("Starting CarabinerOS Engine...")
 
+    # Initialize database
+    database_url = os.environ.get(
+        "DATABASE_URL",
+        "postgresql+asyncpg://carabiner:carabiner@localhost:5432/carabiner",
+    )
+    try:
+        await init_db(database_url)
+        logger.info("Database connected: %s", database_url.split("@")[-1])
+    except Exception:
+        logger.warning("Database connection failed. Endpoints requiring DB will error.", exc_info=True)
+
+    # Initialize Agent Zero
     try:
         await agent_bridge.initialize()
         discovered = agent_bridge.verify_overlay_discovery()
@@ -78,6 +96,8 @@ async def lifespan(app: FastAPI):
 
     logger.info("CarabinerOS Engine started")
     yield
+
+    await close_db()
     logger.info("CarabinerOS Engine shutting down")
 
 
@@ -98,6 +118,9 @@ app.add_middleware(
 
 # Mount routers
 app.include_router(health_router)
+app.include_router(hq_router)
+app.include_router(locations_router)
+app.include_router(workspace_router)
 
 # Mount Socket.IO as ASGI sub-app
 socket_app = socketio.ASGIApp(sio, other_asgi_app=app)

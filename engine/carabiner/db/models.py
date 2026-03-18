@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Optional
 
 from sqlalchemy import (
     CheckConstraint,
@@ -35,7 +36,7 @@ class Location(TimestampMixin, Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    address: Mapped[str | None] = mapped_column(String(500))
+    address: Mapped[Optional[str]] = mapped_column(String(500))
     timezone: Mapped[str] = mapped_column(String(50), default="America/Chicago")
 
 
@@ -53,10 +54,10 @@ class Vendor(TimestampMixin, Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    contact_email: Mapped[str | None] = mapped_column(String(300))
-    contact_phone: Mapped[str | None] = mapped_column(String(50))
-    payment_terms: Mapped[str | None] = mapped_column(String(100))
-    connector_id: Mapped[str | None] = mapped_column(String(100))
+    contact_email: Mapped[Optional[str]] = mapped_column(String(300))
+    contact_phone: Mapped[Optional[str]] = mapped_column(String(50))
+    payment_terms: Mapped[Optional[str]] = mapped_column(String(100))
+    connector_id: Mapped[Optional[str]] = mapped_column(String(100))
 
 
 class UnitOfMeasure(TimestampMixin, Base):
@@ -73,13 +74,13 @@ class Item(TimestampMixin, Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     category: Mapped[str] = mapped_column(String(100), nullable=False)
-    default_uom_id: Mapped[uuid.UUID | None] = mapped_column(
+    default_uom_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("units_of_measure.id")
     )
-    gl_account_id: Mapped[uuid.UUID | None] = mapped_column(
+    gl_account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("gl_accounts.id")
     )
-    last_known_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    last_known_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4))
 
 
 # ---------------------------------------------------------------------------
@@ -93,9 +94,9 @@ class Invoice(TimestampMixin, LocationScopedMixin, Base):
     vendor_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("vendors.id"), nullable=False
     )
-    invoice_number: Mapped[str | None] = mapped_column(String(100))
+    invoice_number: Mapped[Optional[str]] = mapped_column(String(100))
     invoice_date: Mapped[date] = mapped_column(Date, nullable=False)
-    due_date: Mapped[date | None] = mapped_column(Date)
+    due_date: Mapped[Optional[date]] = mapped_column(Date)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     tax: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
@@ -117,14 +118,14 @@ class InvoiceLineItem(TimestampMixin, Base):
     invoice_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False
     )
-    item_id: Mapped[uuid.UUID | None] = mapped_column(
+    item_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("items.id")
     )
-    description: Mapped[str | None] = mapped_column(String(500))
+    description: Mapped[Optional[str]] = mapped_column(String(500))
     quantity: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    gl_account_id: Mapped[uuid.UUID | None] = mapped_column(
+    gl_account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("gl_accounts.id")
     )
 
@@ -164,7 +165,7 @@ class InventoryCountLine(TimestampMixin, Base):
     )
     quantity: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
-    storage_area: Mapped[str | None] = mapped_column(String(100))
+    storage_area: Mapped[Optional[str]] = mapped_column(String(100))
 
     count: Mapped[InventoryCount] = relationship(back_populates="lines")
 
@@ -177,7 +178,7 @@ class ParLevel(TimestampMixin, LocationScopedMixin, Base):
         UUID(as_uuid=True), ForeignKey("items.id"), nullable=False
     )
     min_quantity: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
-    day_of_week: Mapped[int | None] = mapped_column(Integer)  # 0=Mon..6=Sun, NULL=all days
+    day_of_week: Mapped[Optional[int]] = mapped_column(Integer)  # 0=Mon..6=Sun, NULL=all days
 
     __table_args__ = (
         UniqueConstraint("location_id", "item_id", "day_of_week", name="uq_par_level_loc_item_day"),
@@ -194,7 +195,7 @@ class WasteLog(TimestampMixin, LocationScopedMixin, Base):
     quantity: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     unit: Mapped[str] = mapped_column(String(20), nullable=False)
     reason: Mapped[str] = mapped_column(String(50), nullable=False)  # spoilage/overproduction/expired
-    notes: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
     waste_date: Mapped[date] = mapped_column(Date, nullable=False)
 
     __table_args__ = (
@@ -214,7 +215,7 @@ class Recipe(TimestampMixin, Base):
     category: Mapped[str] = mapped_column(String(100), nullable=False)
     yield_quantity: Mapped[Decimal] = mapped_column(Numeric(12, 4), default=1)
     yield_unit: Mapped[str] = mapped_column(String(50), default="serving")
-    instructions: Mapped[str | None] = mapped_column(Text)
+    instructions: Mapped[Optional[str]] = mapped_column(Text)
     is_sub_recipe: Mapped[bool] = mapped_column(default=False)
 
     ingredients: Mapped[list[RecipeIngredient]] = relationship(
@@ -229,8 +230,8 @@ class RecipeIngredient(TimestampMixin, Base):
     recipe_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("recipes.id", ondelete="CASCADE"), nullable=False
     )
-    item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id"))
-    sub_recipe_id: Mapped[uuid.UUID | None] = mapped_column(
+    item_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id"))
+    sub_recipe_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("recipes.id")
     )
     quantity: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
@@ -294,8 +295,8 @@ class PrepListItem(TimestampMixin, Base):
     on_hand: Mapped[Decimal] = mapped_column(Numeric(12, 4), default=0)
     to_prep: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     is_complete: Mapped[bool] = mapped_column(default=False)
-    completed_qty: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_qty: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4))
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     prep_list: Mapped[PrepList] = relationship(back_populates="items")
 
@@ -313,9 +314,9 @@ class DailyFoodCost(TimestampMixin, LocationScopedMixin, Base):
     purchases: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     ending_inventory: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     actual_food_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
-    theoretical_food_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    theoretical_food_cost: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2))
     sales: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
-    food_cost_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
+    food_cost_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))
 
     __table_args__ = (
         UniqueConstraint("location_id", "cost_date", name="uq_daily_food_cost_loc_date"),
@@ -384,9 +385,9 @@ class PurchaseOrder(TimestampMixin, LocationScopedMixin, Base):
     vendor_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("vendors.id"), nullable=False
     )
-    po_number: Mapped[str | None] = mapped_column(String(100))
+    po_number: Mapped[Optional[str]] = mapped_column(String(100))
     order_date: Mapped[date] = mapped_column(Date, nullable=False)
-    expected_delivery: Mapped[date | None] = mapped_column(Date)
+    expected_delivery: Mapped[Optional[date]] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(20), default="draft")  # draft/submitted/confirmed/received
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
 
@@ -462,9 +463,9 @@ class BudgetPeriod(TimestampMixin, LocationScopedMixin, Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     period_start: Mapped[date] = mapped_column(Date, nullable=False)
     period_end: Mapped[date] = mapped_column(Date, nullable=False)
-    target_food_cost_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
-    target_labor_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
-    target_revenue: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    target_food_cost_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))
+    target_labor_pct: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2))
+    target_revenue: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2))
 
     __table_args__ = (
         Index("ix_budget_periods_location_start", "location_id", "period_start"),

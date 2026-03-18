@@ -13,6 +13,7 @@ from carabiner.db.base import Base
 
 # Import all models so Base.metadata is populated
 import carabiner.db.models  # noqa: F401
+import carabiner.db.workspace_models  # noqa: F401
 
 config = context.config
 
