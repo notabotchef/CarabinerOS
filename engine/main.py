@@ -132,10 +132,11 @@ async def lifespan(app: FastAPI):
 
     # Initialize Agent Zero
     try:
-        await agent_bridge.initialize()
+        await agent_bridge.initialize(sio=sio)
         discovered = agent_bridge.verify_overlay_discovery()
         logger.info("Overlay tools discovered: %s", discovered["tools"])
         logger.info("Overlay extensions discovered: %s", discovered["extensions"])
+        logger.info("Overlay profiles discovered: %s", discovered.get("profiles", []))
     except Exception:
         logger.warning(
             "Agent Zero initialization skipped (submodule dependencies may not be installed). "
