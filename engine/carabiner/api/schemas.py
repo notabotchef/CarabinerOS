@@ -181,6 +181,63 @@ class CampaignOut(TimestampSchema):
     prompt: Optional[str] = None
 
 
+# --- Invoices ---
+
+class InvoiceOut(TimestampSchema):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    vendor_name: Optional[str] = None
+    invoice_number: Optional[str] = None
+    invoice_date: Optional[str] = None
+    due_date: Optional[str] = None
+    status: str
+    file_path: Optional[str] = None
+    file_mime: Optional[str] = None
+    source: str
+    subtotal: Optional[str] = None
+    tax: Optional[str] = None
+    total: Optional[str] = None
+    line_items: Optional[Any] = None
+    gl_codes: Optional[Dict[str, Any]] = None
+    extracted_data: Optional[Dict[str, Any]] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+    prompt: Optional[str] = None
+
+
+class InvoiceCreate(BaseModel):
+    location_id: uuid.UUID
+    vendor_name: Optional[str] = None
+    invoice_number: Optional[str] = None
+    status: str = "uploaded"
+    source: str = "upload"
+    summary: Optional[str] = None
+
+
+class InvoiceUpdate(BaseModel):
+    vendor_name: Optional[str] = None
+    invoice_number: Optional[str] = None
+    invoice_date: Optional[str] = None
+    due_date: Optional[str] = None
+    status: Optional[str] = None
+    subtotal: Optional[str] = None
+    tax: Optional[str] = None
+    total: Optional[str] = None
+    line_items: Optional[Any] = None
+    gl_codes: Optional[Dict[str, Any]] = None
+    extracted_data: Optional[Dict[str, Any]] = None
+    summary: Optional[str] = None
+    detail_points: Optional[List[str]] = None
+
+
+class EmailWebhookPayload(BaseModel):
+    location_id: uuid.UUID
+    from_address: str
+    subject: str
+    body: Optional[str] = None
+    attachment_url: Optional[str] = None
+
+
 # --- HQ Payload ---
 
 class MetricOut(BaseModel):
