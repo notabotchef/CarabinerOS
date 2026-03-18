@@ -53,6 +53,21 @@ async def disconnect(sid: str) -> None:
     logger.info("Client disconnected: %s", sid)
 
 
+@sio.on("clear_chat")
+async def handle_clear_chat(sid: str, data: dict) -> None:
+    """Clear an agent context and its persisted chat data."""
+    context_id = data.get("context_id", "default")
+    logger.info("Clearing chat context: %s", context_id)
+    try:
+        from agent import AgentContext
+        context = AgentContext.get(context_id)
+        if context:
+            AgentContext.remove(context_id)
+            logger.info("Agent context %s removed", context_id)
+    except Exception as e:
+        logger.warning("Failed to clear context %s: %s", context_id, e)
+
+
 @sio.on("chat_message")
 async def handle_chat_message(sid: str, data: dict) -> None:
     """Handle chat messages — routes to Agent Zero if initialized, otherwise mock fallback."""

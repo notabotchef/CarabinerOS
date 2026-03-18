@@ -78,8 +78,17 @@ function ChatHistory() {
     e.preventDefault();
     e.stopPropagation();
     if (confirmDelete) {
+      // Clear frontend messages
       clearMessages();
       setConfirmDelete(false);
+      // Tell engine to clear the agent context
+      try {
+        const { getSocket } = require("@/lib/socket");
+        const socket = getSocket();
+        if (socket.connected) {
+          socket.emit("clear_chat", { context_id: "default" });
+        }
+      } catch {}
     } else {
       setConfirmDelete(true);
       setTimeout(() => setConfirmDelete(false), 3000);
