@@ -4,24 +4,24 @@ interface WorkspaceState {
   activeLocationId: string | null;
   activeModule: string;
   isChatOpen: boolean;
-  selectedItemId: string | null;
+  chatPrompt: string | null;
 
   setActiveLocation: (id: string | null) => void;
   setActiveModule: (module: string) => void;
   toggleChat: () => void;
   setChatOpen: (open: boolean) => void;
-  setSelectedItem: (id: string | null) => void;
+  setChatPrompt: (prompt: string | null) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   activeLocationId: null,
   activeModule: "home",
   isChatOpen: false,
-  selectedItemId: null,
+  chatPrompt: null,
 
   setActiveLocation: (id) => set({ activeLocationId: id }),
   setActiveModule: (module) => set({ activeModule: module }),
   toggleChat: () => set((s) => ({ isChatOpen: !s.isChatOpen })),
   setChatOpen: (open) => set({ isChatOpen: open }),
-  setSelectedItem: (id) => set({ selectedItemId: id }),
+  setChatPrompt: (prompt) => set({ chatPrompt: prompt }),
 }));

@@ -62,6 +62,69 @@ export interface Connector {
   fallback_channel: string | null;
 }
 
+export interface InventoryItem {
+  id: string;
+  location_id: string;
+  item_name: string;
+  on_hand: string;
+  par: string;
+  variance: string;
+  summary: string | null;
+  detail_points: string[] | null;
+  prompt: string | null;
+}
+
+export interface PrepTask {
+  id: string;
+  location_id: string;
+  service_lane: string;
+  task: string;
+  station: string;
+  readiness: string;
+  shortage: string | null;
+  summary: string | null;
+  detail_points: string[] | null;
+  prompt: string | null;
+}
+
+export interface FoodCostItem {
+  id: string;
+  location_id: string;
+  menu_item_name: string;
+  pressure: string;
+  current_cost_pct: string;
+  action: string;
+  summary: string | null;
+  detail_points: string[] | null;
+  prompt: string | null;
+}
+
+export interface MenuItem {
+  id: string;
+  location_id: string;
+  item_name: string;
+  category: string;
+  performance: string;
+  margin_pct: string;
+  recommendation: string;
+  recipe: Record<string, unknown> | null;
+  summary: string | null;
+  detail_points: string[] | null;
+  prompt: string | null;
+}
+
+export interface Campaign {
+  id: string;
+  location_id: string;
+  campaign_name: string;
+  channel: string;
+  stage: string;
+  deliverable: string;
+  summary: string | null;
+  detail_points: string[] | null;
+  prompt: string | null;
+}
+
 export interface HQPayload {
   brand: { name: string; tagline: string; theme: string };
   organization: { id: string; name: string; slug: string } | null;

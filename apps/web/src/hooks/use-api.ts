@@ -1,7 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { HQPayload, Location, InboxItem, Order } from "@/lib/api";
+import type {
+  HQPayload,
+  Location,
+  InboxItem,
+  Order,
+  InventoryItem,
+  PrepTask,
+  FoodCostItem,
+  MenuItem,
+  Campaign,
+} from "@/lib/api";
 
 const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:8000";
 
@@ -41,37 +51,12 @@ export function useOrders(locationId?: string | null) {
   });
 }
 
-interface InventoryItem {
-  id: string;
-  location_id: string;
-  item_name: string;
-  on_hand: string;
-  par: string;
-  variance: string;
-  summary: string | null;
-  detail_points: string[] | null;
-  prompt: string | null;
-}
-
 export function useInventory(locationId?: string | null) {
   return useQuery<InventoryItem[]>({
     queryKey: ["inventory", locationId],
     queryFn: () =>
       apiFetch(`/api/inventory${locationId ? `?location_id=${locationId}` : ""}`),
   });
-}
-
-interface PrepTask {
-  id: string;
-  location_id: string;
-  service_lane: string;
-  task: string;
-  station: string;
-  readiness: string;
-  shortage: string | null;
-  summary: string | null;
-  detail_points: string[] | null;
-  prompt: string | null;
 }
 
 export function usePrep(locationId?: string | null) {
@@ -82,18 +67,6 @@ export function usePrep(locationId?: string | null) {
   });
 }
 
-interface FoodCostItem {
-  id: string;
-  location_id: string;
-  menu_item_name: string;
-  pressure: string;
-  current_cost_pct: string;
-  action: string;
-  summary: string | null;
-  detail_points: string[] | null;
-  prompt: string | null;
-}
-
 export function useFoodCost(locationId?: string | null) {
   return useQuery<FoodCostItem[]>({
     queryKey: ["food-cost", locationId],
@@ -102,37 +75,12 @@ export function useFoodCost(locationId?: string | null) {
   });
 }
 
-interface MenuItem {
-  id: string;
-  location_id: string;
-  item_name: string;
-  category: string;
-  performance: string;
-  margin_pct: string;
-  recommendation: string;
-  summary: string | null;
-  detail_points: string[] | null;
-  prompt: string | null;
-}
-
 export function useMenu(locationId?: string | null) {
   return useQuery<MenuItem[]>({
     queryKey: ["menu", locationId],
     queryFn: () =>
       apiFetch(`/api/menu${locationId ? `?location_id=${locationId}` : ""}`),
   });
-}
-
-interface Campaign {
-  id: string;
-  location_id: string;
-  campaign_name: string;
-  channel: string;
-  stage: string;
-  deliverable: string;
-  summary: string | null;
-  detail_points: string[] | null;
-  prompt: string | null;
 }
 
 export function useMarketing(locationId?: string | null) {
