@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 
 from bridge import AgentBridge
+from carabiner.chat_store import chat_store
 from carabiner.api.health import router as health_router
 from carabiner.api.hq import router as hq_router
 from carabiner.api.locations import router as locations_router
@@ -130,14 +131,16 @@ async def handle_clear_chat(sid: str, data: dict) -> None:
         if context:
             AgentContext.remove(context_id)
             logger.info("Agent context %s removed", context_id)
-        # Also remove persisted chat files from disk
         try:
             from python.helpers import persist_chat
             persist_chat.remove_chat(context_id)
         except Exception as e:
             logger.debug("Could not remove chat files for %s: %s", context_id, e)
     except Exception as e:
-        logger.warning("Failed to clear context %s: %s", context_id, e)
+        logger.warning("Failed to clear Agent Zero context %s: %s", context_id, e)
+
+    # Also clear from fallback store
+    chat_store.remove(context_id)
 
 
 @sio.on("chat_message")
@@ -254,6 +257,11 @@ async def handle_chat_message(sid: str, data: dict) -> None:
             except Exception as e:
                 logger.debug("Could not persist chat %s: %s", context_id, e)
 
+            # Also persist in fallback store as backup
+            chat_store.add_message(context_id, "user", message)
+            if response:
+                chat_store.add_message(context_id, "assistant", response)
+
         except Exception as e:
             logger.error("Agent Zero error: %s", e, exc_info=True)
             error_msg = f"I encountered an issue processing your request. Please try again.\n\nError: {str(e)[:200]}"
@@ -264,6 +272,9 @@ async def handle_chat_message(sid: str, data: dict) -> None:
             }, to=sid)
     else:
         # Mock fallback when Agent Zero deps aren't installed
+        # Persist the user message in fallback store
+        chat_store.add_message(context_id, "user", message)
+
         await asyncio.sleep(0.5)
         await sio.emit("status_update", {
             "context_id": context_id,
@@ -291,6 +302,9 @@ async def handle_chat_message(sid: str, data: dict) -> None:
                 "full": full.strip(),
             }, to=sid)
             await asyncio.sleep(0.05)
+
+        # Persist the assistant response in fallback store
+        chat_store.add_message(context_id, "assistant", response)
 
     # Done
     await sio.emit("status_update", {

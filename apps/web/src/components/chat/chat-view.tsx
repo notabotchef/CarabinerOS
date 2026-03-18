@@ -88,7 +88,20 @@ export function ChatView({ compact, bottomContent, suggestedPrompts }: ChatViewP
   const handleSend = useCallback(
     async (message: string) => {
       const socket = getSocket();
-      if (!socket.connected) return;
+
+      // If not connected, try to reconnect and wait briefly
+      if (!socket.connected) {
+        socket.connect();
+        await new Promise<void>((resolve) => {
+          const timeout = setTimeout(() => resolve(), 2000);
+          socket.once("connect", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+        });
+        // If still not connected after waiting, bail out
+        if (!socket.connected) return;
+      }
 
       let contextId = activeContextId;
 

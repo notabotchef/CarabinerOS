@@ -42,6 +42,7 @@ postgres_data/
 engine/usr/
 engine/logs/
 engine/tmp/
+engine/data/
 
 # Legacy directories (kept for reference, not part of v2)
 AgentCarabinerOS/
