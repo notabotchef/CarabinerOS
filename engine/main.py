@@ -24,6 +24,7 @@ from carabiner.api.hq import router as hq_router
 from carabiner.api.locations import router as locations_router
 from carabiner.api.reporting import router as reporting_router
 from carabiner.api.workspace import router as workspace_router
+from carabiner.api.chats import router as chats_router
 from carabiner.db.engine import init_db, close_db
 
 logging.basicConfig(
@@ -129,6 +130,12 @@ async def handle_clear_chat(sid: str, data: dict) -> None:
         if context:
             AgentContext.remove(context_id)
             logger.info("Agent context %s removed", context_id)
+        # Also remove persisted chat files from disk
+        try:
+            from python.helpers import persist_chat
+            persist_chat.remove_chat(context_id)
+        except Exception as e:
+            logger.debug("Could not remove chat files for %s: %s", context_id, e)
     except Exception as e:
         logger.warning("Failed to clear context %s: %s", context_id, e)
 
@@ -236,6 +243,17 @@ async def handle_chat_message(sid: str, data: dict) -> None:
                     }, to=sid)
                     await asyncio.sleep(0.02)
 
+            # Auto-name the conversation from the first user message
+            if context.name is None and message:
+                context.name = message[:40].strip()
+
+            # Persist to disk after response
+            try:
+                from python.helpers import persist_chat
+                persist_chat.save_tmp_chat(context)
+            except Exception as e:
+                logger.debug("Could not persist chat %s: %s", context_id, e)
+
         except Exception as e:
             logger.error("Agent Zero error: %s", e, exc_info=True)
             error_msg = f"I encountered an issue processing your request. Please try again.\n\nError: {str(e)[:200]}"
@@ -305,6 +323,14 @@ async def lifespan(app: FastAPI):
         logger.info("Overlay tools discovered: %s", discovered["tools"])
         logger.info("Overlay extensions discovered: %s", discovered["extensions"])
         logger.info("Overlay profiles discovered: %s", discovered.get("profiles", []))
+
+        # Restore saved conversations from disk
+        try:
+            from python.helpers import persist_chat
+            loaded = persist_chat.load_tmp_chats()
+            logger.info("Loaded %d persisted chats from disk", len(loaded))
+        except Exception:
+            logger.debug("Could not load persisted chats", exc_info=True)
     except Exception:
         logger.warning(
             "Agent Zero initialization skipped (submodule dependencies may not be installed). "
@@ -340,6 +366,7 @@ app.include_router(hq_router)
 app.include_router(locations_router)
 app.include_router(reporting_router)
 app.include_router(workspace_router)
+app.include_router(chats_router)
 
 # Mount Socket.IO as ASGI sub-app
 socket_app = socketio.ASGIApp(sio, other_asgi_app=app)

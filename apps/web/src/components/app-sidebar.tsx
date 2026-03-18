@@ -23,11 +23,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { MessageSquare, Plus, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, Trash2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { Location } from "@/lib/api";
 import { useEffect } from "react";
+import {
+  useConversations,
+  apiCreateChat,
+  apiDeleteChat,
+} from "@/hooks/use-api";
+import { useQueryClient } from "@tanstack/react-query";
+import type { ChatMessage } from "@/lib/chat-helpers";
 
 const MODULES: readonly { id: string; label: string; href: string; icon: string; badge?: number }[] = [
   { id: "home", label: "Home", href: "/", icon: "H" },
@@ -63,53 +70,118 @@ function statusColor(status: string): string {
   }
 }
 
+const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:8000";
+
+function formatRelativeTime(isoDate: string | null): string {
+  if (!isoDate) return "";
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return date.toLocaleDateString();
+}
+
 function ChatHistory() {
-  const messages = useWorkspaceStore((s) => s.messages);
-  const clearMessages = useWorkspaceStore((s) => s.clearMessages);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { data: conversations = [] } = useConversations();
+  const activeContextId = useWorkspaceStore((s) => s.activeContextId);
+  const clearMessages = useWorkspaceStore((s) => s.clearMessages);
+  const setActiveContextId = useWorkspaceStore((s) => s.setActiveContextId);
+  const loadConversation = useWorkspaceStore((s) => s.loadConversation);
+  const messages = useWorkspaceStore((s) => s.messages);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  if (messages.length === 0) return null;
+  // Sync conversations into the store for other components
+  const setConversations = useWorkspaceStore((s) => s.setConversations);
+  useEffect(() => {
+    setConversations(conversations);
+  }, [conversations, setConversations]);
 
-  const firstUserMsg = messages.find((m) => m.role === "user");
-  const chatName = firstUserMsg
-    ? firstUserMsg.content.length > 30
-      ? firstUserMsg.content.slice(0, 30) + "..."
-      : firstUserMsg.content
-    : "New conversation";
-
-  function handleTrashClick(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (confirmDelete) {
-      // Clear frontend messages
-      clearMessages();
-      setConfirmDelete(false);
-      // Tell engine to clear the agent context
-      try {
-        const { getSocket } = require("@/lib/socket");
-        const socket = getSocket();
-        if (socket.connected) {
-          socket.emit("clear_chat", { context_id: "default" });
-        }
-      } catch {}
-    } else {
-      setConfirmDelete(true);
-      setTimeout(() => setConfirmDelete(false), 3000);
-    }
-  }
-
-  function handleNewChat() {
+  const handleNewChat = useCallback(async () => {
     clearMessages();
     try {
-      const { getSocket } = require("@/lib/socket");
-      const socket = getSocket();
-      if (socket.connected) {
-        socket.emit("clear_chat", { context_id: "default" });
-      }
-    } catch {}
+      const newChat = await apiCreateChat();
+      setActiveContextId(newChat.id);
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    } catch {
+      // Fallback: clear context so next message creates one server-side
+      setActiveContextId(null);
+    }
     router.push("/");
-  }
+  }, [clearMessages, setActiveContextId, queryClient, router]);
+
+  const handleSelectConversation = useCallback(
+    async (contextId: string) => {
+      if (contextId === activeContextId) return;
+      setLoadingId(contextId);
+      try {
+        const res = await fetch(
+          `${ENGINE_URL}/api/chats/${contextId}/messages`
+        );
+        if (!res.ok) throw new Error("Failed to load messages");
+        const msgs: { role: "user" | "assistant"; content: string }[] =
+          await res.json();
+        const chatMessages: ChatMessage[] = msgs.map((m, i) => ({
+          id: `${contextId}-${i}`,
+          role: m.role,
+          content: m.content,
+          timestamp: Date.now() - (msgs.length - i) * 1000,
+        }));
+        loadConversation(contextId, chatMessages);
+      } catch {
+        // If loading fails, just switch context
+        setActiveContextId(contextId);
+      } finally {
+        setLoadingId(null);
+      }
+      router.push("/");
+    },
+    [activeContextId, loadConversation, setActiveContextId, router]
+  );
+
+  const handleDeleteConversation = useCallback(
+    async (e: React.MouseEvent, contextId: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (confirmDeleteId === contextId) {
+        try {
+          await apiDeleteChat(contextId);
+        } catch {
+          // Proceed with local cleanup anyway
+        }
+        if (activeContextId === contextId) {
+          clearMessages();
+          setActiveContextId(null);
+        }
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        setConfirmDeleteId(null);
+      } else {
+        setConfirmDeleteId(contextId);
+        setTimeout(() => setConfirmDeleteId(null), 3000);
+      }
+    },
+    [
+      confirmDeleteId,
+      activeContextId,
+      clearMessages,
+      setActiveContextId,
+      queryClient,
+    ]
+  );
+
+  // Also show the current local conversation if it hasn't been saved yet
+  const hasLocalUnsavedChat =
+    messages.length > 0 &&
+    !activeContextId &&
+    conversations.length === 0;
 
   return (
     <>
@@ -119,34 +191,70 @@ function ChatHistory() {
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={handleNewChat} className="text-muted-foreground">
+              <SidebarMenuButton
+                onClick={handleNewChat}
+                className="text-muted-foreground"
+              >
                 <Plus className="size-4" />
                 <span>New Chat</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <div className="flex items-center group">
-                <SidebarMenuButton
-                  isActive
-                  render={<Link href="/" />}
-                  className="flex-1"
-                >
+
+            {conversations.map((conv) => (
+              <SidebarMenuItem key={conv.id}>
+                <div className="flex items-center group">
+                  <SidebarMenuButton
+                    isActive={conv.id === activeContextId}
+                    onClick={() => handleSelectConversation(conv.id)}
+                    className="flex-1"
+                  >
+                    {loadingId === conv.id ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <MessageSquare className="size-4" />
+                    )}
+                    <span className="truncate flex-1">
+                      {conv.name || "New conversation"}
+                    </span>
+                    {conv.running && (
+                      <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0" />
+                    )}
+                    <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-1">
+                      {formatRelativeTime(conv.last_message)}
+                    </span>
+                  </SidebarMenuButton>
+                  <button
+                    onClick={(e) => handleDeleteConversation(e, conv.id)}
+                    className="flex items-center px-1 rounded opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity"
+                    title={
+                      confirmDeleteId === conv.id
+                        ? "Click again to delete"
+                        : "Delete conversation"
+                    }
+                  >
+                    {confirmDeleteId === conv.id ? (
+                      <span className="text-[9px] text-destructive">
+                        delete
+                      </span>
+                    ) : (
+                      <Trash2 className="size-3 text-muted-foreground" />
+                    )}
+                  </button>
+                </div>
+              </SidebarMenuItem>
+            ))}
+
+            {/* Show local unsaved chat as a fallback entry */}
+            {hasLocalUnsavedChat && (
+              <SidebarMenuItem>
+                <SidebarMenuButton isActive className="flex-1">
                   <MessageSquare className="size-4" />
-                  <span className="truncate">{chatName}</span>
+                  <span className="truncate">
+                    {messages.find((m) => m.role === "user")?.content.slice(0, 30) || "New conversation"}
+                  </span>
                 </SidebarMenuButton>
-                <button
-                  onClick={handleTrashClick}
-                  className="flex items-center px-1 rounded opacity-0 group-hover:opacity-50 hover:!opacity-100 transition-opacity"
-                  title={confirmDelete ? "Click again to delete" : "Delete conversation"}
-                >
-                  {confirmDelete ? (
-                    <span className="text-[9px] text-destructive">delete</span>
-                  ) : (
-                    <Trash2 className="size-3 text-muted-foreground" />
-                  )}
-                </button>
-              </div>
-            </SidebarMenuItem>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>

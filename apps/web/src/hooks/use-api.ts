@@ -17,6 +17,7 @@ import type {
   TrendPoint,
   BudgetVariance,
 } from "@/lib/api";
+import type { Conversation } from "@/stores/workspace-store";
 
 const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL || "http://localhost:8000";
 
@@ -24,6 +25,42 @@ async function apiFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${ENGINE_URL}${path}`);
   if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
   return res.json();
+}
+
+// --- Conversations ---
+
+export function useConversations() {
+  return useQuery<Conversation[]>({
+    queryKey: ["conversations"],
+    queryFn: () => apiFetch("/api/chats"),
+    refetchInterval: 30_000, // refresh every 30s as a fallback
+  });
+}
+
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export function useConversationMessages(contextId: string | null) {
+  return useQuery<ConversationMessage[]>({
+    queryKey: ["conversation-messages", contextId],
+    queryFn: () => apiFetch(`/api/chats/${contextId}/messages`),
+    enabled: !!contextId,
+  });
+}
+
+export async function apiCreateChat(): Promise<Conversation> {
+  const res = await fetch(`${ENGINE_URL}/api/chats`, { method: "POST" });
+  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
+  return res.json();
+}
+
+export async function apiDeleteChat(contextId: string): Promise<void> {
+  const res = await fetch(`${ENGINE_URL}/api/chats/${contextId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`API ${res.status}: ${res.statusText}`);
 }
 
 export function useHQ() {

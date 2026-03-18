@@ -77,6 +77,10 @@ export function useSocket() {
         store.setStreaming(false);
         store.setStreamingStatus(null);
         if (streamTimeoutRef.current) clearTimeout(streamTimeoutRef.current);
+
+        // Refresh conversation list when response is complete
+        // This picks up updated names and last_message timestamps
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
       } else {
         const status = deriveConversationStatus(data);
         store.setStreamingStatus(status);

@@ -1,6 +1,15 @@
 import { create } from "zustand";
 import type { ChatMessage, StatusPayload } from "@/lib/chat-helpers";
 
+export interface Conversation {
+  id: string;
+  name: string | null;
+  created_at: string | null;
+  last_message: string | null;
+  type: string;
+  running: boolean;
+}
+
 interface WorkspaceState {
   // Location & navigation
   activeLocationId: string | null;
@@ -14,6 +23,10 @@ interface WorkspaceState {
   messages: ChatMessage[];
   isStreaming: boolean;
   streamingStatus: StatusPayload | null;
+
+  // Conversations (multi-chat)
+  conversations: Conversation[];
+  activeContextId: string | null;
 
   // Actions — location & navigation
   setActiveLocation: (id: string | null) => void;
@@ -30,6 +43,11 @@ interface WorkspaceState {
   setStreaming: (v: boolean) => void;
   setStreamingStatus: (s: StatusPayload | null) => void;
   clearMessages: () => void;
+
+  // Actions — conversations
+  setConversations: (convos: Conversation[]) => void;
+  setActiveContextId: (id: string | null) => void;
+  loadConversation: (id: string, messages: ChatMessage[]) => void;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
@@ -40,6 +58,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   messages: [],
   isStreaming: false,
   streamingStatus: null,
+  conversations: [],
+  activeContextId: null,
 
   setActiveLocation: (id) => set({ activeLocationId: id }),
   setActiveModule: (module) => set({ activeModule: module }),
@@ -69,4 +89,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setStreaming: (v) => set({ isStreaming: v }),
   setStreamingStatus: (s) => set({ streamingStatus: s }),
   clearMessages: () => set({ messages: [], streamingStatus: null, isStreaming: false }),
+
+  // Conversations
+  setConversations: (convos) => set({ conversations: convos }),
+  setActiveContextId: (id) => set({ activeContextId: id }),
+  loadConversation: (id, messages) =>
+    set({
+      activeContextId: id,
+      messages,
+      streamingStatus: null,
+      isStreaming: false,
+    }),
 }));

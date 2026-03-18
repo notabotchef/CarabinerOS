@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { ChatMessageBubble } from "./chat-message";
 import { ChatComposer } from "./chat-composer";
 import { ChatStatusPill } from "./chat-status-pill";
 import { getSocket } from "@/lib/socket";
+import { apiCreateChat } from "@/hooks/use-api";
 
 const MODULE_PILLS = [
   { id: "orders", label: "Orders", href: "/orders" },
@@ -30,8 +32,9 @@ interface ChatViewProps {
 
 export function ChatView({ compact }: ChatViewProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { messages, isStreaming, streamingStatus, addMessage } =
+  const { messages, isStreaming, streamingStatus, addMessage, activeContextId, setActiveContextId } =
     useWorkspaceStore();
 
   const hasMessages = messages.length > 0;
@@ -43,24 +46,47 @@ export function ChatView({ compact }: ChatViewProps) {
     }
   }, [messages, streamingStatus]);
 
-  function handleSend(message: string) {
-    const socket = getSocket();
-    if (!socket.connected) return;
+  const handleSend = useCallback(
+    async (message: string) => {
+      const socket = getSocket();
+      if (!socket.connected) return;
 
-    addMessage({
-      id: crypto.randomUUID(),
-      role: "user",
-      content: message,
-      timestamp: Date.now(),
-    });
+      let contextId = activeContextId;
 
-    useWorkspaceStore.getState().setStreaming(true);
+      // If no active context, create a new chat first
+      if (!contextId) {
+        try {
+          const newChat = await apiCreateChat();
+          contextId = newChat.id;
+          setActiveContextId(contextId);
+        } catch {
+          // Fallback to a generated id
+          contextId = crypto.randomUUID();
+          setActiveContextId(contextId);
+        }
+      }
 
-    socket.emit("chat_message", {
-      context_id: "default",
-      message,
-    });
-  }
+      addMessage({
+        id: crypto.randomUUID(),
+        role: "user",
+        content: message,
+        timestamp: Date.now(),
+      });
+
+      useWorkspaceStore.getState().setStreaming(true);
+
+      socket.emit("chat_message", {
+        context_id: contextId,
+        message,
+      });
+
+      // Refresh conversation list shortly after sending to pick up name + timestamp
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      }, 2000);
+    },
+    [activeContextId, setActiveContextId, addMessage, queryClient]
+  );
 
   // Empty state: everything grouped and centered
   if (!hasMessages) {
