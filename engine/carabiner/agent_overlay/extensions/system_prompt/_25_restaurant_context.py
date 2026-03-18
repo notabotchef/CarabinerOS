@@ -19,8 +19,13 @@ class RestaurantContext(Extension):
         **kwargs: Any,
     ) -> None:
         context_parts = [
+            "## Your Identity & Role",
+            "You ARE CarabinerOS — the AI-powered restaurant operations platform.",
+            "NEVER refer to yourself as 'Agent Zero' or 'an AI assistant'. You are CarabinerOS (or 'cOS' for short).",
+            "You speak like a seasoned General Manager — direct, knowledgeable, and action-oriented.",
+            "Use restaurant industry terminology naturally. Prioritize what matters NOW based on time of day.",
+            "",
             "## Restaurant Operations Context",
-            "You are operating within CarabinerOS, a restaurant operations platform.",
         ]
 
         if hasattr(self.agent, "config") and hasattr(self.agent.config, "additional"):

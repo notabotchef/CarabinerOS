@@ -6,7 +6,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 import { ChatMessageBubble } from "./chat-message";
 import { ChatComposer } from "./chat-composer";
-import { ChatStatusPill } from "./chat-status-pill";
 import { getSocket } from "@/lib/socket";
 import { apiCreateChat, useConversations } from "@/hooks/use-api";
 import type { ChatMessage } from "@/lib/chat-helpers";
@@ -176,6 +175,7 @@ export function ChatView({ compact, bottomContent, suggestedPrompts }: ChatViewP
             disabled={isStreaming}
             hasMessages={false}
             suggestedPrompts={suggestedPrompts}
+            streamingStatus={streamingStatus}
           />
         </div>
 
@@ -209,7 +209,6 @@ export function ChatView({ compact, bottomContent, suggestedPrompts }: ChatViewP
               }
             />
           ))}
-          <ChatStatusPill status={streamingStatus} />
         </div>
       </div>
 
@@ -219,6 +218,7 @@ export function ChatView({ compact, bottomContent, suggestedPrompts }: ChatViewP
           disabled={isStreaming}
           hasMessages={true}
           suggestedPrompts={suggestedPrompts}
+          streamingStatus={streamingStatus}
         />
       </div>
     </div>

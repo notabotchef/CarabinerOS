@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { SUGGESTED_PROMPTS } from "@/lib/chat-helpers";
+import type { StatusPayload } from "@/lib/chat-helpers";
 import { useWorkspaceStore } from "@/stores/workspace-store";
 
 interface ChatComposerProps {
@@ -10,9 +11,10 @@ interface ChatComposerProps {
   disabled?: boolean;
   hasMessages?: boolean;
   suggestedPrompts?: string[];
+  streamingStatus?: StatusPayload | null;
 }
 
-export function ChatComposer({ onSend, disabled, hasMessages, suggestedPrompts }: ChatComposerProps) {
+export function ChatComposer({ onSend, disabled, hasMessages, suggestedPrompts, streamingStatus }: ChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState("");
   const [promptIndex, setPromptIndex] = useState(0);
@@ -115,7 +117,21 @@ export function ChatComposer({ onSend, disabled, hasMessages, suggestedPrompts }
 
         {/* Input area */}
         <div className="relative flex-1 min-h-[36px] flex items-center">
-          {showPrompts && !value && (
+          {/* Status pill — shown inside composer when agent is working */}
+          {disabled && streamingStatus && streamingStatus.state === "thinking" && (
+            <div className="absolute inset-0 flex items-center pointer-events-none px-1">
+              <span className="inline-flex items-center gap-1.5 text-xs text-primary/70">
+                <span className="relative flex size-1.5">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-40" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+                </span>
+                <span>{streamingStatus.role}</span>
+                <span className="text-muted-foreground/60">{streamingStatus.text}</span>
+              </span>
+            </div>
+          )}
+          {/* Ghost prompts — only when not streaming */}
+          {showPrompts && !value && !disabled && (
             <div
               className="absolute inset-0 flex items-center pointer-events-none px-1 transition-opacity duration-400"
               style={{ opacity: promptVisible ? 0.4 : 0 }}
