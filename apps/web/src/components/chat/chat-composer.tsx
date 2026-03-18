@@ -105,6 +105,17 @@ export function ChatComposer({ onSend, disabled, hasMessages, suggestedPrompts, 
 
   return (
     <div className="w-full max-w-2xl mx-auto px-4">
+      {/* Status indicator — clean line above the composer */}
+      {streamingStatus && streamingStatus.state === "thinking" && (
+        <div className="flex items-center gap-1.5 px-3 pb-2 text-[11px]">
+          <span className="relative flex size-1.5">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-40" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+          </span>
+          <span className="font-medium text-primary/80">{streamingStatus.role}</span>
+          <span className="text-muted-foreground/50">{streamingStatus.text}</span>
+        </div>
+      )}
       <div className="relative flex items-center gap-2 rounded-2xl border bg-card p-2 transition-shadow focus-within:shadow-[0_0_0_1px_hsl(var(--primary)/0.3),0_0_12px_hsl(var(--primary)/0.1)]">
         {/* Attach button */}
         <button
@@ -117,21 +128,7 @@ export function ChatComposer({ onSend, disabled, hasMessages, suggestedPrompts, 
 
         {/* Input area */}
         <div className="relative flex-1 min-h-[36px] flex items-center">
-          {/* Status pill — shown inside composer when agent is working */}
-          {disabled && streamingStatus && streamingStatus.state === "thinking" && (
-            <div className="absolute inset-0 flex items-center pointer-events-none px-1">
-              <span className="inline-flex items-center gap-1.5 text-xs text-primary/70">
-                <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-40" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
-                </span>
-                <span>{streamingStatus.role}</span>
-                <span className="text-muted-foreground/60">{streamingStatus.text}</span>
-              </span>
-            </div>
-          )}
-          {/* Ghost prompts — only when not streaming */}
-          {showPrompts && !value && !disabled && (
+          {showPrompts && !value && (
             <div
               className="absolute inset-0 flex items-center pointer-events-none px-1 transition-opacity duration-400"
               style={{ opacity: promptVisible ? 0.4 : 0 }}
