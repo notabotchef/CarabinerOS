@@ -218,8 +218,9 @@ class Recipe(TimestampMixin, Base):
     instructions: Mapped[Optional[str]] = mapped_column(Text)
     is_sub_recipe: Mapped[bool] = mapped_column(default=False)
 
-    ingredients: Mapped[list[RecipeIngredient]] = relationship(
-        back_populates="recipe", cascade="all, delete-orphan"
+    ingredients: Mapped[list["RecipeIngredient"]] = relationship(
+        back_populates="recipe", cascade="all, delete-orphan",
+        foreign_keys="[RecipeIngredient.recipe_id]"
     )
 
 

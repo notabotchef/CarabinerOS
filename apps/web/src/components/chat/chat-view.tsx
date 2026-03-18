@@ -28,9 +28,10 @@ function getGreeting(): string {
 
 interface ChatViewProps {
   compact?: boolean;
+  bottomContent?: React.ReactNode;
 }
 
-export function ChatView({ compact }: ChatViewProps) {
+export function ChatView({ compact, bottomContent }: ChatViewProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -125,6 +126,12 @@ export function ChatView({ compact }: ChatViewProps) {
             hasMessages={false}
           />
         </div>
+
+        {!compact && bottomContent && (
+          <div className="w-full max-w-3xl mt-4">
+            {bottomContent}
+          </div>
+        )}
       </div>
     );
   }

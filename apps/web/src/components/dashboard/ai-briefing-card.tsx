@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { X, Sparkles } from "lucide-react";
 
@@ -38,7 +39,12 @@ export function AIBriefingCard({ locationName, insights }: AIBriefingCardProps) 
   const items = insights ?? FALLBACK_INSIGHTS;
 
   return (
-    <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-transparent to-transparent">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 28 }}
+    >
+    <Card className="relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-transparent to-transparent h-full">
       <button
         onClick={() => setDismissed(true)}
         className="absolute top-3 right-3 rounded-md p-1 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
@@ -68,5 +74,6 @@ export function AIBriefingCard({ locationName, insights }: AIBriefingCardProps) 
         </ul>
       </CardContent>
     </Card>
+    </motion.div>
   );
 }
