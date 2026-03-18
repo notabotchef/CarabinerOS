@@ -3,10 +3,10 @@
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWorkspaceStore } from "@/stores/workspace-store";
+import { ChatView } from "@/components/chat/chat-view";
 
 export function ChatDock() {
-  const { isChatOpen, chatPrompt, setChatOpen, setChatPrompt } =
-    useWorkspaceStore();
+  const { isChatOpen, setChatOpen, setChatPrompt } = useWorkspaceStore();
 
   if (!isChatOpen) return null;
 
@@ -25,26 +25,8 @@ export function ChatDock() {
           <X className="size-4" />
         </Button>
       </div>
-
-      <div className="flex-1 flex items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground text-center">
-          Chat responses will appear here.
-          <br />
-          <span className="text-xs">Streaming comes in Phase 4.</span>
-        </p>
-      </div>
-
-      <div className="border-t p-4 space-y-2">
-        <textarea
-          className="w-full rounded-md border bg-muted/50 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-          rows={3}
-          value={chatPrompt ?? ""}
-          onChange={(e) => setChatPrompt(e.target.value)}
-          placeholder="Ask CarabinerOS anything..."
-        />
-        <Button className="w-full" size="sm" disabled>
-          Send
-        </Button>
+      <div className="flex-1 overflow-hidden">
+        <ChatView compact />
       </div>
     </div>
   );

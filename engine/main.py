@@ -55,13 +55,62 @@ async def disconnect(sid: str) -> None:
 
 @sio.on("chat_message")
 async def handle_chat_message(sid: str, data: dict) -> None:
-    """Placeholder for chat message handling (Phase 4)."""
-    logger.info("Chat message from %s: %s", sid, data.get("message", "")[:100])
-    await sio.emit(
-        "status_update",
-        {"context_id": data.get("context_id", ""), "status": "received"},
-        to=sid,
+    """Mock streaming handler — simulates Agent Zero status transitions and word-by-word response."""
+    import asyncio
+
+    message = data.get("message", "")
+    context_id = data.get("context_id", "default")
+    logger.info("Chat message from %s: %s", sid, message[:100])
+
+    # 1. Acknowledge
+    await sio.emit("status_update", {
+        "context_id": context_id,
+        "status": "thinking",
+        "detail": "Processing your request",
+    }, to=sid)
+
+    # 2. Simulate status transitions
+    await asyncio.sleep(0.5)
+    await sio.emit("status_update", {
+        "context_id": context_id,
+        "status": "thinking",
+        "detail": "Checking inventory levels",
+    }, to=sid)
+
+    await asyncio.sleep(0.5)
+    await sio.emit("status_update", {
+        "context_id": context_id,
+        "status": "thinking",
+        "detail": "Drafting response",
+    }, to=sid)
+
+    await asyncio.sleep(0.3)
+
+    # 3. Stream response word by word
+    response = (
+        f'I\'ve analyzed your request: "{message[:80]}"\n\n'
+        "Here's what I found:\n\n"
+        "- **Inventory check** completed for the active location\n"
+        "- **Par levels** are within normal range for 3 of 5 key items\n"
+        "- **Two items** are below par and may need replenishment\n\n"
+        "Would you like me to draft an order for the items that need restocking?"
     )
+
+    full = ""
+    for word in response.split(" "):
+        full += word + " "
+        await sio.emit("response_stream", {
+            "context_id": context_id,
+            "chunk": word + " ",
+            "full": full.strip(),
+        }, to=sid)
+        await asyncio.sleep(0.05)
+
+    # 4. Done
+    await sio.emit("status_update", {
+        "context_id": context_id,
+        "status": "waiting",
+    }, to=sid)
 
 
 # --- FastAPI App ---
