@@ -143,7 +143,7 @@ export function ChatComposer({ onSend, disabled, hasMessages }: ChatComposerProp
           type="button"
           onClick={handleSend}
           disabled={disabled}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/80 text-muted-foreground transition-colors hover:bg-accent disabled:opacity-30 self-center"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white transition-colors hover:bg-red-700 disabled:opacity-30 self-center"
           aria-label="Send message"
         >
           <svg

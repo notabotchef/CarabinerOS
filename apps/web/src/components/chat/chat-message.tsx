@@ -12,7 +12,7 @@ export function ChatMessageBubble({ role, content, isStreaming }: ChatMessagePro
   if (role === "user") {
     return (
       <div className="flex justify-end animate-in slide-in-from-bottom-2 fade-in duration-150">
-        <div className="max-w-[80%] rounded-[14px] rounded-br-[4px] bg-primary px-4 py-2.5 text-primary-foreground">
+        <div className="max-w-[80%] rounded-[14px] rounded-br-[4px] bg-red-600 px-4 py-2.5 text-white">
           <p className="text-sm">{content}</p>
         </div>
       </div>

@@ -23,7 +23,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Trash2 } from "lucide-react";
+import { useState } from "react";
 import type { Location } from "@/lib/api";
 import { useEffect } from "react";
 
@@ -61,16 +62,29 @@ function statusColor(status: string): string {
 
 function ChatHistory() {
   const messages = useWorkspaceStore((s) => s.messages);
+  const clearMessages = useWorkspaceStore((s) => s.clearMessages);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (messages.length === 0) return null;
 
-  // Derive name from first user message
   const firstUserMsg = messages.find((m) => m.role === "user");
   const chatName = firstUserMsg
     ? firstUserMsg.content.length > 30
       ? firstUserMsg.content.slice(0, 30) + "..."
       : firstUserMsg.content
     : "New conversation";
+
+  function handleTrashClick(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (confirmDelete) {
+      clearMessages();
+      setConfirmDelete(false);
+    } else {
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 3000);
+    }
+  }
 
   return (
     <>
@@ -80,13 +94,27 @@ function ChatHistory() {
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive
-                render={<Link href="/" />}
-              >
-                <MessageSquare className="size-4" />
-                <span className="truncate">{chatName}</span>
-              </SidebarMenuButton>
+              <div className="flex items-center group">
+                <SidebarMenuButton
+                  isActive
+                  render={<Link href="/" />}
+                  className="flex-1"
+                >
+                  <MessageSquare className="size-4" />
+                  <span className="truncate">{chatName}</span>
+                </SidebarMenuButton>
+                <button
+                  onClick={handleTrashClick}
+                  className="flex items-center gap-1 px-1.5 py-1 rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                  title={confirmDelete ? "Click again to delete" : "Delete conversation"}
+                >
+                  {confirmDelete ? (
+                    <span className="text-[10px] text-destructive font-medium">delete</span>
+                  ) : (
+                    <Trash2 className="size-3.5" />
+                  )}
+                </button>
+              </div>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroupContent>
