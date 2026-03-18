@@ -38,44 +38,14 @@ export function ChatView({ compact, bottomContent, suggestedPrompts }: ChatViewP
   const router = useRouter();
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const restoredRef = useRef(false);
-  const { messages, isStreaming, streamingStatus, addMessage, activeContextId, setActiveContextId, loadConversation } =
+  const { messages, isStreaming, streamingStatus, addMessage, activeContextId, setActiveContextId } =
     useWorkspaceStore();
   const { data: conversations } = useConversations();
 
   const hasMessages = messages.length > 0;
 
-  // Auto-restore the most recent conversation on page load/refresh
-  useEffect(() => {
-    if (restoredRef.current) return;
-    if (activeContextId || messages.length > 0) return;
-    if (!conversations || conversations.length === 0) return;
-
-    // Pick the most recent conversation (list is sorted by last_message desc)
-    const mostRecent = conversations[0];
-    restoredRef.current = true;
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `${ENGINE_URL}/api/chats/${mostRecent.id}/messages`
-        );
-        if (!res.ok) return;
-        const msgs: { role: "user" | "assistant"; content: string }[] =
-          await res.json();
-        if (msgs.length === 0) return;
-        const chatMessages: ChatMessage[] = msgs.map((m, i) => ({
-          id: `${mostRecent.id}-${i}`,
-          role: m.role,
-          content: m.content,
-          timestamp: Date.now() - (msgs.length - i) * 1000,
-        }));
-        loadConversation(mostRecent.id, chatMessages);
-      } catch {
-        // Silently fail — user can manually select a conversation
-      }
-    })();
-  }, [activeContextId, messages.length, conversations, loadConversation]);
+  // No auto-restore — fresh visits show the home page.
+  // Users click a conversation from the sidebar to resume one.
 
   useEffect(() => {
     const el = scrollRef.current;
