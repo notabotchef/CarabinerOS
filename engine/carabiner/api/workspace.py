@@ -20,6 +20,9 @@ from carabiner.api.schemas import (
     InventoryCreate,
     InventoryOut,
     InventoryUpdate,
+    InvoiceCreate,
+    InvoiceOut,
+    InvoiceUpdate,
     MenuCreate,
     MenuOut,
     MenuUpdate,
@@ -306,6 +309,76 @@ async def delete_campaign(item_id: uuid.UUID) -> None:
     deleted = await repo.delete_campaign(item_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Campaign not found")
+
+
+# ---------------------------------------------------------------------------
+# Invoices
+# ---------------------------------------------------------------------------
+
+@router.get("/invoices", response_model=List[InvoiceOut])
+async def list_invoices(location_id: Optional[uuid.UUID] = Query(None)) -> list:
+    items = await repo.list_invoices(location_id)
+    return [InvoiceOut.model_validate(i) for i in items]
+
+
+@router.get("/invoices/{item_id}", response_model=InvoiceOut)
+async def get_invoice(item_id: uuid.UUID) -> InvoiceOut:
+    item = await repo.get_invoice(item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return InvoiceOut.model_validate(item)
+
+
+@router.post("/invoices", response_model=InvoiceOut, status_code=201)
+async def create_invoice(body: InvoiceCreate) -> InvoiceOut:
+    item = await repo.create_invoice(body.model_dump())
+    return InvoiceOut.model_validate(item)
+
+
+@router.patch("/invoices/{item_id}", response_model=InvoiceOut)
+async def update_invoice(item_id: uuid.UUID, body: InvoiceUpdate) -> InvoiceOut:
+    item = await repo.update_invoice(item_id, body.model_dump(exclude_unset=True))
+    if item is None:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return InvoiceOut.model_validate(item)
+
+
+@router.delete("/invoices/{item_id}", status_code=204)
+async def delete_invoice(item_id: uuid.UUID) -> None:
+    deleted = await repo.delete_invoice(item_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+
+@router.post("/invoices/upload", response_model=InvoiceOut, status_code=201)
+async def upload_invoice(
+    location_id: uuid.UUID = Query(...),
+    vendor: str = Query("Unknown Vendor"),
+):
+    """Upload an invoice file. For now, creates a stub invoice in 'Uploaded' status.
+
+    In a full implementation this would accept a multipart file upload,
+    store it, and kick off the OCR/extraction pipeline.
+    """
+    import uuid as _uuid
+    from datetime import date
+
+    invoice_data = {
+        "location_id": location_id,
+        "vendor": vendor,
+        "invoice_date": date.today().isoformat(),
+        "status": "Uploaded",
+        "total": "$0.00",
+        "summary": "Invoice uploaded and awaiting processing.",
+        "detail_points": [
+            "File received and stored.",
+            "OCR extraction has not yet been run.",
+            "Use the agent to process this invoice.",
+        ],
+        "prompt": f"Process the newly uploaded invoice from {vendor}.",
+    }
+    item = await repo.create_invoice(invoice_data)
+    return InvoiceOut.model_validate(item)
 
 
 # ---------------------------------------------------------------------------

@@ -100,7 +100,7 @@ class Invoice(TimestampMixin, LocationScopedMixin, Base):
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     tax: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0)
-    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/approved/paid/disputed
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending/processing/matched/approved/paid/disputed
 
     line_items: Mapped[list[InvoiceLineItem]] = relationship(
         back_populates="invoice", cascade="all, delete-orphan"

@@ -125,6 +125,39 @@ export interface Campaign {
   prompt: string | null;
 }
 
+export interface InvoiceLineItem {
+  description: string;
+  qty: number;
+  unit_price: number;
+  total: number;
+  gl_code: string;
+}
+
+export interface InvoiceGLCode {
+  code: string;
+  name: string;
+  total: number;
+}
+
+export interface Invoice {
+  id: string;
+  location_id: string;
+  vendor: string;
+  invoice_number: string | null;
+  invoice_date: string;
+  due_date: string | null;
+  status: string;
+  total: string;
+  line_items: InvoiceLineItem[] | null;
+  gl_codes: InvoiceGLCode[] | null;
+  po_match_id: string | null;
+  variance_notes: string | null;
+  file_path: string | null;
+  summary: string | null;
+  detail_points: string[] | null;
+  prompt: string | null;
+}
+
 export interface HQPayload {
   brand: { name: string; tagline: string; theme: string };
   organization: { id: string; name: string; slug: string } | null;

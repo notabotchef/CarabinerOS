@@ -33,6 +33,7 @@ const MODULES: readonly { id: string; label: string; href: string; icon: string;
   { id: "home", label: "Home", href: "/", icon: "H" },
   { id: "inbox", label: "Inbox", href: "/inbox", icon: "I", badge: 3 },
   { id: "orders", label: "Orders", href: "/orders", icon: "O" },
+  { id: "invoices", label: "Invoices", href: "/invoices", icon: "$" },
   { id: "inventory", label: "Inventory", href: "/inventory", icon: "V" },
   { id: "prep", label: "Prep", href: "/prep", icon: "P" },
   { id: "food-cost", label: "Food Cost", href: "/food-cost", icon: "F" },

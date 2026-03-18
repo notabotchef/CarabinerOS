@@ -91,6 +91,7 @@ def _clean_status_detail(detail: str) -> str:
     d = d.replace("prep_tool", "Checking prep")
     d = d.replace("food_cost_tool", "Analyzing food cost")
     d = d.replace("menu_tool", "Reviewing menu")
+    d = d.replace("invoice_tool", "Processing invoices")
     d = d.replace("marketing_tool", "Reviewing campaigns")
     d = d.replace("code_execution_tool", "Processing data")
     d = d.replace("response", "Composing response")
