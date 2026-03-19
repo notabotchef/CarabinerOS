@@ -18,7 +18,8 @@ interface WorkspaceTableProps<T> {
   emptyMessage?: string;
 }
 
-export function WorkspaceTable<T extends Record<string, unknown>>({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function WorkspaceTable<T extends Record<string, any>>({
   columns,
   data,
   loading = false,
