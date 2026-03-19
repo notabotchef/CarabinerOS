@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { PanelLeftOpen } from "lucide-react";
+import { PanelLeftOpen, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface TopBarProps {
@@ -41,9 +41,14 @@ export function TopBar({ unreadCount, onBellClick, onMenuClick, locationName = "
             <PanelLeftOpen className="size-4" />
           </button>
         )}
-        <span className="text-lg font-bold tracking-tight select-none text-primary">
-          CarabinerOS
-        </span>
+        <div className="flex items-center gap-2.5 select-none">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-[10px] font-black tracking-tight leading-none">
+            cOS
+          </div>
+          <span className="text-lg font-bold tracking-tight text-primary">
+            CarabinerOS
+          </span>
+        </div>
       </div>
 
       {/* Right side */}
@@ -53,8 +58,19 @@ export function TopBar({ unreadCount, onBellClick, onMenuClick, locationName = "
           {locationName}
         </span>
 
+        {/* Dev: Agent Zero settings */}
+        <a
+          href="/a0/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent transition-colors"
+          title="Agent Zero Settings (dev)"
+        >
+          <Settings className="size-4" />
+        </a>
+
         {/* Card duo notification icon */}
-        <div className="relative w-8 h-[30px] cursor-pointer" onClick={onBellClick}>
+        <div className="relative w-8 h-[30px] cursor-pointer group" onClick={onBellClick} title="Action Cards">
           <motion.div
             initial="idle"
             animate="idle"
@@ -82,6 +98,9 @@ export function TopBar({ unreadCount, onBellClick, onMenuClick, locationName = "
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>
           )}
+          <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Action Cards
+          </span>
         </div>
       </div>
     </header>
