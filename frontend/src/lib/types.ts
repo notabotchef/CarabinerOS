@@ -42,14 +42,17 @@ export interface A0Notification {
   message: string;
 }
 
+// WebSocketManager wraps all emitted payloads in an envelope
 export interface A0StatePush {
-  runtime_epoch: string;
-  seq: number;
-  snapshot: A0Snapshot;
-  ts: string;
   handlerId: string;
   eventId: string;
   correlationId: string;
+  ts: string;
+  data: {
+    runtime_epoch: string;
+    seq: number;
+    snapshot: A0Snapshot;
+  };
 }
 
 export interface A0StateRequestResponse {
@@ -78,4 +81,11 @@ export interface ActionCard {
   summary: string;
   timestamp: number;
   read: boolean;
+}
+
+export interface ChefStatus {
+  status: "working" | "completed" | "idle";
+  tool?: string;
+  text: string;
+  active: boolean;
 }
