@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
 import { SocketProvider } from "@/components/socket-provider";
+import { AppSidebar } from "@/components/app-sidebar";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -29,9 +30,12 @@ export default function RootLayout({
       lang="en"
       className={`dark ${dmSans.variable} ${geistMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex">
         <SocketProvider>
-          {children}
+          <AppSidebar />
+          <main className="flex-1 flex flex-col min-h-dvh overflow-hidden">
+            {children}
+          </main>
         </SocketProvider>
       </body>
     </html>
