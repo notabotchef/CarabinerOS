@@ -18,11 +18,18 @@ export function AppSidebar() {
         collapsed ? "w-14" : "w-60"
       )}
     >
-      {/* Brand */}
+      {/* Top: toggle + brand */}
       <div className="flex items-center gap-3 px-3 py-4 border-b border-sidebar-border">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-bold text-sm">
-          C
-        </div>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-4" />
+          ) : (
+            <PanelLeftClose className="size-4" />
+          )}
+        </button>
         {!collapsed && (
           <span className="text-sm font-bold text-sidebar-foreground truncate">
             CarabinerOS
@@ -54,23 +61,6 @@ export function AppSidebar() {
             </Link>
           );
         })}
-      </div>
-
-      {/* Collapse toggle */}
-      <div className="border-t border-sidebar-border p-2">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors w-full"
-        >
-          {collapsed ? (
-            <PanelLeftOpen className="size-4 shrink-0" />
-          ) : (
-            <>
-              <PanelLeftClose className="size-4 shrink-0" />
-              <span className="truncate">Collapse</span>
-            </>
-          )}
-        </button>
       </div>
     </nav>
   );
