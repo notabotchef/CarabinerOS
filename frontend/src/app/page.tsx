@@ -23,7 +23,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white">
+    <div className="flex flex-col h-dvh bg-background">
       <TopBar unreadCount={unreadCount} onBellClick={() => setNotifOpen(true)} />
       <main className="flex-1 flex items-center justify-center">
         <HomeView onSend={handleSend} />

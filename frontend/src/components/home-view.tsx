@@ -18,10 +18,10 @@ export function HomeView({ onSend }: HomeViewProps) {
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-xl mx-auto px-4">
       {/* Welcome text */}
-      <h1 className="text-3xl font-bold tracking-tight text-neutral-900 mb-2">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
         {getGreeting()}
       </h1>
-      <p className="text-sm text-neutral-400 mb-8 text-center leading-relaxed">
+      <p className="text-sm text-muted-foreground mb-8 text-center leading-relaxed">
         3 orders pending &middot; food cost at 28.4% &middot; 142 covers projected
       </p>
 

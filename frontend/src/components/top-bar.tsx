@@ -1,16 +1,18 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell, Terminal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 interface TopBarProps {
   unreadCount: number;
   onBellClick: () => void;
+  onA0Click?: () => void;
+  a0Open?: boolean;
   locationName?: string;
 }
 
-export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen" }: TopBarProps) {
+export function TopBar({ unreadCount, onBellClick, onA0Click, a0Open, locationName = "Main Kitchen" }: TopBarProps) {
   return (
     <header
       className="flex items-center justify-between px-5 py-3 shrink-0"
@@ -30,6 +32,17 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
         <span className="text-sm text-neutral-400 hidden sm:block">
           {locationName}
         </span>
+
+        {/* Agent Zero UI toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`text-neutral-300 hover:text-white hover:bg-white/10 ${a0Open ? "bg-white/10 text-amber-400" : ""}`}
+          onClick={onA0Click}
+          title="Agent Zero UI"
+        >
+          <Terminal className="size-5" />
+        </Button>
 
         {/* Notification bell */}
         <Button
