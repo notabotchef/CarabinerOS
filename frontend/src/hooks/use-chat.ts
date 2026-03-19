@@ -32,26 +32,28 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     const newMessages: ChatMessage[] = [];
 
     for (const log of snapshot.logs) {
-      if (processedLogIds.current.has(log.id)) continue;
+      // Use log.no as the dedup key — log.id can be null
+      const logKey = log.id ?? `no-${log.no}`;
+      if (processedLogIds.current.has(logKey)) continue;
 
       if (log.type === "user") {
         newMessages.push({
-          id: log.id,
+          id: logKey,
           role: "user",
           content: log.content,
           timestamp: log.timestamp,
         });
-        processedLogIds.current.add(log.id);
+        processedLogIds.current.add(logKey);
       }
 
       if (log.type === "response" && log.content.trim()) {
         newMessages.push({
-          id: log.id,
+          id: logKey,
           role: "assistant",
           content: log.content,
           timestamp: log.timestamp,
         });
-        processedLogIds.current.add(log.id);
+        processedLogIds.current.add(logKey);
       }
     }
 
