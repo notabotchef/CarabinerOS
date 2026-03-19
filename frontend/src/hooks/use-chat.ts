@@ -21,6 +21,7 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
   const processedLogIds = useRef(new Set<string>());
   const contextIdRef = useRef<string | null>(null);
   const isProcessingRef = useRef(false);
+  const freshChatRef = useRef(false); // true after resetChat, cleared on first send
 
   // Keep contextIdRef in sync
   useEffect(() => {
@@ -29,6 +30,13 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
 
   useEffect(() => {
     if (!snapshot) return;
+
+    // After resetChat, ignore snapshot logs until the user sends a new message.
+    // This prevents stale logs from a previous context from being re-ingested.
+    if (freshChatRef.current) {
+      setLoading(false);
+      return;
+    }
 
     const newMessages: ChatMessage[] = [];
 
@@ -70,6 +78,9 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
   }, [snapshot]);
 
   const doSend = useCallback(async (text: string): Promise<string> => {
+    // First message in a fresh chat — start accepting snapshot logs again
+    freshChatRef.current = false;
+
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
@@ -157,6 +168,7 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     setQueuedMessages([]);
     isProcessingRef.current = false;
     processedLogIds.current.clear();
+    freshChatRef.current = true;
   }, []);
 
   return { messages, sendMessage, contextId, loading, queuedMessages, resetChat };

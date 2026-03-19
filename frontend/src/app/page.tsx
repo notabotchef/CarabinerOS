@@ -24,10 +24,11 @@ export default function HomePage() {
   useEffect(() => {
     if (newChatPending) {
       resetChat();
+      subscribe(null); // unsubscribe from previous context so old logs stop arriving
       setChatStarted(true);
       consumeNewChat();
     }
-  }, [newChatPending, resetChat, consumeNewChat]);
+  }, [newChatPending, resetChat, consumeNewChat, subscribe]);
 
   const handleSend = async (text: string) => {
     if (!chatStarted) setChatStarted(true);
