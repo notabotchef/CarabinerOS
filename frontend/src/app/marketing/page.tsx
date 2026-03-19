@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Variants } from "framer-motion";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,7 +39,13 @@ interface Campaign {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const STAGES = ["Research", "Drafting", "Review", "Live", "Completed"] as const;
+const STAGES = [
+  "Research",
+  "Drafting",
+  "Review",
+  "Live",
+  "Completed",
+] as const;
 type Stage = (typeof STAGES)[number];
 
 const CHANNELS = [
@@ -53,37 +60,35 @@ type Channel = (typeof CHANNELS)[number];
 
 const STAGE_STYLES: Record<
   Stage,
-  { dot: string; badge: string; bar: string; glow: string }
+  { dot: string; badge: string; bar: string }
 > = {
   Research: {
     dot: "bg-muted-foreground/50",
     badge: "bg-muted text-muted-foreground",
     bar: "bg-muted-foreground/30",
-    glow: "",
   },
   Drafting: {
     dot: "bg-amber-500",
-    badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20",
+    badge:
+      "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20",
     bar: "bg-amber-500/60",
-    glow: "shadow-amber-500/20",
   },
   Review: {
     dot: "bg-blue-500",
-    badge: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20",
+    badge:
+      "bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20",
     bar: "bg-blue-500/60",
-    glow: "shadow-blue-500/20",
   },
   Live: {
     dot: "bg-emerald-500",
-    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20",
+    badge:
+      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20",
     bar: "bg-emerald-500/60",
-    glow: "shadow-emerald-500/20",
   },
   Completed: {
     dot: "bg-muted-foreground/40",
     badge: "bg-muted text-muted-foreground",
     bar: "bg-muted-foreground/20",
-    glow: "",
   },
 };
 
@@ -91,7 +96,9 @@ const STAGE_STYLES: Record<
 /*  Motion variants                                                    */
 /* ------------------------------------------------------------------ */
 
-const staggerContainer = {
+const EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
+
+const staggerContainer: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -99,36 +106,28 @@ const staggerContainer = {
   },
 };
 
-const cardItem = {
+const cardItem: Variants = {
   hidden: { opacity: 0, y: 16, scale: 0.97 },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
+    transition: { duration: 0.35, ease: EASE },
   },
   exit: { opacity: 0, y: -8, scale: 0.97, transition: { duration: 0.2 } },
 };
 
-const pipelineSegment = {
+const pipelineSegment: Variants = {
   hidden: { scaleX: 0 },
   visible: (i: number) => ({
     scaleX: 1,
-    transition: {
-      delay: 0.2 + i * 0.1,
-      duration: 0.5,
-      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
-    },
+    transition: { delay: 0.2 + i * 0.1, duration: 0.5, ease: EASE },
   }),
 };
 
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
-  },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } },
 };
 
 /* ------------------------------------------------------------------ */
@@ -173,9 +172,15 @@ function normalizeStage(s: string): Stage {
 function StagePipeline({ campaigns }: { campaigns: Campaign[] }) {
   const counts = useMemo(() => {
     const map: Record<Stage, number> = {
-      Research: 0, Drafting: 0, Review: 0, Live: 0, Completed: 0,
+      Research: 0,
+      Drafting: 0,
+      Review: 0,
+      Live: 0,
+      Completed: 0,
     };
-    campaigns.forEach((c) => { map[normalizeStage(c.stage)]++; });
+    campaigns.forEach((c) => {
+      map[normalizeStage(c.stage)]++;
+    });
     return map;
   }, [campaigns]);
 
@@ -441,7 +446,7 @@ export default function MarketingPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
+            transition={{ duration: 0.4, ease: EASE }}
             className="flex flex-col items-center justify-center py-20 text-center"
           >
             <div className="relative mb-6">
@@ -449,8 +454,15 @@ export default function MarketingPage() {
                 <Sparkles className="size-7 text-pink-500/60" />
               </div>
               <motion.div
-                animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.3, 0.6, 0.3],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
                 className="absolute -inset-2 rounded-2xl bg-gradient-to-br from-pink-500/5 to-violet-500/5 -z-10"
               />
             </div>
@@ -458,8 +470,8 @@ export default function MarketingPage() {
               Your creative studio awaits
             </h3>
             <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-              Ask CarabinerOS to brainstorm content ideas, plan a social campaign,
-              or draft your next email blast.
+              Ask CarabinerOS to brainstorm content ideas, plan a social
+              campaign, or draft your next email blast.
             </p>
           </motion.div>
         ) : (
