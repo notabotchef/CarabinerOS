@@ -3,11 +3,13 @@
 The proxy sets X-Forwarded-Host: localhost:8080 and the browser sends
 Origin: http://localhost:8080, so origin and forwarded host match.
 """
+from typing import Optional
+
 import pytest
 from python.helpers.websocket import validate_ws_origin
 
 
-def _make_environ(origin: str, host: str, forwarded_host: str | None = None) -> dict:
+def _make_environ(origin: str, host: str, forwarded_host: Optional[str] = None) -> dict:
     """Build a minimal WSGI environ dict for validate_ws_origin."""
     env = {
         "HTTP_ORIGIN": origin,
