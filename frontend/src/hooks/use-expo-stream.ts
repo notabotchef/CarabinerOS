@@ -1,49 +1,53 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import type { A0Snapshot } from "@/lib/types";
-import { getExpoMessage, getCompletionMessage } from "@/lib/expo-messages";
+import { useState, useEffect } from "react";
+import type { A0Snapshot, ChefStatus } from "@/lib/types";
 
 interface ExpoState {
   text: string | null;
   active: boolean;
 }
 
-export function useExpoStream(snapshot: A0Snapshot | null): ExpoState {
+/** Strip Agent Zero's internal heading prefixes like "icon://chat A0: Responding" */
+function cleanProgressText(raw: string): string {
+  // Remove "icon://<name> " prefix
+  let text = raw.replace(/^icon:\/\/\S+\s*/, "");
+  // Replace agent name prefix like "A0: " with something friendlier
+  text = text.replace(/^A\d+:\s*/, "");
+  return text || "Working...";
+}
+
+export function useExpoStream(snapshot: A0Snapshot | null, chefStatus: ChefStatus | null): ExpoState {
   const [expo, setExpo] = useState<ExpoState>({ text: null, active: false });
-  const prevLogsLenRef = useRef(0);
-  const wasActiveRef = useRef(false);
 
   useEffect(() => {
-    if (!snapshot) return;
+    if (!chefStatus) return;
 
-    if (snapshot.log_progress_active && snapshot.log_progress) {
-      const progressText = typeof snapshot.log_progress === "string"
-        ? snapshot.log_progress
-        : "Working...";
-
-      const newLogs = snapshot.logs.slice(prevLogsLenRef.current);
-      let expoText = progressText;
-
-      for (const log of newLogs.reverse()) {
-        const mapped = getExpoMessage(log);
-        if (mapped) {
-          expoText = mapped;
-          break;
-        }
-      }
-
-      setExpo({ text: expoText, active: true });
-      wasActiveRef.current = true;
-    } else if (wasActiveRef.current) {
-      setExpo({ text: getCompletionMessage(), active: false });
-      wasActiveRef.current = false;
-      const timer = setTimeout(() => setExpo({ text: null, active: false }), 2000);
+    if (chefStatus.active) {
+      setExpo({ text: chefStatus.text, active: true });
+    } else {
+      setExpo({ text: chefStatus.text, active: false });
+      const timer = setTimeout(() => {
+        setExpo((prev) => prev.active ? prev : { text: null, active: false });
+      }, 3000);
       return () => clearTimeout(timer);
     }
+  }, [chefStatus]);
 
-    prevLogsLenRef.current = snapshot.logs.length;
-  }, [snapshot]);
+  // Fallback to basic progress if no chefStatus but progress is active
+  useEffect(() => {
+    if (!chefStatus && snapshot?.log_progress_active && snapshot?.log_progress) {
+      const raw = typeof snapshot.log_progress === "string" ? snapshot.log_progress : "Working...";
+      setExpo({ text: cleanProgressText(raw), active: true });
+    }
+    if (!chefStatus && snapshot && !snapshot.log_progress_active && expo.active) {
+      setExpo({ text: "Done", active: false });
+      const timer = setTimeout(() => {
+        setExpo({ text: null, active: false });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [snapshot, chefStatus]);
 
   return expo;
 }

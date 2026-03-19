@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChatMessage } from "@/lib/types";
 
@@ -27,7 +28,7 @@ export function MessageList({ messages }: MessageListProps) {
           >
             {/* Label */}
             <span className="mb-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
-              {msg.role === "user" ? "You" : "CarabinerOS"}
+              {msg.role === "user" ? "You" : "CarabinerOS\u{1F990}"}
             </span>
 
             {/* Message bubble */}
@@ -36,8 +37,8 @@ export function MessageList({ messages }: MessageListProps) {
                 {msg.content}
               </div>
             ) : (
-              <div className="max-w-[85%] text-[15px] leading-relaxed text-neutral-800 whitespace-pre-wrap">
-                {msg.content}
+              <div className="max-w-[85%] text-[15px] leading-relaxed text-neutral-800 prose prose-neutral prose-sm prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5">
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
               </div>
             )}
           </div>
