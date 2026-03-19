@@ -1,14 +1,30 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 interface TopBarProps {
   unreadCount: number;
   onBellClick: () => void;
   locationName?: string;
 }
+
+const parentVariants = {
+  idle: {},
+  hovered: {},
+};
+
+const backCardVariants = {
+  idle: { rotate: 5, x: 0 },
+  hovered: { rotate: 8, x: 2 },
+};
+
+const frontCardVariants = {
+  idle: { rotate: -2, x: 0 },
+  hovered: { rotate: -6, x: -2 },
+};
+
+const cardTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
 export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen" }: TopBarProps) {
   return (
@@ -25,14 +41,28 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
           {locationName}
         </span>
 
-        {/* Notification bell */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative text-muted-foreground hover:text-foreground hover:bg-accent"
-          onClick={onBellClick}
-        >
-          <Bell className="size-5" />
+        {/* Card duo notification icon */}
+        <div className="relative w-8 h-[30px] cursor-pointer" onClick={onBellClick}>
+          <motion.div
+            initial="idle"
+            animate="idle"
+            whileHover="hovered"
+            variants={parentVariants}
+            className="relative w-full h-full"
+          >
+            {/* Back card */}
+            <motion.div
+              className="absolute w-[20px] h-[26px] rounded border-[1.8px] border-foreground/50 bg-card top-0 left-2 z-[1]"
+              variants={backCardVariants}
+              transition={cardTransition}
+            />
+            {/* Front card */}
+            <motion.div
+              className="absolute w-[20px] h-[26px] rounded border-[1.8px] border-foreground/50 bg-card top-[1px] left-[2px] z-[2]"
+              variants={frontCardVariants}
+              transition={cardTransition}
+            />
+          </motion.div>
           {unreadCount > 0 && (
             <Badge
               className="absolute -top-1 -right-1 h-[18px] min-w-[18px] px-1 text-[10px] font-semibold bg-primary text-primary-foreground border-none"
@@ -40,7 +70,7 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>
           )}
-        </Button>
+        </div>
       </div>
     </header>
   );
