@@ -10,9 +10,10 @@ interface ChatViewProps {
   expo: { text: string | null; active: boolean };
   onSend: (text: string) => void;
   loading: boolean;
+  queueCount?: number;
 }
 
-export function ChatView({ messages, expo, onSend, loading }: ChatViewProps) {
+export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: ChatViewProps) {
   return (
     <div className="flex flex-1 flex-col min-h-0">
       {/* Message list — fills available space */}
@@ -23,7 +24,7 @@ export function ChatView({ messages, expo, onSend, loading }: ChatViewProps) {
 
       {/* Composer — pinned to bottom */}
       <div className="border-t border-border">
-        <ChatComposer onSend={onSend} loading={loading} />
+        <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} />
       </div>
     </div>
   );

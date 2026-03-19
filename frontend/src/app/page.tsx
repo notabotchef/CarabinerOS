@@ -12,7 +12,7 @@ import { useState } from "react";
 
 export default function HomePage() {
   const { snapshot, chefStatus, subscribe } = useSocketContext();
-  const { messages, sendMessage, loading } = useChat(snapshot);
+  const { messages, sendMessage, loading, queuedMessages } = useChat(snapshot);
   const expo = useExpoStream(snapshot, chefStatus);
   const { cards, unreadCount } = useActionCards(snapshot);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -41,6 +41,7 @@ export default function HomePage() {
           expo={expo}
           onSend={handleSend}
           loading={loading}
+          queueCount={queuedMessages.length}
         />
       )}
 
