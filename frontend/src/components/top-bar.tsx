@@ -1,11 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { PanelLeftOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface TopBarProps {
   unreadCount: number;
   onBellClick: () => void;
+  onMenuClick?: () => void;
   locationName?: string;
 }
 
@@ -26,13 +28,23 @@ const frontCardVariants = {
 
 const cardTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
-export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen" }: TopBarProps) {
+export function TopBar({ unreadCount, onBellClick, onMenuClick, locationName = "Main Kitchen" }: TopBarProps) {
   return (
     <header className="flex items-center justify-between px-5 py-3 shrink-0 border-b border-border bg-card">
-      {/* Left: Brand */}
-      <span className="text-lg font-bold tracking-tight select-none text-primary">
-        CarabinerOS
-      </span>
+      {/* Left: Menu + Brand */}
+      <div className="flex items-center gap-3">
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <PanelLeftOpen className="size-4" />
+          </button>
+        )}
+        <span className="text-lg font-bold tracking-tight select-none text-primary">
+          CarabinerOS
+        </span>
+      </div>
 
       {/* Right side */}
       <div className="flex items-center gap-4">

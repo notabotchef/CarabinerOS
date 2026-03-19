@@ -8,9 +8,11 @@ import { TopBar } from "@/components/top-bar";
 import { NotificationPanel } from "@/components/notification-panel";
 import { ChatView } from "@/components/chat-view";
 import { HomeView } from "@/components/home-view";
+import { useShell } from "@/components/shell";
 import { useState } from "react";
 
 export default function HomePage() {
+  const { openSidebar } = useShell();
   const { snapshot, chefStatus, subscribe } = useSocketContext();
   const { messages, sendMessage, loading, queuedMessages } = useChat(snapshot);
   const expo = useExpoStream(snapshot, chefStatus);
@@ -29,6 +31,7 @@ export default function HomePage() {
       <TopBar
         unreadCount={unreadCount}
         onBellClick={() => setNotifOpen(true)}
+        onMenuClick={openSidebar}
       />
 
       {!chatStarted ? (
