@@ -13,9 +13,9 @@ import { NotificationPanel } from "@/components/notification-panel";
 export default function ChatPage() {
   const params = useParams();
   const contextId = params.contextId as string;
-  const { snapshot, subscribe } = useSocketContext();
+  const { snapshot, chefStatus, subscribe } = useSocketContext();
   const { messages, sendMessage, loading } = useChat(snapshot);
-  const expo = useExpoStream(snapshot);
+  const expo = useExpoStream(snapshot, chefStatus);
   const { cards, unreadCount } = useActionCards(snapshot);
   const [notifOpen, setNotifOpen] = useState(false);
 

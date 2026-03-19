@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { A0Snapshot, ChatMessage } from "@/lib/types";
-import { A0_URL } from "@/lib/socket-client";
+import { getCsrfToken } from "@/lib/csrf";
 
 interface UseChatReturn {
   messages: ChatMessage[];
@@ -67,20 +67,40 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
 
-    const res = await fetch(`${A0_URL}/message_async`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        text,
-        context: contextId || "",
-      }),
-    });
+    try {
+      const csrf = await getCsrfToken();
+      const res = await fetch("/message_async", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrf,
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          text,
+          context: contextId || "",
+        }),
+      });
 
-    const data = await res.json();
-    const newContextId = data.context || contextId;
-    if (newContextId) setContextId(newContextId);
-    return newContextId;
+      if (!res.ok) throw new Error(`Agent Zero returned ${res.status}`);
+
+      const data = await res.json();
+      const newContextId = data.context || contextId;
+      if (newContextId) setContextId(newContextId);
+      return newContextId || "";
+    } catch {
+      setLoading(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "Can't reach the kitchen right now. Make sure Agent Zero is running on port 5000.",
+          timestamp: Date.now() / 1000,
+        },
+      ]);
+      return contextId || "";
+    }
   }, [contextId]);
 
   return { messages, sendMessage, contextId, loading };
