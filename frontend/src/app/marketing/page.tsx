@@ -9,9 +9,10 @@ import {
   Mail,
   Music2,
   CalendarDays,
+  Sparkles,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -52,34 +53,87 @@ type Channel = (typeof CHANNELS)[number];
 
 const STAGE_STYLES: Record<
   Stage,
-  { dot: string; badge: string; bar: string }
+  { dot: string; badge: string; bar: string; glow: string }
 > = {
   Research: {
     dot: "bg-muted-foreground/50",
     badge: "bg-muted text-muted-foreground",
     bar: "bg-muted-foreground/30",
+    glow: "",
   },
   Drafting: {
     dot: "bg-amber-500",
-    badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    badge: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20",
     bar: "bg-amber-500/60",
+    glow: "shadow-amber-500/20",
   },
   Review: {
     dot: "bg-blue-500",
-    badge: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+    badge: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20",
     bar: "bg-blue-500/60",
+    glow: "shadow-blue-500/20",
   },
   Live: {
     dot: "bg-emerald-500",
-    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20",
     bar: "bg-emerald-500/60",
+    glow: "shadow-emerald-500/20",
   },
   Completed: {
     dot: "bg-muted-foreground/40",
     badge: "bg-muted text-muted-foreground",
     bar: "bg-muted-foreground/20",
+    glow: "",
   },
 };
+
+/* ------------------------------------------------------------------ */
+/*  Motion variants                                                    */
+/* ------------------------------------------------------------------ */
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+  },
+};
+
+const cardItem = {
+  hidden: { opacity: 0, y: 16, scale: 0.97 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
+  },
+  exit: { opacity: 0, y: -8, scale: 0.97, transition: { duration: 0.2 } },
+};
+
+const pipelineSegment = {
+  hidden: { scaleX: 0 },
+  visible: (i: number) => ({
+    scaleX: 1,
+    transition: {
+      delay: 0.2 + i * 0.1,
+      duration: 0.5,
+      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
+    },
+  }),
+};
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
 
 function channelIcon(channel: string) {
   switch (channel.toLowerCase()) {
@@ -102,10 +156,7 @@ function formatDate(v: unknown): string {
   if (!v || typeof v !== "string") return "\u2014";
   const d = new Date(v);
   if (isNaN(d.getTime())) return "\u2014";
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function normalizeStage(s: string): Stage {
@@ -122,36 +173,38 @@ function normalizeStage(s: string): Stage {
 function StagePipeline({ campaigns }: { campaigns: Campaign[] }) {
   const counts = useMemo(() => {
     const map: Record<Stage, number> = {
-      Research: 0,
-      Drafting: 0,
-      Review: 0,
-      Live: 0,
-      Completed: 0,
+      Research: 0, Drafting: 0, Review: 0, Live: 0, Completed: 0,
     };
-    campaigns.forEach((c) => {
-      const stage = normalizeStage(c.stage);
-      map[stage]++;
-    });
+    campaigns.forEach((c) => { map[normalizeStage(c.stage)]++; });
     return map;
   }, [campaigns]);
 
   const total = campaigns.length || 1;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-      <h2 className="text-sm font-medium text-muted-foreground">
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      animate="visible"
+      className="rounded-xl border border-border bg-card p-5 space-y-3"
+    >
+      <h2 className="text-sm font-medium text-muted-foreground tracking-wide uppercase">
         Campaign Pipeline
       </h2>
 
-      {/* Bar */}
-      <div className="flex h-2.5 w-full rounded-full overflow-hidden bg-muted gap-px">
-        {STAGES.map((stage) => {
+      {/* Animated bar */}
+      <div className="flex h-3 w-full rounded-full overflow-hidden bg-muted gap-px">
+        {STAGES.map((stage, i) => {
           const pct = (counts[stage] / total) * 100;
           if (pct === 0) return null;
           return (
-            <div
+            <motion.div
               key={stage}
-              className={`${STAGE_STYLES[stage].bar} transition-all duration-500`}
+              custom={i}
+              variants={pipelineSegment}
+              initial="hidden"
+              animate="visible"
+              className={`${STAGE_STYLES[stage].bar} origin-left`}
               style={{ width: `${pct}%`, minWidth: pct > 0 ? "4px" : 0 }}
             />
           );
@@ -172,7 +225,7 @@ function StagePipeline({ campaigns }: { campaigns: Campaign[] }) {
           </div>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -188,30 +241,37 @@ function ChannelFilters({
   onChange: (c: Channel) => void;
 }) {
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <motion.div
+      variants={fadeUp}
+      initial="hidden"
+      animate="visible"
+      className="flex items-center gap-2 flex-wrap"
+    >
       {CHANNELS.map((ch) => {
         const isActive = active === ch;
         const Icon = ch === "All" ? Megaphone : channelIcon(ch);
         return (
-          <button
+          <motion.button
             key={ch}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => onChange(ch)}
             className={`
-              inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium
-              transition-colors border
+              inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium
+              transition-colors border cursor-pointer
               ${
                 isActive
-                  ? "bg-primary text-primary-foreground border-transparent"
+                  ? "bg-primary text-primary-foreground border-transparent shadow-sm"
                   : "bg-card text-muted-foreground border-border hover:bg-muted hover:text-foreground"
               }
             `}
           >
             <Icon className="size-3.5" />
             {ch}
-          </button>
+          </motion.button>
         );
       })}
-    </div>
+    </motion.div>
   );
 }
 
@@ -225,10 +285,16 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
   const Icon = channelIcon(campaign.channel);
 
   return (
-    <div className="group bg-card border border-border rounded-xl p-5 space-y-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/20">
+    <motion.div
+      layout
+      variants={cardItem}
+      whileHover={{ y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      className="group bg-card border border-border rounded-xl p-5 space-y-3 cursor-default"
+    >
       {/* Top row: name + stage */}
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-semibold text-sm text-foreground leading-tight line-clamp-2">
+        <h3 className="font-bold text-sm text-foreground leading-tight line-clamp-2">
           {campaign.campaign_name}
         </h3>
         <span
@@ -239,10 +305,10 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
         </span>
       </div>
 
-      {/* Channel */}
+      {/* Channel pill */}
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Icon className="size-3.5" />
-        <span>{campaign.channel}</span>
+        <span className="font-medium">{campaign.channel}</span>
       </div>
 
       {/* Deliverable */}
@@ -257,8 +323,11 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
         <span className="text-[11px] text-muted-foreground tabular-nums">
           {formatDate(campaign.created_at)}
         </span>
+        <span className="text-[11px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+          View details
+        </span>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -268,9 +337,9 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
 
 function PipelineSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+    <div className="rounded-xl border border-border bg-card p-5 space-y-3 animate-pulse">
       <Skeleton className="h-4 w-32" />
-      <Skeleton className="h-2.5 w-full rounded-full" />
+      <Skeleton className="h-3 w-full rounded-full" />
       <div className="flex items-center justify-between">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center gap-1.5">
@@ -285,7 +354,7 @@ function PipelineSkeleton() {
 
 function CampaignCardSkeleton() {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+    <div className="bg-card border border-border rounded-xl p-5 space-y-3 animate-pulse">
       <div className="flex items-start justify-between">
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-5 w-16 rounded-full" />
@@ -323,15 +392,17 @@ export default function MarketingPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
         <div className="flex items-center gap-3">
-          <Megaphone className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center justify-center size-8 rounded-lg bg-gradient-to-br from-pink-500/20 to-violet-500/20">
+            <Megaphone className="h-4 w-4 text-pink-600 dark:text-pink-400" />
+          </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Marketing</h1>
+            <h1 className="text-lg font-bold text-foreground">Marketing</h1>
             <p className="text-sm text-muted-foreground">
-              Campaign management and content strategy
+              Campaign management &amp; content strategy
             </p>
           </div>
         </div>
-        <Button size="sm">
+        <Button size="sm" className="gap-1.5">
           <Plus className="size-4" />
           New Campaign
         </Button>
@@ -340,9 +411,13 @@ export default function MarketingPage() {
       <div className="flex-1 overflow-auto p-6 space-y-5">
         {/* Error banner */}
         {error && (
-          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground"
+          >
             No data available — API endpoint not connected yet
-          </div>
+          </motion.div>
         )}
 
         {/* Stage Pipeline */}
@@ -363,21 +438,43 @@ export default function MarketingPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Megaphone className="size-12 text-muted-foreground/30 mb-4" />
-            <h3 className="text-sm font-medium text-muted-foreground">
-              No campaigns
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="flex flex-col items-center justify-center py-20 text-center"
+          >
+            <div className="relative mb-6">
+              <div className="flex items-center justify-center size-16 rounded-2xl bg-gradient-to-br from-pink-500/10 to-violet-500/10">
+                <Sparkles className="size-7 text-pink-500/60" />
+              </div>
+              <motion.div
+                animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -inset-2 rounded-2xl bg-gradient-to-br from-pink-500/5 to-violet-500/5 -z-10"
+              />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground mb-1">
+              Your creative studio awaits
             </h3>
-            <p className="text-xs text-muted-foreground/60 mt-1 max-w-xs">
-              Ask CarabinerOS to brainstorm content ideas.
+            <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+              Ask CarabinerOS to brainstorm content ideas, plan a social campaign,
+              or draft your next email blast.
             </p>
-          </div>
+          </motion.div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((campaign) => (
-              <CampaignCard key={campaign.id} campaign={campaign} />
-            ))}
-          </div>
+          <AnimatePresence mode="popLayout">
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            >
+              {filtered.map((campaign) => (
+                <CampaignCard key={campaign.id} campaign={campaign} />
+              ))}
+            </motion.div>
+          </AnimatePresence>
         )}
       </div>
     </div>
