@@ -6,17 +6,9 @@ import { useExpoStream } from "@/hooks/use-expo-stream";
 import { useActionCards } from "@/hooks/use-action-cards";
 import { TopBar } from "@/components/top-bar";
 import { NotificationPanel } from "@/components/notification-panel";
-import { ChatComposer } from "@/components/chat-composer";
 import { ChatView } from "@/components/chat-view";
-import { SolitaireCards } from "@/components/solitaire-cards";
-import { useState, useEffect } from "react";
-
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning, Chef";
-  if (hour < 17) return "Good afternoon, Chef";
-  return "Good evening, Chef";
-}
+import { HomeView } from "@/components/home-view";
+import { useState } from "react";
 
 export default function HomePage() {
   const { snapshot, chefStatus, subscribe } = useSocketContext();
@@ -25,12 +17,7 @@ export default function HomePage() {
   const { cards, unreadCount } = useActionCards(snapshot);
   const [notifOpen, setNotifOpen] = useState(false);
   const [a0Open, setA0Open] = useState(false);
-  const [greeting, setGreeting] = useState("Welcome, Chef");
   const [chatStarted, setChatStarted] = useState(false);
-
-  useEffect(() => {
-    setGreeting(getGreeting());
-  }, []);
 
   const handleSend = async (text: string) => {
     if (!chatStarted) setChatStarted(true);
@@ -49,26 +36,7 @@ export default function HomePage() {
 
       {!chatStarted ? (
         /* HOME STATE */
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          flex: 1,
-          padding: "2rem",
-          background: "white",
-        }}>
-          <h1 style={{ fontSize: "1.875rem", fontWeight: 700, color: "#171717", marginBottom: "0.5rem" }}>
-            {greeting}
-          </h1>
-          <p style={{ fontSize: "0.875rem", color: "#a3a3a3", marginBottom: "2rem", textAlign: "center" }}>
-            3 orders pending · food cost at 28.4% · 142 covers projected
-          </p>
-          <div style={{ width: "100%", maxWidth: "500px" }}>
-            <ChatComposer onSend={handleSend} placeholder="Ask CarabinerOS anything…" />
-          </div>
-          <SolitaireCards />
-        </div>
+        <HomeView onSend={handleSend} />
       ) : (
         /* CHAT STATE */
         <ChatView
