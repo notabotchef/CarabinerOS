@@ -10,6 +10,7 @@ interface UseChatReturn {
   contextId: string | null;
   loading: boolean;
   queuedMessages: string[];
+  resetChat: () => void;
 }
 
 export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
@@ -148,5 +149,15 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     }
   }, [loading, doSend]);
 
-  return { messages, sendMessage, contextId, loading, queuedMessages };
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    setContextId(null);
+    contextIdRef.current = null;
+    setLoading(false);
+    setQueuedMessages([]);
+    isProcessingRef.current = false;
+    processedLogIds.current.clear();
+  }, []);
+
+  return { messages, sendMessage, contextId, loading, queuedMessages, resetChat };
 }
