@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChatMessage } from "@/lib/types";
@@ -8,6 +9,15 @@ import type { ChatMessage } from "@/lib/types";
 interface MessageListProps {
   messages: ChatMessage[];
 }
+
+const messageVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring" as const, stiffness: 300, damping: 30 },
+  },
+};
 
 export function MessageList({ messages }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -18,31 +28,42 @@ export function MessageList({ messages }: MessageListProps) {
 
   return (
     <ScrollArea className="flex-1 overflow-hidden">
-      <div className="mx-auto max-w-2xl px-4 py-6 space-y-6">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex flex-col ${
-              msg.role === "user" ? "items-end" : "items-start"
-            }`}
-          >
-            {/* Label */}
-            <span className="mb-1 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
-              {msg.role === "user" ? "You" : "CarabinerOS\u{1F990}"}
-            </span>
-
-            {/* Message bubble */}
-            {msg.role === "user" ? (
-              <div className="max-w-[80%] rounded-2xl rounded-br-md bg-neutral-100 px-4 py-2.5 text-sm leading-relaxed text-neutral-800">
-                {msg.content}
-              </div>
-            ) : (
-              <div className="max-w-[85%] text-[15px] leading-relaxed text-neutral-800 prose prose-neutral prose-sm prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5">
-                <ReactMarkdown>{msg.content}</ReactMarkdown>
-              </div>
-            )}
-          </div>
-        ))}
+      <div className="mx-auto max-w-2xl px-4 py-6 flex flex-col gap-6">
+        <AnimatePresence initial={false}>
+          {messages.map((msg) => (
+            <motion.div
+              key={msg.id}
+              variants={messageVariants}
+              initial="hidden"
+              animate="visible"
+              className={`flex flex-col ${
+                msg.role === "user" ? "items-end" : "items-start"
+              }`}
+            >
+              {msg.role === "user" ? (
+                <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm leading-relaxed">
+                  {msg.content}
+                </div>
+              ) : (
+                <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3">
+                  {/* Brand header */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex size-5 items-center justify-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">
+                      C
+                    </div>
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      CarabinerOS
+                    </span>
+                  </div>
+                  {/* Markdown content */}
+                  <div className="prose prose-sm max-w-none text-sm leading-relaxed text-foreground [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground [&_code]:text-primary [&_code]:bg-primary/10 [&_code]:px-1 [&_code]:rounded [&_pre]:bg-secondary [&_pre]:rounded-lg">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </AnimatePresence>
         <div ref={bottomRef} />
       </div>
     </ScrollArea>
