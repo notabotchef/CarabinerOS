@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const A0_URL = process.env.A0_URL || "http://localhost:5000";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: __dirname,
+  },
   async rewrites() {
     return [
       { source: "/csrf_token", destination: `${A0_URL}/csrf_token` },
