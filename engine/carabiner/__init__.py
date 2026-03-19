@@ -1,1 +1,0 @@
-"""CarabinerOS — Restaurant operations platform."""

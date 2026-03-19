@@ -1,5 +1,0 @@
-{
-  "title": "General Manager",
-  "description": "Primary restaurant operations agent. Receives all requests and delegates to specialist subordinates.",
-  "context": "Delegates purchasing/inventory to AGM, food cost/menu to Executive Chef, prep to Sous Chef, marketing to Marketing Manager."
-}
