@@ -16,7 +16,6 @@ export default function HomePage() {
   const expo = useExpoStream(snapshot, chefStatus);
   const { cards, unreadCount } = useActionCards(snapshot);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [a0Open, setA0Open] = useState(false);
   const [chatStarted, setChatStarted] = useState(false);
 
   const handleSend = async (text: string) => {
@@ -30,8 +29,6 @@ export default function HomePage() {
       <TopBar
         unreadCount={unreadCount}
         onBellClick={() => setNotifOpen(true)}
-        onA0Click={() => setA0Open(!a0Open)}
-        a0Open={a0Open}
       />
 
       {!chatStarted ? (
@@ -45,28 +42,6 @@ export default function HomePage() {
           onSend={handleSend}
           loading={loading}
         />
-      )}
-
-      {/* Agent Zero native UI panel */}
-      {a0Open && (
-        <div className="fixed top-0 right-0 w-[50vw] h-dvh z-50 flex flex-col shadow-[-4px_0_24px_rgba(0,0,0,0.3)]">
-          <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
-            <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-              Agent Zero — Back of House
-            </span>
-            <button
-              onClick={() => setA0Open(false)}
-              className="text-muted-foreground hover:text-foreground bg-transparent border-none cursor-pointer text-xl leading-none"
-            >
-              ✕
-            </button>
-          </div>
-          <iframe
-            src="/a0/"
-            className="flex-1 w-full border-none bg-background"
-            title="Agent Zero UI"
-          />
-        </div>
       )}
 
       <NotificationPanel open={notifOpen} onOpenChange={setNotifOpen} cards={cards} />
