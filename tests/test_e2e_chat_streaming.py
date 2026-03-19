@@ -60,22 +60,32 @@ class TestChatStreaming:
                     response_received["value"] = True
                     response_received["content"] = log["content"]
 
-        # Try websocket first (requires websocket-client), fall back to polling.
-        # Pass session cookies so Flask CSRF validation succeeds.
+        # Pass session cookies via both Cookie header and eio.http so Flask
+        # CSRF validation succeeds during the Socket.IO namespace connect.
+        cookie_str = "; ".join(f"{k}={v}" for k, v in cookies.items())
+        # Also need the csrf_token cookie that the browser would normally set
+        csrf_cookie = f"csrf_token_{csrf_data.get('runtime_id', '')}={token}"
+        full_cookie = f"{cookie_str}; {csrf_cookie}" if cookie_str else csrf_cookie
+
         http_session = requests.Session()
         http_session.cookies.update(cookies)
-        sio.http_session = http_session
+        http_session.cookies.set(
+            f"csrf_token_{csrf_data.get('runtime_id', '')}", token
+        )
+        sio.eio.http = http_session
+        sio.eio.external_http = True  # prevent cleanup of our session
         try:
             sio.connect(
                 f"{PROXY_URL}",
                 namespaces=["/state_sync"],
                 auth={"csrf_token": token},
-                headers={"Origin": PROXY_URL},
+                headers={"Origin": PROXY_URL, "Cookie": full_cookie},
+                transports=["polling"],
                 wait_timeout=5,
             )
         except Exception as exc:
             pytest.skip(
-                f"Socket.IO connect failed (websocket-client may not be installed): {exc}"
+                f"Socket.IO connect to /state_sync failed: {exc}"
             )
 
         # Step 3: Subscribe to state updates
