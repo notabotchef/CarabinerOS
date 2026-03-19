@@ -271,7 +271,10 @@ export function HomeView({ onSend }: HomeViewProps) {
     setGreeting(getGreeting());
   }, []);
 
-  const timeContext = useMemo(() => getTimeContext(), []);
+  const [timeContext, setTimeContext] = useState("");
+  useEffect(() => {
+    setTimeContext(getTimeContext());
+  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 w-full max-w-xl mx-auto px-4">
@@ -297,7 +300,7 @@ export function HomeView({ onSend }: HomeViewProps) {
         transition={{ delay: 0.15, type: "spring", stiffness: 200, damping: 25 }}
         className="w-full max-w-[500px]"
       >
-        <ChatComposer onSend={onSend} placeholder="Ask CarabinerOS anything\u2026" />
+        <ChatComposer onSend={onSend} showSuggestions />
       </motion.div>
 
       {/* Daily Briefing (now below composer) */}
