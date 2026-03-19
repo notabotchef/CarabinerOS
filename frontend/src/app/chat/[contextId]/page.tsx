@@ -15,7 +15,7 @@ export default function ChatPage() {
   const contextId = params.contextId as string;
   const { snapshot, subscribe } = useSocketContext();
   const { messages, sendMessage, loading } = useChat(snapshot);
-  const expo = useExpoStream(snapshot);
+  const expo = useExpoStream(snapshot, null);
   const { cards, unreadCount } = useActionCards(snapshot);
   const [notifOpen, setNotifOpen] = useState(false);
 

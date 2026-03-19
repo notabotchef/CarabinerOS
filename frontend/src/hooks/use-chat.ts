@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { A0Snapshot, ChatMessage } from "@/lib/types";
-import { A0_URL } from "@/lib/socket-client";
+
+const A0_URL = process.env.NEXT_PUBLIC_A0_URL || "";
 
 interface UseChatReturn {
   messages: ChatMessage[];
