@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, type KeyboardEvent } from "react";
+import { motion } from "framer-motion";
 import { ArrowUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface ChatComposerProps {
   onSend: (text: string) => void;
@@ -42,28 +42,31 @@ export function ChatComposer({
           placeholder={placeholder}
           disabled={loading}
           className="
-            w-full rounded-xl border border-neutral-200 bg-white
-            px-4 py-2.5 pr-12 text-sm text-neutral-900
-            placeholder:text-neutral-400
-            outline-none transition-colors
-            focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20
+            w-full rounded-2xl border border-border bg-card
+            px-4 py-2.5 pr-12 text-sm text-foreground
+            placeholder:text-muted-foreground/50
+            outline-none transition-all
+            focus:border-primary/40 focus:ring-2 focus:ring-primary/20
+            focus:shadow-[0_0_12px_rgba(var(--primary),0.08)]
             disabled:opacity-50 disabled:cursor-not-allowed
           "
         />
-        <Button
-          size="icon"
+        <motion.button
           onClick={handleSubmit}
           disabled={!value.trim() || loading}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           className="
             absolute right-1.5 top-1/2 -translate-y-1/2
-            size-7 rounded-lg
-            bg-neutral-900 text-white
-            hover:bg-neutral-700
-            disabled:opacity-30 disabled:bg-neutral-900
+            size-7 rounded-lg flex items-center justify-center
+            bg-primary text-primary-foreground
+            hover:opacity-90
+            disabled:opacity-30
+            transition-opacity
           "
         >
           <ArrowUp className="size-4" />
-        </Button>
+        </motion.button>
       </div>
     </div>
   );

@@ -22,7 +22,7 @@ export function ChatView({ messages, expo, onSend, loading }: ChatViewProps) {
       <ExpoBar text={expo.text} active={expo.active} />
 
       {/* Composer — pinned to bottom */}
-      <div className="border-t border-neutral-100">
+      <div className="border-t border-border">
         <ChatComposer onSend={onSend} loading={loading} />
       </div>
     </div>
