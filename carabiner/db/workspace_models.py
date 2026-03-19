@@ -1,0 +1,351 @@
+"""Workspace-oriented models for the CarabinerOS frontend.
+
+These tables serve the UI directly with summary/detail_points/prompt fields.
+The operational tables in models.py handle the deeper accounting logic (Phase 5).
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Optional, List
+
+import sqlalchemy as sa
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from carabiner.db.base import Base, TimestampMixin
+
+
+# ---------------------------------------------------------------------------
+# Organization (multi-tenant root)
+# ---------------------------------------------------------------------------
+
+class Organization(TimestampMixin, Base):
+    __tablename__ = "organizations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+
+
+# ---------------------------------------------------------------------------
+# Workspace Location (enriched with UI fields)
+# ---------------------------------------------------------------------------
+
+class WorkspaceLocation(TimestampMixin, Base):
+    __tablename__ = "workspace_locations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    city: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="Stable")
+    sales_delta: Mapped[Optional[str]] = mapped_column(String(20))
+    labor_delta: Mapped[Optional[str]] = mapped_column(String(20))
+
+
+# ---------------------------------------------------------------------------
+# Inbox Items
+# ---------------------------------------------------------------------------
+
+class InboxItem(TimestampMixin, Base):
+    __tablename__ = "inbox_items"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    priority: Mapped[str] = mapped_column(String(20), nullable=False, default="medium")
+    owner: Mapped[Optional[str]] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(100), nullable=False, default="Open")
+    module: Mapped[str] = mapped_column(String(50), nullable=False, default="inbox")
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
+    prompt: Mapped[Optional[str]] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
+# Workspace Orders
+# ---------------------------------------------------------------------------
+
+class WorkspaceOrder(TimestampMixin, Base):
+    __tablename__ = "workspace_orders"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    vendor: Mapped[str] = mapped_column(String(200), nullable=False)
+    channel: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="Drafting")
+    total: Mapped[str] = mapped_column(String(50), nullable=False)
+    eta: Mapped[Optional[str]] = mapped_column(String(100))
+    line_items: Mapped[Optional[dict]] = mapped_column(JSONB, default=list)
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
+    prompt: Mapped[Optional[str]] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
+# Workspace Inventory
+# ---------------------------------------------------------------------------
+
+class WorkspaceInventory(TimestampMixin, Base):
+    __tablename__ = "workspace_inventory"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    item_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    on_hand: Mapped[str] = mapped_column(String(50), nullable=False)
+    par: Mapped[str] = mapped_column(String(50), nullable=False)
+    variance: Mapped[str] = mapped_column(String(20), nullable=False)
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
+    prompt: Mapped[Optional[str]] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
+# Workspace Prep Tasks
+# ---------------------------------------------------------------------------
+
+class WorkspacePrep(TimestampMixin, Base):
+    __tablename__ = "workspace_prep"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    service_lane: Mapped[str] = mapped_column(String(50), nullable=False)
+    task: Mapped[str] = mapped_column(String(200), nullable=False)
+    station: Mapped[str] = mapped_column(String(100), nullable=False)
+    readiness: Mapped[str] = mapped_column(String(50), nullable=False, default="Ready")
+    shortage: Mapped[Optional[str]] = mapped_column(String(200))
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
+    prompt: Mapped[Optional[str]] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
+# Workspace Food Cost
+# ---------------------------------------------------------------------------
+
+class WorkspaceFoodCost(TimestampMixin, Base):
+    __tablename__ = "workspace_food_cost"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    menu_item_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    pressure: Mapped[str] = mapped_column(String(30), nullable=False)
+    current_cost_pct: Mapped[str] = mapped_column(String(20), nullable=False)
+    action: Mapped[str] = mapped_column(String(200), nullable=False)
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
+    prompt: Mapped[Optional[str]] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
+# Workspace Menu
+# ---------------------------------------------------------------------------
+
+class WorkspaceMenu(TimestampMixin, Base):
+    __tablename__ = "workspace_menu"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    item_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    category: Mapped[str] = mapped_column(String(100), nullable=False)
+    performance: Mapped[str] = mapped_column(String(50), nullable=False)
+    margin_pct: Mapped[str] = mapped_column(String(20), nullable=False)
+    recommendation: Mapped[str] = mapped_column(String(200), nullable=False)
+    recipe: Mapped[Optional[dict]] = mapped_column(JSONB)
+    recipe_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_recipes.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
+    prompt: Mapped[Optional[str]] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
+# Workspace Campaigns (Marketing)
+# ---------------------------------------------------------------------------
+
+class WorkspaceCampaign(TimestampMixin, Base):
+    __tablename__ = "workspace_campaigns"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    campaign_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    channel: Mapped[str] = mapped_column(String(100), nullable=False)
+    stage: Mapped[str] = mapped_column(String(50), nullable=False, default="Drafting")
+    deliverable: Mapped[str] = mapped_column(String(200), nullable=False)
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
+    prompt: Mapped[Optional[str]] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
+# Workspace Invoices
+# ---------------------------------------------------------------------------
+
+class WorkspaceInvoice(TimestampMixin, Base):
+    __tablename__ = "workspace_invoices"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    vendor_name: Mapped[Optional[str]] = mapped_column(String(200))
+    invoice_number: Mapped[Optional[str]] = mapped_column(String(100))
+    invoice_date: Mapped[Optional[str]] = mapped_column(String(50))
+    due_date: Mapped[Optional[str]] = mapped_column(String(50))
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="uploaded")
+    file_path: Mapped[Optional[str]] = mapped_column(String(500))
+    file_mime: Mapped[Optional[str]] = mapped_column(String(100))
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="upload")
+    subtotal: Mapped[Optional[str]] = mapped_column(String(50))
+    tax: Mapped[Optional[str]] = mapped_column(String(50))
+    total: Mapped[Optional[str]] = mapped_column(String(50))
+    line_items: Mapped[Optional[dict]] = mapped_column(JSONB, default=list)
+    gl_codes: Mapped[Optional[dict]] = mapped_column(JSONB, default=dict)
+    extracted_data: Mapped[Optional[dict]] = mapped_column(JSONB, default=dict)
+    summary: Mapped[Optional[str]] = mapped_column(Text)
+    detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
+    prompt: Mapped[Optional[str]] = mapped_column(Text)
+
+
+# ---------------------------------------------------------------------------
+# Workspace Recipes (Modernist Cuisine format)
+# ---------------------------------------------------------------------------
+
+class WorkspaceRecipe(TimestampMixin, Base):
+    __tablename__ = "workspace_recipes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    category: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="draft")
+    yield_quantity: Mapped[Optional[float]] = mapped_column(sa.Numeric(12, 4))
+    yield_unit: Mapped[Optional[str]] = mapped_column(String(50))
+    total_weight_g: Mapped[Optional[float]] = mapped_column(sa.Numeric(12, 2))
+    total_cost: Mapped[Optional[float]] = mapped_column(sa.Numeric(12, 2))
+    cost_per_serving: Mapped[Optional[float]] = mapped_column(sa.Numeric(12, 2))
+    image_url: Mapped[Optional[str]] = mapped_column(String(500))
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="manual")
+    equipment: Mapped[Optional[list]] = mapped_column(JSONB, default=list)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    tags: Mapped[Optional[list]] = mapped_column(JSONB, default=list)
+
+    components: Mapped[list["RecipeComponent"]] = relationship(
+        back_populates="recipe", cascade="all, delete-orphan",
+        order_by="RecipeComponent.sort_order",
+    )
+
+
+class RecipeComponent(TimestampMixin, Base):
+    __tablename__ = "recipe_components"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_recipes.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    sort_order: Mapped[int] = mapped_column(sa.Integer, default=0)
+    yield_quantity: Mapped[Optional[float]] = mapped_column(sa.Numeric(12, 4))
+    yield_unit: Mapped[Optional[str]] = mapped_column(String(50))
+
+    recipe: Mapped[WorkspaceRecipe] = relationship(back_populates="components")
+    ingredients: Mapped[list["RecipeComponentIngredient"]] = relationship(
+        back_populates="component", cascade="all, delete-orphan",
+        order_by="RecipeComponentIngredient.sort_order",
+    )
+    steps: Mapped[list["RecipeStep"]] = relationship(
+        back_populates="component", cascade="all, delete-orphan",
+        order_by="RecipeStep.step_number",
+    )
+
+
+class RecipeComponentIngredient(TimestampMixin, Base):
+    __tablename__ = "recipe_component_ingredients"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    component_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe_components.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    item_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id"))
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    weight_g: Mapped[float] = mapped_column(sa.Numeric(12, 4), nullable=False)
+    percentage: Mapped[Optional[float]] = mapped_column(sa.Numeric(8, 2))
+    unit_display: Mapped[str] = mapped_column(String(20), default="g")
+    sort_order: Mapped[int] = mapped_column(sa.Integer, default=0)
+    notes: Mapped[Optional[str]] = mapped_column(String(300))
+
+    component: Mapped[RecipeComponent] = relationship(back_populates="ingredients")
+
+
+class RecipeStep(TimestampMixin, Base):
+    __tablename__ = "recipe_steps"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    component_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe_components.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    step_number: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    instruction: Mapped[str] = mapped_column(Text, nullable=False)
+    temperature: Mapped[Optional[str]] = mapped_column(String(50))
+    duration: Mapped[Optional[str]] = mapped_column(String(50))
+    technique: Mapped[Optional[str]] = mapped_column(String(100))
+
+    component: Mapped[RecipeComponent] = relationship(back_populates="steps")
+
+
+# ---------------------------------------------------------------------------
+# Action Log
+# ---------------------------------------------------------------------------
+
+class ActionLog(TimestampMixin, Base):
+    __tablename__ = "action_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="SET NULL"),
+    )
+    location_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="SET NULL"),
+    )
+    provider_id: Mapped[Optional[str]] = mapped_column(String(100))
+    action_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
+    agent_context_id: Mapped[Optional[str]] = mapped_column(String(200))
+    extra: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, default=dict)
