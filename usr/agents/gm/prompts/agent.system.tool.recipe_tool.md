@@ -99,3 +99,11 @@ Use `recipe_tool` when the user:
 - `draft` — Created but not yet finalized, can be freely edited
 - `active` — Finalized and in use, shown to kitchen staff
 - `archived` — No longer in active use, kept for reference
+
+## Write Operations (via MCP)
+The `recipe_tool` above already supports full CRUD (create, update, activate, archive, delete). For direct database-level operations that bypass the LLM generation step, you can also use the carabiner-db MCP tools:
+- `carabiner-db.recipe_create` — Create a recipe record directly with structured data
+- `carabiner-db.recipe_update` — Update recipe fields at the database level
+- `carabiner-db.recipe_delete` — Delete a recipe record
+
+Prefer `recipe_tool` for natural language recipe creation (it uses the LLM to generate the full Modernist Cuisine structure). Use the MCP tools for bulk imports or programmatic updates.

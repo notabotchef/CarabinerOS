@@ -37,3 +37,11 @@ Returns: Confirmation of update.
 - Always specify location_id when listing to get location-specific results
 - Status values: "Drafting", "Ready to send", "Awaiting approval", "Sent"
 - Channel indicates how the order is submitted: "API", "Email", "Browser fallback"
+
+## Write Operations (via MCP)
+To create new orders or delete existing ones, use the carabiner-db MCP tools:
+- `carabiner-db.order_create` — Create a new purchase order
+- `carabiner-db.order_update` — Update order fields (also available via the `order_tool` **update** method above)
+- `carabiner-db.order_delete` — Delete a draft order
+
+Note: The `order_tool` **update** method can update an existing order's status and fields, but use `carabiner-db.order_create` for creating brand-new orders. The `order_tool` cannot create orders on its own.
