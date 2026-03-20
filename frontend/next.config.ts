@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
       { source: "/chats", destination: `${A0_URL}/chats` },
       { source: "/chat_load", destination: `${A0_URL}/chat_load` },
       { source: "/chat_create", destination: `${A0_URL}/chat_create` },
+      { source: "/chat_remove", destination: `${A0_URL}/chat_remove` },
     ];
   },
 };

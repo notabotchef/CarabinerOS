@@ -15,7 +15,7 @@ interface AppSidebarProps {
   hidden: boolean;
 }
 
-function ChatItem({ chat, isActive, snapshot, onDeleted }: { chat: A0Context; isActive: boolean; snapshot: { context?: string } | null; onDeleted: () => void }) {
+function ChatItem({ chat, isActive, snapshot, onDeleted }: { chat: A0Context; isActive: boolean; snapshot: { context?: string } | null; onDeleted: (success: boolean) => void }) {
   const [deleteStage, setDeleteStage] = useState<0 | 1 | 2>(0);
   // 0 = normal, 1 = "Delete?" confirmation shown, 2 = deleting
 
@@ -36,16 +36,19 @@ function ChatItem({ chat, isActive, snapshot, onDeleted }: { chat: A0Context; is
         // Agent Zero's chat remove endpoint
         const { getCsrfToken } = await import("@/lib/csrf");
         const csrf = await getCsrfToken();
-        await fetch("/chat_remove", {
+        const res = await fetch("/chat_remove", {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
           credentials: "include",
           body: JSON.stringify({ context: chat.id }),
         });
-        // Navigate home if this was the active chat
-        if (isActive) onDeleted();
+        if (!res.ok) throw new Error(`chat_remove failed: ${res.status}`);
+        // Always notify parent — it handles navigation + context switch
+        onDeleted(true);
       } catch {
-        // Silently fail — the chat will reappear on next snapshot if delete failed
+        // Reset UI state so the item reappears
+        setDeleteStage(0);
+        onDeleted(false);
       }
     }
   };
@@ -127,7 +130,7 @@ function ChatItem({ chat, isActive, snapshot, onDeleted }: { chat: A0Context; is
 export function AppSidebar({ hidden }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { snapshot } = useSocketContext();
+  const { snapshot, subscribe } = useSocketContext();
   const { requestNewChat } = useShell();
 
   const chats: A0Context[] = snapshot?.contexts ?? [];
@@ -206,13 +209,19 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
                       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <ChatItem chat={chat} isActive={isActive} snapshot={snapshot} onDeleted={() => {
-                        // Navigate to next chat in list, or home if none left
+                      <ChatItem chat={chat} isActive={isActive} snapshot={snapshot} onDeleted={(success) => {
+                        if (!success) return;
+                        // Calculate next chat from the list (excluding the deleted one)
                         const idx = chats.findIndex(c => c.id === chat.id);
-                        const next = chats[idx + 1] ?? chats[idx - 1];
+                        const remaining = chats.filter(c => c.id !== chat.id);
+                        const next = remaining[Math.min(idx, remaining.length - 1)];
                         if (next) {
+                          // Subscribe to the next chat's context so A0 sends updated state
+                          subscribe(next.id);
                           router.push(`/chat/${next.id}`);
                         } else {
+                          // No chats left — unsubscribe and go home
+                          subscribe(null);
                           router.push("/");
                         }
                       }} />
