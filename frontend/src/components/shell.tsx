@@ -41,7 +41,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {sidebarHidden && (
           <button
             onClick={openSidebar}
-            className="fixed top-3.5 left-3 z-40 flex size-8 items-center justify-center rounded-lg bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-accent shadow-sm transition-colors"
+            className="fixed top-[14px] left-3 z-40 flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
             title="Open menu"
           >
             <PanelLeftOpen className="size-4" />

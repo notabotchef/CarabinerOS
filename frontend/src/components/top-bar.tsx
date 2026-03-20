@@ -30,7 +30,7 @@ const cardTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
 export function TopBar({ unreadCount, onBellClick, onMenuClick, locationName = "Main Kitchen" }: TopBarProps) {
   return (
-    <header className="flex items-center justify-between px-5 py-3 shrink-0 border-b border-border bg-card">
+    <header className="flex items-center justify-between pl-14 pr-5 py-3 shrink-0 border-b border-border bg-card">
       {/* Left: Menu + Brand */}
       <div className="flex items-center gap-3">
         {onMenuClick && (
