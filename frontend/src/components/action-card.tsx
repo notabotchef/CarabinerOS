@@ -11,15 +11,15 @@ interface ActionCardProps {
 function getTypeColor(type: string): string {
   const t = type.toLowerCase();
   if (t.includes("alert") || t.includes("warn") || t.includes("approve")) {
-    return "text-amber-600 bg-amber-50";
+    return "text-amber-500 bg-amber-500/10";
   }
   if (t.includes("order") || t.includes("create") || t.includes("update")) {
-    return "text-blue-600 bg-blue-50";
+    return "text-blue-400 bg-blue-400/10";
   }
   if (t.includes("complete") || t.includes("done") || t.includes("success")) {
-    return "text-emerald-600 bg-emerald-50";
+    return "text-emerald-400 bg-emerald-400/10";
   }
-  return "text-neutral-600 bg-neutral-50";
+  return "text-muted-foreground bg-muted";
 }
 
 function relativeTime(timestamp: number): string {
@@ -35,7 +35,7 @@ export function ActionCard({ card, onAction }: ActionCardProps) {
   const typeColor = getTypeColor(card.type);
 
   return (
-    <div className="rounded-lg border border-neutral-150 bg-white p-4 transition-shadow hover:shadow-sm">
+    <div className="rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-sm">
       {/* Header row */}
       <div className="flex items-center justify-between mb-2">
         <span
@@ -43,13 +43,13 @@ export function ActionCard({ card, onAction }: ActionCardProps) {
         >
           {card.type}
         </span>
-        <span className="text-[11px] text-neutral-400">
+        <span className="text-[11px] text-muted-foreground">
           {relativeTime(card.timestamp)}
         </span>
       </div>
 
       {/* Summary */}
-      <p className="text-sm leading-relaxed text-neutral-700 mb-3">
+      <p className="text-sm leading-relaxed text-foreground/80 mb-3">
         {card.summary}
       </p>
 
@@ -58,7 +58,7 @@ export function ActionCard({ card, onAction }: ActionCardProps) {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            className="bg-neutral-900 text-white hover:bg-neutral-700 text-xs"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
             onClick={() => onAction("primary")}
           >
             View

@@ -231,12 +231,13 @@ export function ChatComposer({
             onBlur={() => setIsFocused(false)}
             placeholder={loading ? "Type your next message\u2026" : (showSuggestions ? "" : (placeholder ?? "Ask CarabinerOS anything\u2026"))}
             className="
-              w-full rounded-2xl border border-border bg-card
-              px-4 py-2.5 pr-12 text-sm text-foreground
-              placeholder:text-muted-foreground/50
-              outline-none transition-all
-              focus:border-primary/40 focus:ring-2 focus:ring-primary/20
-              focus:shadow-[0_0_12px_rgba(var(--primary),0.08)]
+              w-full rounded-2xl border border-border bg-card/80 glass-subtle
+              px-4 py-3 pr-12 text-sm text-foreground
+              placeholder:text-muted-foreground/40
+              outline-none transition-all duration-200
+              focus:border-primary/50 focus:ring-2 focus:ring-primary/25
+              focus:shadow-[0_0_20px_oklch(0.78_0.12_65_/_0.12)]
+              hover:border-primary/25
             "
           />
           <motion.button
@@ -246,11 +247,11 @@ export function ChatComposer({
             whileTap={{ scale: 0.95 }}
             className="
               absolute right-1.5 top-1/2 -translate-y-1/2
-              size-7 rounded-lg flex items-center justify-center
-              bg-primary text-primary-foreground
-              hover:opacity-90
-              disabled:opacity-30
-              transition-opacity
+              size-8 rounded-xl flex items-center justify-center
+              bg-gradient-to-br from-primary to-primary/80 text-primary-foreground
+              hover:shadow-[0_0_12px_oklch(0.78_0.12_65_/_0.3)]
+              disabled:opacity-20 disabled:shadow-none
+              transition-all duration-200
             "
           >
             <ArrowUp className="size-4" />

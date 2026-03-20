@@ -153,7 +153,7 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
       )}
       <nav
         className={cn(
-          "flex flex-col shrink-0 border-r border-sidebar-border bg-sidebar h-dvh transition-all duration-200 overflow-hidden relative z-50",
+          "flex flex-col shrink-0 border-r border-sidebar-border bg-sidebar/90 glass-subtle h-dvh transition-all duration-200 overflow-hidden relative z-50",
           hidden ? "w-0 border-r-0" : "w-60"
         )}
       >
@@ -169,14 +169,19 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
               key={mod.id}
               href={mod.href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 border-l-2 border-transparent"
               )}
               title={mod.label}
             >
-              <mod.icon className="size-4 shrink-0" />
+              <div className={cn(
+                "flex size-6 items-center justify-center rounded-md transition-colors",
+                isActive ? "bg-primary/15" : "bg-muted/50"
+              )}>
+                <mod.icon className={cn("size-3.5 shrink-0", isActive ? "text-primary" : "")} />
+              </div>
               <span className="truncate">{mod.label}</span>
             </Link>
           );

@@ -21,9 +21,9 @@ export function NotificationPanel({ open, onOpenChange, cards }: NotificationPan
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[380px] sm:max-w-[380px] p-0">
-        <SheetHeader className="border-b border-neutral-100 px-5 py-4">
+        <SheetHeader className="border-b border-border px-5 py-4">
           <SheetTitle className="text-base font-semibold">Action Cards</SheetTitle>
-          <SheetDescription className="text-xs text-neutral-400">
+          <SheetDescription className="text-xs text-muted-foreground">
             {cards.length === 0
               ? "No notifications right now"
               : `${cards.filter((c) => !c.read).length} unread`}
@@ -33,7 +33,7 @@ export function NotificationPanel({ open, onOpenChange, cards }: NotificationPan
         <ScrollArea className="h-[calc(100vh-80px)]">
           <div className="p-4 space-y-3">
             {cards.length === 0 ? (
-              <p className="py-12 text-center text-sm text-neutral-400">
+              <p className="py-12 text-center text-sm text-muted-foreground">
                 All clear. Nothing to review.
               </p>
             ) : (

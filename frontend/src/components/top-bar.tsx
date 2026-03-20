@@ -30,15 +30,15 @@ const cardTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
 export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen" }: TopBarProps) {
   return (
-    <header className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-border bg-card">
+    <header className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-border bg-card/80 glass-subtle">
       {/* Left: Hamburger + Brand */}
       <div className="flex items-center gap-3">
         <MenuButton />
         <div className="flex items-center gap-2.5 select-none">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-[10px] font-black tracking-tight leading-none">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground text-[10px] font-black tracking-tight leading-none shadow-sm">
             cOS
           </div>
-          <span className="text-lg font-bold tracking-tight text-primary">
+          <span className="text-lg font-bold tracking-tight gradient-text-warm">
             CarabinerOS
           </span>
         </div>

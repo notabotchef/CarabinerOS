@@ -146,7 +146,7 @@ function DailyBriefing() {
       initial={mounted ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 25 }}
-      className="w-full max-w-[500px] mb-6 rounded-xl border border-primary/15 bg-primary/5 relative overflow-hidden"
+      className="w-full max-w-[500px] mb-6 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/8 to-primary/3 relative overflow-hidden warm-glow"
     >
       {/* Shimmer bar */}
       <div
@@ -301,10 +301,10 @@ export function HomeView({ onSend }: HomeViewProps) {
         transition={{ type: "spring", stiffness: 200, damping: 25 }}
         className="text-center mb-6"
       >
-        <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">
+        <h1 className="text-3xl font-bold tracking-tight gradient-text-warm mb-1">
           {greeting}
         </h1>
-        <p className="text-sm text-muted-foreground leading-relaxed">
+        <p className="text-sm text-muted-foreground/80 leading-relaxed">
           {timeContext}
         </p>
       </motion.div>

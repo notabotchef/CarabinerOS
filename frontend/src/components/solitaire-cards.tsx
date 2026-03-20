@@ -17,6 +17,8 @@ interface KpiCard {
   icon: LucideIcon;
   barWidth: string;
   details: { label: string; value: string }[];
+  accentColor: string;
+  barColor: string;
 }
 
 function useSummary(endpoint: string) {
@@ -60,6 +62,8 @@ export function SolitaireCards() {
         subtitle: orderSubtitle,
         icon: ShoppingCart,
         barWidth: orders.length > 0 ? `w-[${Math.round((pendingOrders / Math.max(orders.length, 1)) * 100)}%]` : "w-0",
+        accentColor: "text-blue-400",
+        barColor: "bg-blue-400/40",
         details: [
           { label: "Total orders", value: String(orders.length) },
           { label: "Needs approval", value: String(pendingOrders) },
@@ -73,6 +77,8 @@ export function SolitaireCards() {
         subtitle: highPressure > 0 ? `${highPressure} high pressure` : "on target",
         icon: DollarSign,
         barWidth: avgCost > 0 ? `w-[${Math.min(Math.round(avgCost * 2.5), 100)}%]` : "w-0",
+        accentColor: "text-amber-400",
+        barColor: "bg-amber-400/40",
         details: [
           { label: "Avg cost %", value: avgCost > 0 ? `${avgCost.toFixed(1)}%` : "—" },
           { label: "Items tracked", value: String(foodCost.length) },
@@ -86,6 +92,8 @@ export function SolitaireCards() {
         subtitle: remaining > 0 ? `${remaining} remaining` : "all ready",
         icon: ChefHat,
         barWidth: total > 0 ? `w-[${Math.round((ready / total) * 100)}%]` : "w-0",
+        accentColor: "text-emerald-400",
+        barColor: "bg-emerald-400/40",
         details: [
           { label: "Ready", value: String(ready) },
           { label: "In progress", value: String(prep.filter((p) => String(p.readiness).toLowerCase() === "in progress").length) },
@@ -99,6 +107,8 @@ export function SolitaireCards() {
         subtitle: "proj. 185",
         icon: UtensilsCrossed,
         barWidth: "w-[77%]",
+        accentColor: "text-violet-400",
+        barColor: "bg-violet-400/40",
         details: [
           { label: "Seated now", value: "142" },
           { label: "Projected", value: "185" },
@@ -137,12 +147,12 @@ export function SolitaireCards() {
             variants={cardVariants}
             whileHover={!isOpen ? { y: -4, scale: 1.02, transition: { type: "spring" as const, stiffness: 400, damping: 25 } } : {}}
             onClick={() => setExpandedIndex(isOpen ? null : i)}
-            className="relative overflow-hidden bg-card border border-border rounded-2xl p-5 text-center cursor-pointer min-h-[140px] flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow duration-300"
+            className="relative overflow-hidden bg-card/80 glass-subtle border border-border rounded-2xl p-5 text-center cursor-pointer min-h-[140px] flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-all duration-300"
           >
             <div className="size-9 rounded-[10px] bg-muted/50 flex items-center justify-center mb-2.5">
-              <Icon className="size-[18px] text-muted-foreground" />
+              <Icon className={`size-[18px] ${card.accentColor}`} />
             </div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+            <span className={`text-[11px] font-bold uppercase tracking-wider mb-1 ${card.accentColor} opacity-70`}>
               {card.label}
             </span>
             <span className="text-3xl font-extrabold tracking-tight leading-none tabular-nums">
@@ -152,7 +162,7 @@ export function SolitaireCards() {
               {card.subtitle}
             </span>
             <div className="w-full h-[3px] rounded-full bg-muted mt-3">
-              <div className={`bg-muted-foreground/30 ${card.barWidth} h-full rounded-full`} />
+              <div className={`${card.barColor} ${card.barWidth} h-full rounded-full transition-all duration-500`} />
             </div>
 
             <AnimatePresence>

@@ -133,7 +133,7 @@ export function MessageList({ messages }: MessageListProps) {
               }`}
             >
               {msg.role === "user" ? (
-                <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm leading-relaxed">
+                <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-gradient-to-br from-primary to-primary/85 text-primary-foreground px-4 py-2.5 text-sm leading-relaxed shadow-sm">
                   {msg.content}
                 </div>
               ) : (
@@ -146,13 +146,13 @@ export function MessageList({ messages }: MessageListProps) {
                       stepDuration={msg.stepDuration}
                     />
                   )}
-                  <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3">
+                  <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-card/80 glass-subtle px-4 py-3 shadow-sm">
                     {/* Brand header */}
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="flex size-5 items-center justify-center rounded-md bg-primary/10 text-primary text-[10px] font-bold">
+                      <div className="flex size-5 items-center justify-center rounded-md bg-gradient-to-br from-primary/15 to-primary/5 text-primary text-[10px] font-bold">
                         C
                       </div>
-                      <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
                         CarabinerOS
                       </span>
                     </div>

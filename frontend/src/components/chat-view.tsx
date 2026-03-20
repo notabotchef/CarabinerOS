@@ -45,7 +45,7 @@ export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: Ch
         onToggleTicket={() => setTicketExpanded((v) => !v)}
       />
 
-      <div className="border-t border-border">
+      <div className="border-t border-border/50">
         <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} />
       </div>
     </div>

@@ -64,7 +64,7 @@ export function ThoughtsStream({ thoughts, active }: ThoughtsStreamProps) {
 
           // Opacity gradient: oldest (top) = 0.3, newest (bottom) = 0.6
           const total = visibleThoughts.length;
-          const opacity = total <= 1 ? 0.6 : 0.3 + (i / (total - 1)) * 0.3;
+          const opacity = total <= 1 ? 0.5 : 0.25 + (i / (total - 1)) * 0.25;
 
           return (
             <motion.div
