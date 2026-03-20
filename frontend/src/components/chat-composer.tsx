@@ -46,6 +46,48 @@ const ROTATING_PROMPTS = [
   "Give me a full operational briefing",
   "What needs my attention before dinner service?",
   "Compare prices between Sysco and Chef's Warehouse",
+  // Write operations (MCP capabilities)
+  "Add 5 cases of avocados to inventory",
+  "Create a rush order for salmon and lemons",
+  "Update the prep status for grill station to complete",
+  "Mark invoice #4582 as paid",
+  "Log a waste entry for 3 lbs of spinach — wilted",
+  "Add a new dish to the dinner menu at $28",
+  "Submit a PO for next week's dry goods",
+  // Cross-module intelligence
+  "Which items are below par and need ordering?",
+  "Compare this week's food cost to last week",
+  "What's the margin on our top 5 selling dishes?",
+  "Flag any invoices that don't match their POs",
+  "Which vendors gave us the best pricing this month?",
+  "What's my actual vs theoretical food cost?",
+  "Cross-check yesterday's deliveries against the orders",
+  // Operational workflows
+  "Run a full inventory count for the walk-in",
+  "Set up tonight's prep list based on reservations",
+  "Process the morning delivery from Sysco",
+  "What should I 86 before dinner service?",
+  "Generate a closing checklist for tonight",
+  "Build a par sheet based on last 4 weeks of sales",
+  "What's my cover count looking like for Saturday?",
+  // Strategic questions
+  "What menu items should we cut based on performance?",
+  "Where are we losing money on food cost?",
+  "Build a marketing campaign for our new spring menu",
+  "What's my labor-to-revenue ratio this week?",
+  "Which daypart is most profitable right now?",
+  "How are our new menu items performing vs projections?",
+  "What would happen if I raised app prices by 10%?",
+  // Kitchen-specific language
+  "What do I need to fire for the walk-in?",
+  "Are we good on mise en place for tonight?",
+  "How's my protein inventory looking?",
+  "Any vendor price alerts I should know about?",
+  "Who's behind on their prep tasks right now?",
+  "Give me a quick read on the weekend numbers",
+  "What's the 86 list looking like?",
+  "Pull up the butcher's yield on last week's ribeyes",
+  "Any comps or voids I should look at from last night?",
 ];
 
 interface ChatComposerProps {
