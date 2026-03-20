@@ -18,6 +18,7 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, ShoppingCart, ChevronRight } from "lucide-react";
+import { MenuButton } from "@/components/menu-button";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -176,7 +177,9 @@ export default function OrdersPage() {
   return (
     <div className="flex flex-col h-dvh bg-background">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+      <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
+        <MenuButton />
+        <div className="flex-1 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight text-foreground">Orders</h1>
           <p className="text-sm text-muted-foreground">Purchase orders across all vendors</p>
@@ -185,6 +188,7 @@ export default function OrdersPage() {
           <Plus className="size-4" />
           New Order
         </Button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto p-6 flex flex-col gap-6">

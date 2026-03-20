@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 
 interface ShellContextValue {
   openSidebar: () => void;
+  closeSidebar: () => void;
   sidebarHidden: boolean;
   newChatPending: boolean;
   requestNewChat: () => void;
@@ -13,6 +14,7 @@ interface ShellContextValue {
 
 const ShellContext = createContext<ShellContextValue>({
   openSidebar: () => {},
+  closeSidebar: () => {},
   sidebarHidden: true,
   newChatPending: false,
   requestNewChat: () => {},
@@ -33,8 +35,8 @@ export function Shell({ children }: { children: ReactNode }) {
   const consumeNewChat = useCallback(() => setNewChatPending(false), []);
 
   return (
-    <ShellContext.Provider value={{ openSidebar, sidebarHidden, newChatPending, requestNewChat, consumeNewChat }}>
-      <AppSidebar hidden={sidebarHidden} onClose={closeSidebar} />
+    <ShellContext.Provider value={{ openSidebar, closeSidebar, sidebarHidden, newChatPending, requestNewChat, consumeNewChat }}>
+      <AppSidebar hidden={sidebarHidden} />
       <main className="flex-1 flex flex-col min-h-dvh overflow-hidden relative">
         {children}
       </main>

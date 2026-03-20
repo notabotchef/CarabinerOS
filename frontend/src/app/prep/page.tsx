@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AlertTriangle, ChefHat, ClipboardList } from "lucide-react";
+import { MenuButton } from "@/components/menu-button";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -341,7 +342,9 @@ export default function PrepPage() {
   return (
     <div className="flex flex-col h-dvh bg-background">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+      <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
+        <MenuButton />
+        <div className="flex-1 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <ChefHat className="size-5 text-muted-foreground" />
           <div>
@@ -350,6 +353,7 @@ export default function PrepPage() {
           </div>
         </div>
         {!loading && data.length > 0 && <ReadinessRing items={filtered} />}
+        </div>
       </header>
 
       {/* Service lane tabs */}

@@ -1,9 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Menu, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useShell } from "@/components/shell";
+import { MenuButton } from "@/components/menu-button";
 
 interface TopBarProps {
   unreadCount: number;
@@ -29,19 +29,11 @@ const frontCardVariants = {
 const cardTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
 export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen" }: TopBarProps) {
-  const { openSidebar } = useShell();
-
   return (
     <header className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-border bg-card">
       {/* Left: Hamburger + Brand */}
       <div className="flex items-center gap-3">
-        <button
-          onClick={openSidebar}
-          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors"
-          title="Open menu"
-        >
-          <Menu className="size-[18px]" strokeWidth={1.5} />
-        </button>
+        <MenuButton />
         <div className="flex items-center gap-2.5 select-none">
           <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-[10px] font-black tracking-tight leading-none">
             cOS

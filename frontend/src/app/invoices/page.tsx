@@ -26,6 +26,7 @@ import {
   Plus,
   Search,
 } from "lucide-react";
+import { MenuButton } from "@/components/menu-button";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -296,7 +297,9 @@ export default function InvoicesPage() {
   return (
     <div className="flex flex-col h-dvh bg-background">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+      <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
+        <MenuButton />
+        <div className="flex-1 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center size-8 rounded-lg bg-secondary">
             <FileText className="size-4 text-muted-foreground" />
@@ -314,6 +317,7 @@ export default function InvoicesPage() {
           <Plus className="size-4" />
           Upload Invoice
         </Button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-auto p-6 flex flex-col gap-6">

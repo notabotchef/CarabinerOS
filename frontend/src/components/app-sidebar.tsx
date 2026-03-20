@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { PanelLeftClose, MessageSquare, Plus, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { MODULES } from "@/lib/workspace-config";
 import { useSocketContext } from "@/components/socket-provider";
 import { useShell } from "@/components/shell";
@@ -13,7 +13,6 @@ import type { A0Context } from "@/lib/types";
 
 interface AppSidebarProps {
   hidden: boolean;
-  onClose: () => void;
 }
 
 function ChatItem({ chat, isActive, snapshot, onDeleted }: { chat: A0Context; isActive: boolean; snapshot: { context?: string } | null; onDeleted: () => void }) {
@@ -125,7 +124,7 @@ function ChatItem({ chat, isActive, snapshot, onDeleted }: { chat: A0Context; is
   );
 }
 
-export function AppSidebar({ hidden, onClose }: AppSidebarProps) {
+export function AppSidebar({ hidden }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { snapshot } = useSocketContext();
@@ -147,26 +146,8 @@ export function AppSidebar({ hidden, onClose }: AppSidebarProps) {
         hidden ? "w-0 border-r-0" : "w-60"
       )}
     >
-      {/* Top: brand + close */}
-      <div className="flex items-center justify-between px-3 py-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-[10px] font-black tracking-tight leading-none">
-            cOS
-          </div>
-          <span className="text-sm font-bold text-sidebar-foreground truncate">
-            CarabinerOS
-          </span>
-        </div>
-        <button
-          onClick={onClose}
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-        >
-          <PanelLeftClose className="size-4" />
-        </button>
-      </div>
-
       {/* Module links */}
-      <div className="flex flex-col gap-1 p-2">
+      <div className="flex flex-col gap-1 p-2 pt-3">
         {MODULES.map((mod) => {
           const isActive =
             mod.href === "/"

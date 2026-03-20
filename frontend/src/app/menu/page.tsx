@@ -9,6 +9,7 @@ import {
   CircleOff,
   UtensilsCrossed,
 } from "lucide-react";
+import { MenuButton } from "@/components/menu-button";
 import { useWorkspace } from "@/hooks/use-workspace";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -236,8 +237,10 @@ export default function MenuPage() {
   return (
     <div className="flex flex-col h-dvh bg-background">
       {/* Header */}
-      <header className="shrink-0 border-b border-border px-6 py-5">
-        <div className="flex items-center justify-between">
+      <header className="shrink-0 border-b border-border px-4 py-3 bg-card">
+        <div className="flex items-center gap-3">
+          <MenuButton />
+          <div className="flex-1 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold text-foreground">Menu Engineering</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
@@ -249,6 +252,7 @@ export default function MenuPage() {
               {filtered.length} item{filtered.length !== 1 ? "s" : ""}
             </span>
           )}
+          </div>
         </div>
 
         {/* Category filter */}
