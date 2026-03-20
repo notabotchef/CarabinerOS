@@ -14,21 +14,28 @@ import { useState, useEffect } from "react";
 export default function HomePage() {
   const { openSidebar, newChatPending, consumeNewChat } = useShell();
   const { snapshot, chefStatus, subscribe } = useSocketContext();
-  const { messages, sendMessage, loading, queuedMessages, resetChat } = useChat(snapshot);
+  const { messages, sendMessage, loading, queuedMessages, resetChat, createNewChat } = useChat(snapshot);
   const expo = useExpoStream(snapshot, chefStatus);
   const { cards, unreadCount } = useActionCards(snapshot);
   const [notifOpen, setNotifOpen] = useState(false);
   const [chatStarted, setChatStarted] = useState(false);
 
-  // When a new chat is requested (from sidebar "+" button), clear state and show ChatView
+  // When a new chat is requested (from sidebar "+" button), create it on A0's side
   useEffect(() => {
-    if (newChatPending) {
-      resetChat();
-      subscribe(null); // unsubscribe from previous context so old logs stop arriving
+    if (!newChatPending) return;
+    consumeNewChat();
+    (async () => {
+      const newCtxId = await createNewChat();
+      if (newCtxId) {
+        subscribe(newCtxId);
+      } else {
+        // Fallback: just reset locally if A0 is unreachable
+        resetChat();
+        subscribe(null);
+      }
       setChatStarted(true);
-      consumeNewChat();
-    }
-  }, [newChatPending, resetChat, consumeNewChat, subscribe]);
+    })();
+  }, [newChatPending, createNewChat, resetChat, consumeNewChat, subscribe]);
 
   const handleSend = async (text: string) => {
     if (!chatStarted) setChatStarted(true);

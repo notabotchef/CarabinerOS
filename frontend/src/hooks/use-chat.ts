@@ -11,6 +11,7 @@ interface UseChatReturn {
   loading: boolean;
   queuedMessages: string[];
   resetChat: () => void;
+  createNewChat: () => Promise<string | null>;
 }
 
 export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
@@ -171,5 +172,35 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     freshChatRef.current = true;
   }, []);
 
-  return { messages, sendMessage, contextId, loading, queuedMessages, resetChat };
+  // Create a new chat context on A0's side (mirrors A0 UI's chatsStore.newChat)
+  const createNewChat = useCallback(async (): Promise<string | null> => {
+    try {
+      const csrf = await getCsrfToken();
+      const res = await fetch("/chat_create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrf,
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          current_context: contextIdRef.current || "",
+        }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data.ok && data.ctxid) {
+        resetChat();
+        freshChatRef.current = false; // ready to accept logs immediately
+        setContextId(data.ctxid);
+        contextIdRef.current = data.ctxid;
+        return data.ctxid;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [resetChat]);
+
+  return { messages, sendMessage, contextId, loading, queuedMessages, resetChat, createNewChat };
 }
