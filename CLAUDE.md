@@ -66,6 +66,21 @@ Test: `npm test`
 
 Run tests before committing. Run the build to catch type errors.
 
+## Ruflo Integration
+
+Ruflo is registered as an MCP server and available in every session. Use these proactively:
+
+- `mcp__ruflo__memory_search` — Search persistent cross-session knowledge before researching from scratch
+- `mcp__ruflo__memory_store` — Store non-obvious fixes and insights after solving problems
+- `mcp__ruflo__hooks_post-task` — Record task completion to feed the learning system
+- `mcp__ruflo__hooks_session-end` — Run at session end to persist state
+- `mcp__ruflo__analyze_diff` — Risk-assess changes before committing
+- `mcp__ruflo__hooks_intelligence` — Check learning status at session start
+- `mcp__ruflo__hive-mind_spawn` — Spawn coordinated worker agents for complex tasks
+- `mcp__ruflo__task_create` / `mcp__ruflo__task_list` — Track work items
+
+Read `docs/plans/ruflo-integration-playbook.md` for the full capability map.
+
 ## Workflow Rules
 
 1. **Session start** — At the beginning of every conversation, read `docs/plans/open-work.md` and greet with a summary of open items and recommended next steps.
