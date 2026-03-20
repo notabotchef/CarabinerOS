@@ -109,6 +109,7 @@ class WorkspaceInventory(TimestampMixin, Base):
     item_name: Mapped[str] = mapped_column(String(200), nullable=False)
     on_hand: Mapped[str] = mapped_column(String(50), nullable=False)
     par: Mapped[str] = mapped_column(String(50), nullable=False)
+    unit: Mapped[Optional[str]] = mapped_column(String(30))
     variance: Mapped[str] = mapped_column(String(20), nullable=False)
     summary: Mapped[Optional[str]] = mapped_column(Text)
     detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
