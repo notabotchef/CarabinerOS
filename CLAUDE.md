@@ -76,3 +76,6 @@ Run tests before committing. Run the build to catch type errors.
 6. **Never modify Agent Zero core** — All changes go in `usr/`, `carabiner/`, or `frontend/`.
 7. **Use ruflo first** — Use ruflo (swarm, hive-mind, tasks, memory) as primary orchestration. Never double-dispatch with Claude Code agents.
 8. **Chef delegation** — If it's ≤30 lines and the fix is clear, do it yourself (reach-in). If it needs research, touches multiple files, or the solution is uncertain, spawn an autonomous agent in an isolated worktree (walk-in). Never leave the line to go to the walk-in yourself.
+9. **Don't restart during test** — Never restart Docker services, change models, or modify config while the user is actively testing in the browser. Wait for their feedback first.
+10. **Worktree isolation** — Agents that edit code MUST work in isolated worktrees on their own branch. Verify isolation before letting them edit. Stash or commit current work before spawning editing agents.
+11. **A0 debug skill** — Always invoke the `/a0-debug` skill when debugging Agent Zero ↔ frontend communication issues.
