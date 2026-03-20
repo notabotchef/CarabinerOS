@@ -56,7 +56,7 @@ export function MessageList({ messages }: MessageListProps) {
                     </span>
                   </div>
                   {/* Markdown content */}
-                  <div className="prose prose-sm max-w-none text-sm leading-relaxed text-foreground [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_strong]:text-foreground [&_code]:text-primary [&_code]:bg-primary/10 [&_code]:px-1 [&_code]:rounded [&_pre]:bg-secondary [&_pre]:rounded-lg">
+                  <div className="markdown-body text-sm leading-relaxed text-foreground">
                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 </div>
