@@ -1,13 +1,15 @@
 "use client";
 
 import { MessageList } from "@/components/message-list";
+import { ThoughtsStream } from "@/components/thoughts-stream";
 import { ExpoBar } from "@/components/expo-bar";
 import { ChatComposer } from "@/components/chat-composer";
 import type { ChatMessage } from "@/lib/types";
+import type { ExpoState } from "@/hooks/use-expo-stream";
 
 interface ChatViewProps {
   messages: ChatMessage[];
-  expo: { text: string | null; active: boolean };
+  expo: ExpoState;
   onSend: (text: string) => void;
   loading: boolean;
   queueCount?: number;
@@ -16,13 +18,14 @@ interface ChatViewProps {
 export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: ChatViewProps) {
   return (
     <div className="flex flex-1 flex-col min-h-0">
-      {/* Message list — fills available space */}
       <MessageList messages={messages} />
 
-      {/* Expo bar — sits between messages and composer */}
+      {/* Thoughts stream — ghostly inner monologue above expo bar */}
+      <ThoughtsStream thoughts={expo.thoughts} active={expo.active} />
+
+      {/* Expo bar — real status text */}
       <ExpoBar text={expo.text} active={expo.active} />
 
-      {/* Composer — pinned to bottom */}
       <div className="border-t border-border">
         <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} />
       </div>
