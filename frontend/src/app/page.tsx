@@ -21,28 +21,40 @@ export default function HomePage() {
   const [chatStarted, setChatStarted] = useState(false);
   const creatingChatRef = useRef(false);
 
-  // When a new chat is requested (from sidebar "+" button), create it on A0's side
+  // Stable refs for callbacks — updated every render so the effect never needs
+  // them in its dependency array, which prevents re-firing when references change.
+  const createNewChatRef = useRef(createNewChat);
+  const subscribeRef = useRef(subscribe);
+  const resetChatRef = useRef(resetChat);
+  const consumeNewChatRef = useRef(consumeNewChat);
+  createNewChatRef.current = createNewChat;
+  subscribeRef.current = subscribe;
+  resetChatRef.current = resetChat;
+  consumeNewChatRef.current = consumeNewChat;
+
+  // When a new chat is requested (from sidebar "+" button), create it on A0's side.
+  // Depend only on newChatPending so unstable callback references can't re-trigger this.
   useEffect(() => {
     if (!newChatPending) return;
     if (creatingChatRef.current) return; // prevent double-fire
-    consumeNewChat();
+    consumeNewChatRef.current();
     creatingChatRef.current = true;
     (async () => {
       try {
-        const newCtxId = await createNewChat();
+        const newCtxId = await createNewChatRef.current();
         if (newCtxId) {
-          subscribe(newCtxId);
+          subscribeRef.current(newCtxId);
         } else {
           // Fallback: just reset locally if A0 is unreachable
-          resetChat();
-          subscribe(null);
+          resetChatRef.current();
+          subscribeRef.current(null);
         }
         setChatStarted(true);
       } finally {
         creatingChatRef.current = false;
       }
     })();
-  }, [newChatPending, createNewChat, resetChat, consumeNewChat, subscribe]);
+  }, [newChatPending]);
 
   const handleSend = async (text: string) => {
     if (!chatStarted) setChatStarted(true);
