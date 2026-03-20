@@ -25,6 +25,18 @@ function getTimeContext(): string {
   return "Wrapping up the day. Quick summary.";
 }
 
+/**
+ * Hook that returns false during SSR and the first client render,
+ * then true after hydration completes.  This prevents hydration
+ * mismatches from Date-dependent values and ensures framer-motion
+ * animations start from the correct state on the client.
+ */
+function useMounted(): boolean {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  return mounted;
+}
+
 interface Insight {
   text: string;
   tag: string;
@@ -77,6 +89,7 @@ const INSIGHTS: Insight[] = [
 ];
 
 function DailyBriefing() {
+  const mounted = useMounted();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [minHeight, setMinHeight] = useState<number | undefined>(undefined);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -130,7 +143,7 @@ function DailyBriefing() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={mounted ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 25 }}
       className="w-full max-w-[500px] mb-6 rounded-xl border border-primary/15 bg-primary/5 relative overflow-hidden"
@@ -265,22 +278,25 @@ function DailyBriefing() {
 }
 
 export function HomeView({ onSend }: HomeViewProps) {
-  const [greeting, setGreeting] = useState("Welcome, Chef");
+  const mounted = useMounted();
 
-  useEffect(() => {
-    setGreeting(getGreeting());
-  }, []);
+  // Derive greeting/time context only after mount to avoid SSR/client
+  // hydration mismatches (Date values differ between server and client).
+  const greeting = mounted ? getGreeting() : "Welcome, Chef";
+  const timeContext = mounted
+    ? getTimeContext()
+    : "Loading your briefing\u2026";
 
-  const [timeContext, setTimeContext] = useState("");
-  useEffect(() => {
-    setTimeContext(getTimeContext());
-  }, []);
+  // On SSR (and the first client render before hydration settles),
+  // render with full opacity so the page is never blank.  Once mounted,
+  // let framer-motion handle the entrance animations.
+  const motionReady = mounted;
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 w-full max-w-xl mx-auto px-4">
       {/* Greeting */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
+        initial={motionReady ? { opacity: 0, y: -8 } : false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 25 }}
         className="text-center mb-6"
@@ -295,7 +311,7 @@ export function HomeView({ onSend }: HomeViewProps) {
 
       {/* Composer (now above briefing) */}
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={motionReady ? { opacity: 0, y: 8 } : false}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, type: "spring", stiffness: 200, damping: 25 }}
         className="w-full max-w-[500px]"

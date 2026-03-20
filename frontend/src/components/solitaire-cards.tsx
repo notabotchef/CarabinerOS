@@ -4,6 +4,12 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { ShoppingCart, DollarSign, ChefHat, UtensilsCrossed, type LucideIcon } from "lucide-react";
 
+function useMounted(): boolean {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  return mounted;
+}
+
 interface KpiCard {
   label: string;
   value: string;
@@ -103,6 +109,7 @@ export function SolitaireCards() {
     ];
   }, [orders, foodCost, prep]);
 
+  const mounted = useMounted();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const cardVariants: Variants = {
@@ -125,7 +132,7 @@ export function SolitaireCards() {
           <motion.div
             key={card.label}
             custom={i}
-            initial="hidden"
+            initial={mounted ? "hidden" : false}
             animate="visible"
             variants={cardVariants}
             whileHover={!isOpen ? { y: -4, scale: 1.02, transition: { type: "spring" as const, stiffness: 400, damping: 25 } } : {}}
