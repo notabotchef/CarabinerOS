@@ -1,22 +1,55 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { motion } from "framer-motion";
+import { PanelLeftOpen, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 interface TopBarProps {
   unreadCount: number;
   onBellClick: () => void;
+  onMenuClick?: () => void;
   locationName?: string;
 }
 
-export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen" }: TopBarProps) {
+const parentVariants = {
+  idle: {},
+  hovered: {},
+};
+
+const backCardVariants = {
+  idle: { rotate: 5, x: 0 },
+  hovered: { rotate: 8, x: 2 },
+};
+
+const frontCardVariants = {
+  idle: { rotate: -2, x: 0 },
+  hovered: { rotate: -6, x: -2 },
+};
+
+const cardTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
+
+export function TopBar({ unreadCount, onBellClick, onMenuClick, locationName = "Main Kitchen" }: TopBarProps) {
   return (
     <header className="flex items-center justify-between px-5 py-3 shrink-0 border-b border-border bg-card">
-      {/* Left: Brand */}
-      <span className="text-lg font-bold tracking-tight select-none text-primary">
-        CarabinerOS
-      </span>
+      {/* Left: Menu + Brand */}
+      <div className="flex items-center gap-3">
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
+            <PanelLeftOpen className="size-4" />
+          </button>
+        )}
+        <div className="flex items-center gap-2.5 select-none">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-[10px] font-black tracking-tight leading-none">
+            cOS
+          </div>
+          <span className="text-lg font-bold tracking-tight text-primary">
+            CarabinerOS
+          </span>
+        </div>
+      </div>
 
       {/* Right side */}
       <div className="flex items-center gap-4">
@@ -25,14 +58,39 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
           {locationName}
         </span>
 
-        {/* Notification bell */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative text-muted-foreground hover:text-foreground hover:bg-accent"
-          onClick={onBellClick}
+        {/* Dev: Agent Zero settings */}
+        <a
+          href="/a0/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent transition-colors"
+          title="Agent Zero Settings (dev)"
         >
-          <Bell className="size-5" />
+          <Settings className="size-4" />
+        </a>
+
+        {/* Card duo notification icon */}
+        <div className="relative w-8 h-[30px] cursor-pointer group" onClick={onBellClick} title="Action Cards">
+          <motion.div
+            initial="idle"
+            animate="idle"
+            whileHover="hovered"
+            variants={parentVariants}
+            className="relative w-full h-full"
+          >
+            {/* Back card */}
+            <motion.div
+              className="absolute w-[20px] h-[26px] rounded border-[1.8px] border-foreground/50 bg-card top-0 left-2 z-[1]"
+              variants={backCardVariants}
+              transition={cardTransition}
+            />
+            {/* Front card */}
+            <motion.div
+              className="absolute w-[20px] h-[26px] rounded border-[1.8px] border-foreground/50 bg-card top-[1px] left-[2px] z-[2]"
+              variants={frontCardVariants}
+              transition={cardTransition}
+            />
+          </motion.div>
           {unreadCount > 0 && (
             <Badge
               className="absolute -top-1 -right-1 h-[18px] min-w-[18px] px-1 text-[10px] font-semibold bg-primary text-primary-foreground border-none"
@@ -40,7 +98,10 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>
           )}
-        </Button>
+          <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Action Cards
+          </span>
+        </div>
       </div>
     </header>
   );

@@ -8,6 +8,7 @@
  * Commands:
  *   route          - Route a task to optimal agent (reads PROMPT from env/stdin)
  *   pre-bash       - Validate command safety before execution
+ *   pre-edit       - Enforce worktree isolation before file edits
  *   post-edit      - Record edit outcome for learning
  *   session-restore - Restore previous session state
  *   session-end    - End session and persist state
@@ -146,6 +147,69 @@ const handlers = {
     console.log('[OK] Command validated');
   },
 
+  'pre-edit': () => {
+    // Worktree isolation guard — block edits that escape the worktree boundary.
+    //
+    // Claude Code's isolation: "worktree" / EnterWorktree sets the agent's CWD to a
+    // git worktree under .claude/worktrees/<name>/ but does NOT prevent absolute-path
+    // edits that point to the main working tree. This hook enforces the boundary.
+    //
+    // Claude Code treats exit code 2 from a PreToolUse hook as "block this tool call"
+    // and shows the hook output to the user as the reason for blocking.
+    try {
+      const cwd = process.cwd();
+      const worktreeMarker = path.sep + '.claude' + path.sep + 'worktrees' + path.sep;
+      const inWorktree = cwd.includes(worktreeMarker);
+
+      if (inWorktree) {
+        // Resolve the worktree root: everything up to and including the agent dir
+        const markerIdx = cwd.indexOf(worktreeMarker);
+        const afterMarker = cwd.slice(markerIdx + worktreeMarker.length);
+        const agentDir = afterMarker.split(path.sep)[0];
+        const worktreeRoot = path.join(
+          cwd.slice(0, markerIdx),
+          '.claude', 'worktrees', agentDir
+        );
+
+        // Resolve the target file path from the hook input.
+        // Claude Code sends: hookInput.toolInput.file_path for Write/Edit/MultiEdit
+        const filePath = (hookInput.toolInput && hookInput.toolInput.file_path)
+          || hookInput.file_path
+          || process.env.TOOL_INPUT_file_path
+          || args[0]
+          || '';
+
+        if (filePath) {
+          const resolvedFile = path.isAbsolute(filePath)
+            ? filePath
+            : path.resolve(cwd, filePath);
+
+          const isInsideWorktree = resolvedFile.startsWith(worktreeRoot + path.sep)
+            || resolvedFile === worktreeRoot;
+
+          if (!isInsideWorktree) {
+            const message = [
+              '[BLOCKED] Worktree isolation violation!',
+              '  Worktree root: ' + worktreeRoot,
+              '  Target file:   ' + resolvedFile,
+              '',
+              'This edit would modify a file outside the isolated worktree.',
+              'Use a path relative to the worktree root instead of an absolute path.',
+              'To apply changes to the main branch, exit the worktree and use git merge.',
+            ].join('\n');
+            console.error(message);
+            process.exitCode = 2;
+            process.exit(2);
+          }
+        }
+      }
+    } catch (e) {
+      // Non-fatal — if the guard errors, do not block the edit
+      console.log('[WARN] pre-edit isolation check error: ' + e.message);
+    }
+    console.log('[OK] Edit within bounds');
+  },
+
   'post-edit': () => {
     // Record edit for session metrics
     if (session && session.metric) {
@@ -258,15 +322,21 @@ const handlers = {
     // Unknown command - pass through without error
     console.log(`[OK] Hook: ${command}`);
   } else {
-    console.log('Usage: hook-handler.cjs <route|pre-bash|post-edit|session-restore|session-end|pre-task|post-task|stats>');
+    console.log('Usage: hook-handler.cjs <route|pre-bash|pre-edit|post-edit|session-restore|session-end|pre-task|post-task|stats>');
   }
 }
 
 // Hooks must ALWAYS exit 0 — Claude Code treats non-zero as "hook error"
 // and skips all subsequent hooks for the event.
+// EXCEPTION: pre-edit exits 2 to block out-of-worktree edits (intentional blocking).
 process.exitCode = 0;
 main().catch((e) => {
   try { console.log(`[WARN] Hook handler error: ${e.message}`); } catch (_) {}
 }).finally(() => {
-  process.exit(0);
+  // Only force exit 0 if we haven't intentionally set a blocking exit code (2)
+  if (process.exitCode !== 2) {
+    process.exit(0);
+  } else {
+    process.exit(2);
+  }
 });

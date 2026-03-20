@@ -23,9 +23,12 @@ services:
       - WEB_UI_PORT=5000
       - WEB_UI_HOST=0.0.0.0
       - DATABASE_URL=postgresql+asyncpg://carabiner:carabiner@postgres:5432/carabiner
+      - FLASK_SECRET_KEY=carabiner-dev-secret-key-2026
     volumes:
       - ./usr:/app/usr
       - ./carabiner:/app/carabiner
+    ports:
+      - "5050:5000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

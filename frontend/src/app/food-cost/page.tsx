@@ -91,8 +91,16 @@ function CostTrend({ value }: { value: number }) {
   return <Minus className="inline h-3.5 w-3.5 text-muted-foreground/50" />;
 }
 
-function PressureBadge({ pressure }: { pressure: PressureLevel }) {
-  const c = PRESSURE_CFG[pressure];
+function normalizePressure(raw: string): PressureLevel {
+  const l = raw.toLowerCase();
+  if (l === "high" || l.includes("+3") || l.includes("+4") || l.includes("+5")) return "High";
+  if (l === "low" || l.includes("-") || l.includes("0.")) return "Low";
+  return "Medium";
+}
+
+function PressureBadge({ pressure }: { pressure: string }) {
+  const level = normalizePressure(pressure);
+  const c = PRESSURE_CFG[level];
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase ${c.badge}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${c.dot} ${c.glow}`} />
@@ -146,7 +154,7 @@ export default function FoodCostPage() {
   const [tab, setTab] = useState<FilterTab>("All");
 
   const filtered = useMemo(
-    () => (tab === "All" ? data : data.filter((d) => d.pressure === tab)),
+    () => (tab === "All" ? data : data.filter((d) => normalizePressure(d.pressure) === tab)),
     [data, tab],
   );
 
@@ -161,13 +169,13 @@ export default function FoodCostPage() {
   );
 
   const highCount = useMemo(
-    () => data.filter((d) => d.pressure === "High").length,
+    () => data.filter((d) => normalizePressure(d.pressure) === "High").length,
     [data],
   );
 
   const counts = useMemo(() => {
     const m: Record<FilterTab, number> = { All: data.length, High: 0, Medium: 0, Low: 0 };
-    for (const d of data) if (d.pressure in m) m[d.pressure as PressureLevel]++;
+    for (const d of data) m[normalizePressure(d.pressure)]++;
     return m;
   }, [data]);
 

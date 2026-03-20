@@ -10,6 +10,7 @@ interface UseChatReturn {
   contextId: string | null;
   loading: boolean;
   queuedMessages: string[];
+  resetChat: () => void;
 }
 
 export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
@@ -20,6 +21,7 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
   const processedLogIds = useRef(new Set<string>());
   const contextIdRef = useRef<string | null>(null);
   const isProcessingRef = useRef(false);
+  const freshChatRef = useRef(false); // true after resetChat, cleared on first send
 
   // Keep contextIdRef in sync
   useEffect(() => {
@@ -29,29 +31,38 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
   useEffect(() => {
     if (!snapshot) return;
 
+    // After resetChat, ignore snapshot logs until the user sends a new message.
+    // This prevents stale logs from a previous context from being re-ingested.
+    if (freshChatRef.current) {
+      setLoading(false);
+      return;
+    }
+
     const newMessages: ChatMessage[] = [];
 
     for (const log of snapshot.logs) {
-      if (processedLogIds.current.has(log.id)) continue;
+      // Use log.no as the dedup key — log.id can be null
+      const logKey = log.id ?? `no-${log.no}`;
+      if (processedLogIds.current.has(logKey)) continue;
 
       if (log.type === "user") {
         newMessages.push({
-          id: log.id,
+          id: logKey,
           role: "user",
           content: log.content,
           timestamp: log.timestamp,
         });
-        processedLogIds.current.add(log.id);
+        processedLogIds.current.add(logKey);
       }
 
       if (log.type === "response" && log.content.trim()) {
         newMessages.push({
-          id: log.id,
+          id: logKey,
           role: "assistant",
           content: log.content,
           timestamp: log.timestamp,
         });
-        processedLogIds.current.add(log.id);
+        processedLogIds.current.add(logKey);
       }
     }
 
@@ -67,6 +78,9 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
   }, [snapshot]);
 
   const doSend = useCallback(async (text: string): Promise<string> => {
+    // First message in a fresh chat — start accepting snapshot logs again
+    freshChatRef.current = false;
+
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
@@ -146,5 +160,16 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     }
   }, [loading, doSend]);
 
-  return { messages, sendMessage, contextId, loading, queuedMessages };
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    setContextId(null);
+    contextIdRef.current = null;
+    setLoading(false);
+    setQueuedMessages([]);
+    isProcessingRef.current = false;
+    processedLogIds.current.clear();
+    freshChatRef.current = true;
+  }, []);
+
+  return { messages, sendMessage, contextId, loading, queuedMessages, resetChat };
 }

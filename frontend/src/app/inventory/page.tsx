@@ -32,8 +32,19 @@ interface InventoryItem {
 /* ------------------------------------------------------------------ */
 
 function parseNum(v: unknown): number {
-  const n = Number(v);
-  return isNaN(n) ? 0 : n;
+  if (v == null) return 0;
+  const s = String(v).trim();
+  const match = s.match(/^[+-]?\d+(\.\d+)?/);
+  return match ? Number(match[0]) : 0;
+}
+
+function parseDisplay(v: unknown): string {
+  if (v == null) return "0";
+  const s = String(v).trim();
+  const match = s.match(/^([+-]?\d+(?:\.\d+)?)\s*(.*)/);
+  if (!match) return s;
+  const [, num, unit] = match;
+  return unit ? `${num} ${unit}` : num;
 }
 
 function formatDate(v: unknown): string {
@@ -197,14 +208,14 @@ const COLUMNS = [
     key: "on_hand" as const,
     label: "On Hand",
     render: (v: unknown) => (
-      <span className="tabular-nums">{parseNum(v)}</span>
+      <span className="tabular-nums">{parseDisplay(v)}</span>
     ),
   },
   {
     key: "par" as const,
     label: "Par",
     render: (v: unknown) => (
-      <span className="tabular-nums text-muted-foreground">{parseNum(v)}</span>
+      <span className="tabular-nums text-muted-foreground">{parseDisplay(v)}</span>
     ),
   },
   {

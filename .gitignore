@@ -43,6 +43,44 @@ postgres_data/
 # Superpowers brainstorm sessions
 .superpowers/brainstorm/
 
+# Internal plans/specs — not for git (upstream A0 docs stay tracked)
+docs/plans/
+docs/specs/
+docs/superpowers/
+docs/agent-zero-internals.md
+docs/ruflo-internals.md
+docs/socket.io.rtf
+
+# Claude Code / Ruflo runtime
+.claude-flow/
+.claude/worktrees/
+.claude/memory.db
+.claude/agents/
+.claude/skills/
+.hive-mind/
+.swarm/
+.next/
+
+# Agent config files (ruflo/swarm)
+agents/*.yaml
+
+# MCP config (local)
+.mcp.json
+
+# Frontend nested runtime
+frontend/.claude-flow/
+frontend/.claude/
+
 # Agent Zero usr overlay — track our customizations
 # (override A0's default usr/** ignore)
 !usr/**
+# Then re-ignore runtime state inside usr/ (must be after !usr/**)
+usr/memory/
+usr/chats/
+usr/prompts/
+usr/**/__pycache__/
+usr/**/.DS_Store
+
+# Claude settings (local, not project)
+.claude/settings.json
+.claude/settings.local.json

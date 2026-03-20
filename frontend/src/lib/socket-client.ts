@@ -14,9 +14,15 @@ export function initStateSyncSocket(): Socket {
   // auth callback is called on every connect attempt (including reconnect),
   // ensuring the CSRF token and session cookie are always fresh.
   // This matches Agent Zero's own webui pattern (webui/js/websocket.js).
+  // Start with polling so the Engine.IO handshake uses regular HTTP
+  // requests that always carry session cookies.  Safari does not send
+  // SameSite=Strict cookies on WebSocket upgrade requests, which breaks
+  // the CSRF flow when websocket is the initial transport.  Once the
+  // polling connection is established, Socket.IO auto-upgrades to
+  // websocket for better performance.
   stateSyncSocket = io(`${A0_SOCKET_URL}/state_sync`, {
     autoConnect: false,
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
     withCredentials: true,
     auth: (cb) => {
       getCsrfToken()

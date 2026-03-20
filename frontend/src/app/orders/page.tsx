@@ -30,7 +30,7 @@ import {
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-type OrderStatus = "Drafting" | "Submitted" | "Confirmed" | "Delivered";
+type OrderStatus = "Drafting" | "Ready to send" | "Awaiting approval" | "Submitted" | "Confirmed" | "Delivered";
 
 interface Order {
   [key: string]: unknown;
@@ -46,11 +46,13 @@ interface Order {
   updated_at: string;
 }
 
-const STATUSES = ["All", "Drafting", "Submitted", "Confirmed", "Delivered"] as const;
+const STATUSES = ["All", "Drafting", "Ready to send", "Awaiting approval", "Submitted", "Confirmed", "Delivered"] as const;
 type StatusFilter = (typeof STATUSES)[number];
 
 const PIPELINE_STAGES: { key: OrderStatus; label: string }[] = [
   { key: "Drafting", label: "Drafting" },
+  { key: "Ready to send", label: "Ready" },
+  { key: "Awaiting approval", label: "Pending" },
   { key: "Submitted", label: "Submitted" },
   { key: "Confirmed", label: "Confirmed" },
   { key: "Delivered", label: "Delivered" },
@@ -62,6 +64,8 @@ const PIPELINE_STAGES: { key: OrderStatus; label: string }[] = [
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   Drafting: "bg-muted text-muted-foreground",
+  "Ready to send": "bg-blue-500/15 text-blue-700 dark:text-blue-400",
+  "Awaiting approval": "bg-amber-500/15 text-amber-700 dark:text-amber-400",
   Submitted: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
   Confirmed: "bg-green-500/15 text-green-700 dark:text-green-400",
   Delivered: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 opacity-70",
@@ -73,8 +77,9 @@ const STATUS_STYLES: Record<OrderStatus, string> = {
 
 function formatCurrency(v: unknown): string {
   if (v == null || v === "") return "\u2014";
-  const n = Number(v);
-  if (isNaN(n)) return "\u2014";
+  const s = String(v).replace(/[$,]/g, "").trim();
+  const n = Number(s);
+  if (isNaN(n)) return String(v);
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
@@ -154,7 +159,7 @@ export default function OrdersPage() {
   const [search, setSearch] = useState("");
 
   const counts = useMemo(() => {
-    const c: Record<OrderStatus, number> = { Drafting: 0, Submitted: 0, Confirmed: 0, Delivered: 0 };
+    const c: Record<OrderStatus, number> = { Drafting: 0, "Ready to send": 0, "Awaiting approval": 0, Submitted: 0, Confirmed: 0, Delivered: 0 };
     for (const o of data) if (o.status in c) c[o.status as OrderStatus]++;
     return c;
   }, [data]);

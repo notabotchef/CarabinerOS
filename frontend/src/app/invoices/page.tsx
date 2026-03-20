@@ -44,26 +44,25 @@ import {
 /* ------------------------------------------------------------------ */
 
 type InvoiceStatus =
-  | "uploaded"
-  | "processing"
-  | "extracted"
-  | "matched"
-  | "approved"
-  | "rejected";
+  | "Uploaded"
+  | "Processing"
+  | "Extracted"
+  | "Matched"
+  | "Approved"
+  | "Paid"
+  | "Rejected";
 
 interface Invoice {
   [key: string]: unknown;
   id: string;
   location_id: string;
-  vendor_name: string | null;
+  vendor: string | null;
   invoice_number: string | null;
   invoice_date: string | null;
   due_date: string | null;
   status: InvoiceStatus;
   file_path: string | null;
   source: string | null;
-  subtotal: string | null;
-  tax: string | null;
   total: string | null;
   line_items: unknown;
   summary: string | null;
@@ -76,38 +75,39 @@ interface Invoice {
 /* ------------------------------------------------------------------ */
 
 const PIPELINE_STAGES: { key: InvoiceStatus; label: string }[] = [
-  { key: "uploaded", label: "Uploaded" },
-  { key: "processing", label: "Processing" },
-  { key: "extracted", label: "Extracted" },
-  { key: "matched", label: "Matched" },
-  { key: "approved", label: "Approved" },
+  { key: "Uploaded", label: "Uploaded" },
+  { key: "Processing", label: "Processing" },
+  { key: "Matched", label: "Matched" },
+  { key: "Approved", label: "Approved" },
+  { key: "Paid", label: "Paid" },
 ];
 
 const FILTER_TABS: { key: InvoiceStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "uploaded", label: "Uploaded" },
-  { key: "processing", label: "Processing" },
-  { key: "extracted", label: "Extracted" },
-  { key: "matched", label: "Matched" },
-  { key: "approved", label: "Approved" },
-  { key: "rejected", label: "Rejected" },
+  { key: "Uploaded", label: "Uploaded" },
+  { key: "Processing", label: "Processing" },
+  { key: "Matched", label: "Matched" },
+  { key: "Approved", label: "Approved" },
+  { key: "Paid", label: "Paid" },
+  { key: "Rejected", label: "Rejected" },
 ];
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
-  uploaded: "bg-muted text-muted-foreground",
-  processing: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-  extracted: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
-  matched: "bg-green-500/15 text-green-700 dark:text-green-400",
-  approved: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
-  rejected: "bg-red-500/15 text-red-700 dark:text-red-400",
+  Uploaded: "bg-muted text-muted-foreground",
+  Processing: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  Extracted: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
+  Matched: "bg-green-500/15 text-green-700 dark:text-green-400",
+  Approved: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  Paid: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 opacity-70",
+  Rejected: "bg-red-500/15 text-red-700 dark:text-red-400",
 };
 
 const STAGE_ACCENT: Record<string, string> = {
-  uploaded: "border-muted-foreground/20",
-  processing: "border-amber-500/30",
-  extracted: "border-blue-500/30",
-  matched: "border-green-500/30",
-  approved: "border-emerald-500/30",
+  Uploaded: "border-muted-foreground/20",
+  Processing: "border-amber-500/30",
+  Matched: "border-green-500/30",
+  Approved: "border-emerald-500/30",
+  Paid: "border-emerald-500/20",
 };
 
 const SOURCE_ICONS: Record<
@@ -125,8 +125,9 @@ const SOURCE_ICONS: Record<
 
 function formatCurrency(v: unknown): string {
   if (v == null || v === "") return "\u2014";
-  const n = Number(v);
-  if (isNaN(n)) return "\u2014";
+  const s = String(v).replace(/[$,]/g, "").trim();
+  const n = Number(s);
+  if (isNaN(n)) return String(v);
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
@@ -170,7 +171,7 @@ const rowVariants = {
 /* ------------------------------------------------------------------ */
 
 function StatusBadge({ status }: { status: InvoiceStatus }) {
-  const style = STATUS_STYLES[status] ?? STATUS_STYLES.uploaded;
+  const style = STATUS_STYLES[status] ?? STATUS_STYLES.Uploaded;
   return (
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${style}`}
@@ -261,12 +262,13 @@ export default function InvoicesPage() {
   /* Compute pipeline counts */
   const counts = useMemo(() => {
     const c: Record<InvoiceStatus, number> = {
-      uploaded: 0,
-      processing: 0,
-      extracted: 0,
-      matched: 0,
-      approved: 0,
-      rejected: 0,
+      Uploaded: 0,
+      Processing: 0,
+      Extracted: 0,
+      Matched: 0,
+      Approved: 0,
+      Paid: 0,
+      Rejected: 0,
     };
     for (const inv of data) {
       if (inv.status in c) c[inv.status]++;
@@ -284,7 +286,7 @@ export default function InvoicesPage() {
       const q = search.toLowerCase();
       list = list.filter(
         (inv) =>
-          inv.vendor_name?.toLowerCase().includes(q) ||
+          inv.vendor?.toLowerCase().includes(q) ||
           inv.invoice_number?.toLowerCase().includes(q),
       );
     }
@@ -394,7 +396,6 @@ export default function InvoicesPage() {
                   Total
                 </TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
-                <TableHead className="font-semibold">Source</TableHead>
                 <TableHead className="font-semibold">Due Date</TableHead>
               </TableRow>
             </TableHeader>
@@ -411,7 +412,7 @@ export default function InvoicesPage() {
                     className="border-b border-border transition-colors hover:bg-accent/50"
                   >
                     <TableCell className="font-semibold text-foreground">
-                      {inv.vendor_name ?? "\u2014"}
+                      {inv.vendor ?? "\u2014"}
                     </TableCell>
                     <TableCell className="text-muted-foreground font-mono text-sm tabular-nums">
                       {inv.invoice_number ?? "\u2014"}
@@ -424,9 +425,6 @@ export default function InvoicesPage() {
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={inv.status} />
-                    </TableCell>
-                    <TableCell>
-                      <SourceIcon source={inv.source} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDate(inv.due_date)}
