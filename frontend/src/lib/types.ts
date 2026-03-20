@@ -64,11 +64,18 @@ export interface A0StateRequestResponse {
   correlationId: string;
 }
 
+export interface InlineStep {
+  type: "agent" | "tool" | "subagent" | "response";
+  heading: string;
+  isFiller: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  steps?: InlineStep[];
 }
 
 export interface ActionCard {

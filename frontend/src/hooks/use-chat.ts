@@ -1,8 +1,53 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { A0Snapshot, ChatMessage } from "@/lib/types";
+import type { A0Snapshot, A0LogEntry, ChatMessage, InlineStep } from "@/lib/types";
 import { getCsrfToken } from "@/lib/csrf";
+
+// --- Step extraction helpers ---
+
+const STEP_LOG_TYPES = new Set(["agent", "tool", "subagent"]);
+
+const THINKING_MESSAGES = [
+  "Checking if Rene Redzepi already paid the interns",
+  "Cross-referencing your wine list with last night\u2019s dreams",
+  "Consulting the mise en place oracle",
+  "Running the numbers through the pasta machine",
+  "Asking the walk-in for its opinion",
+  "Debating butter quantities with the saucier",
+  "Checking the reservation book for ghosts",
+  "Calibrating the flavor compass",
+];
+
+function cleanHeading(raw: string): string {
+  return raw
+    .replace(/icon:\/\/\S+\s*/g, "")
+    .replace(/A\d+:\s*/g, "")
+    .replace(/^>>>\s*/, "")
+    .trim();
+}
+
+function collectSteps(logs: A0LogEntry[], responseIndex: number): InlineStep[] {
+  const steps: InlineStep[] = [];
+  // Walk backwards from just before the response to find preceding steps
+  for (let i = responseIndex - 1; i >= 0; i--) {
+    const log = logs[i];
+    // Stop at previous user message or response
+    if (log.type === "user" || log.type === "response") break;
+    if (!STEP_LOG_TYPES.has(log.type)) continue;
+
+    const heading = cleanHeading(log.heading || "");
+    if (!heading) continue;
+
+    const isFiller = THINKING_MESSAGES.includes(heading);
+    steps.unshift({
+      type: log.type as InlineStep["type"],
+      heading,
+      isFiller,
+    });
+  }
+  return steps;
+}
 
 interface UseChatReturn {
   messages: ChatMessage[];
@@ -41,7 +86,8 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
 
     const newMessages: ChatMessage[] = [];
 
-    for (const log of snapshot.logs) {
+    for (let idx = 0; idx < snapshot.logs.length; idx++) {
+      const log = snapshot.logs[idx];
       // Use log.no as the dedup key — log.id can be null
       const logKey = log.id ?? `no-${log.no}`;
       if (processedLogIds.current.has(logKey)) continue;
@@ -57,11 +103,13 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
       }
 
       if (log.type === "response" && log.content.trim() && log.agentno === 0) {
+        const steps = collectSteps(snapshot.logs, idx);
         newMessages.push({
           id: logKey,
           role: "assistant",
           content: log.content,
           timestamp: log.timestamp,
+          steps: steps.length > 0 ? steps : undefined,
         });
         processedLogIds.current.add(logKey);
       }
