@@ -10,8 +10,10 @@ import { ChatView } from "@/components/chat-view";
 import { HomeView } from "@/components/home-view";
 import { useShell } from "@/components/shell";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
+  const router = useRouter();
   const { newChatPending, consumeNewChat } = useShell();
   const { snapshot, chefStatus, subscribe } = useSocketContext();
   const { messages, sendMessage, loading, queuedMessages, resetChat, createNewChat } = useChat(snapshot);
@@ -20,6 +22,11 @@ export default function HomePage() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [chatStarted, setChatStarted] = useState(false);
   const creatingChatRef = useRef(false);
+
+  // Unsubscribe from any previous context when the home page mounts
+  useEffect(() => {
+    subscribe(null);
+  }, [subscribe]);
 
   // When a new chat is requested (from sidebar "+" button), create it on A0's side
   useEffect(() => {
@@ -45,9 +52,15 @@ export default function HomePage() {
   }, [newChatPending, createNewChat, resetChat, consumeNewChat, subscribe]);
 
   const handleSend = async (text: string) => {
-    if (!chatStarted) setChatStarted(true);
-    const contextId = await sendMessage(text);
-    if (contextId) subscribe(contextId);
+    const newCtxId = await createNewChat();
+    if (newCtxId) {
+      subscribe(newCtxId);
+    }
+    await sendMessage(text);
+    setChatStarted(true);
+    if (newCtxId) {
+      router.push(`/chat/${newCtxId}`);
+    }
   };
 
   return (
