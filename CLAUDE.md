@@ -83,7 +83,7 @@ Read `docs/plans/ruflo-integration-playbook.md` for the full capability map.
 
 ## Workflow Rules
 
-1. **Session start** — At the beginning of every conversation, start the ruflo daemon (`npx ruflo@latest daemon start`), read `docs/plans/open-work.md`, and greet with a summary of open items and recommended next steps.
+1. **Session start** — At the beginning of every conversation, start the ruflo daemon (`npx ruflo@latest daemon start`), init the hive-mind (`mcp__ruflo__hive-mind_init` with hierarchical topology, queen=chef), read `docs/plans/open-work.md`, and greet with a summary of open items and recommended next steps.
 2. **Commit on fix** — Commit immediately after every working fix. Don't batch changes.
 3. **Check before rewriting** — Always read the current file with `git diff` before rewriting. Never break previously working features.
 4. **Session end** — When the user says goodbye, `/exit`, or "that's it": run ruflo session-end hooks, stop the ruflo daemon (`npx ruflo@latest daemon stop`), update `docs/plans/open-work.md` with any new open items, and commit uncommitted work.
