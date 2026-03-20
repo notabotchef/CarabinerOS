@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MenuButton } from "@/components/menu-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface TopBarProps {
   unreadCount: number;
@@ -50,6 +51,9 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
         <span className="text-sm text-muted-foreground hidden sm:block">
           {locationName}
         </span>
+
+        {/* Theme toggle */}
+        <ThemeToggle />
 
         {/* Dev: Agent Zero settings */}
         <a

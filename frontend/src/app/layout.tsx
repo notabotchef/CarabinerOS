@@ -29,7 +29,15 @@ export default function RootLayout({
     <html
       lang="en"
       className={`dark ${dmSans.variable} ${geistMono.variable} h-full`}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("theme");if(t==="light"){document.documentElement.classList.remove("dark")}}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex">
         <SocketProvider>
           <Shell>
