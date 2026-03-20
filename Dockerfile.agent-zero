@@ -12,8 +12,7 @@ COPY requirements.txt requirements2.txt ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt -r requirements2.txt || \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir -r requirements2.txt && \
-    pip install --no-cache-dir asyncpg
+    pip install --no-cache-dir -r requirements2.txt
 
 # Copy entire app
 COPY . .
