@@ -169,6 +169,19 @@ export function useExpoStream(
   const jokeRef = useRef(getRandomJoke());
   const stickyTextRef = useRef<string | null>(null);
   const prevActiveRef = useRef(false);
+  const prevContextRef = useRef<string | null>(null);
+
+  // Reset state when context changes (user switches chats)
+  useEffect(() => {
+    const ctx = snapshot?.context ?? null;
+    if (prevContextRef.current !== null && ctx !== prevContextRef.current) {
+      stickyTextRef.current = null;
+      prevActiveRef.current = false;
+      jokeRef.current = getRandomJoke();
+      setExpo({ text: null, thoughts: [], active: false, ticketSteps: [] });
+    }
+    prevContextRef.current = ctx;
+  }, [snapshot?.context]);
 
   // Extract thoughts + headline/step from snapshot logs
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MessageList } from "@/components/message-list";
 import { ThoughtsStream } from "@/components/thoughts-stream";
 import { ExpoTicket } from "@/components/expo-ticket";
@@ -20,6 +20,11 @@ interface ChatViewProps {
 export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: ChatViewProps) {
   const [ticketExpanded, setTicketExpanded] = useState(false);
   const hasTicket = !expo.active && expo.ticketSteps.length > 0;
+
+  // Collapse ticket when steps are cleared (e.g. context switch)
+  useEffect(() => {
+    if (!hasTicket) setTicketExpanded(false);
+  }, [hasTicket]);
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
