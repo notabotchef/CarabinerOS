@@ -31,11 +31,13 @@ Visit http://localhost:3000
 
 ## LLM Configuration
 
-In `usr/.env` — MUST use `ollama_chat` provider (not `ollama` — the async handler hangs):
+In `usr/.env` — use `ollama` provider with local models:
 
-    A0_SET_chat_model_provider=ollama_chat
+    A0_SET_chat_model_provider=ollama
     A0_SET_chat_model_name=glm-4.7-flash:latest
-    A0_SET_chat_model_api_base=http://localhost:11434
+    A0_SET_chat_model_api_base=http://host.docker.internal:11434
+
+Note: Inside Docker, use `host.docker.internal` (not `localhost`) to reach Ollama on the host.
 
 ## Tech Stack
 
@@ -49,3 +51,27 @@ In `usr/.env` — MUST use `ollama_chat` provider (not `ollama` — the async ha
 
     git fetch upstream
     git merge upstream/main
+
+## Security
+
+- Never commit secrets, API keys, or credentials to git
+- Never run destructive commands without explicit confirmation
+- Validate all external input at system boundaries
+- Use parameterized queries for database operations
+
+## Build & Test
+
+Build: `npm run build`
+Test: `npm test`
+
+Run tests before committing. Run the build to catch type errors.
+
+## Workflow Rules
+
+1. **Session start** — At the beginning of every conversation, read `docs/plans/open-work.md` and greet with a summary of open items and recommended next steps.
+2. **Commit on fix** — Commit immediately after every working fix. Don't batch changes.
+3. **Check before rewriting** — Always read the current file with `git diff` before rewriting. Never break previously working features.
+4. **Session end** — When the user says goodbye, `/exit`, or "that's it": run ruflo session-end hooks, update `docs/plans/open-work.md` with any new open items, and commit uncommitted work.
+5. **Design-first frontend** — Always invoke `/frontend-design`, `/shadcn`, and `/web-design-guidelines` skills before any UI work.
+6. **Never modify Agent Zero core** — All changes go in `usr/`, `carabiner/`, or `frontend/`.
+7. **Use ruflo first** — Use ruflo (swarm, hive-mind, tasks, memory) as primary orchestration. Never double-dispatch with Claude Code agents.
