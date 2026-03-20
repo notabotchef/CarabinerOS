@@ -2,11 +2,9 @@
 
 import { useSocketContext } from "@/components/socket-provider";
 import { useChat } from "@/hooks/use-chat";
-import { useExpoStream } from "@/hooks/use-expo-stream";
 import { useActionCards } from "@/hooks/use-action-cards";
 import { TopBar } from "@/components/top-bar";
 import { NotificationPanel } from "@/components/notification-panel";
-import { ChatView } from "@/components/chat-view";
 import { HomeView } from "@/components/home-view";
 import { useShell } from "@/components/shell";
 import { useState, useEffect, useRef } from "react";
@@ -16,11 +14,9 @@ export default function HomePage() {
   const router = useRouter();
   const { newChatPending, consumeNewChat } = useShell();
   const { snapshot, chefStatus, subscribe } = useSocketContext();
-  const { messages, sendMessage, loading, queuedMessages, resetChat, createNewChat, contextId } = useChat(snapshot);
-  const expo = useExpoStream(snapshot, chefStatus);
+  const { sendMessage, resetChat, createNewChat, contextId } = useChat(snapshot);
   const { cards, unreadCount } = useActionCards(snapshot);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [chatStarted, setChatStarted] = useState(false);
   const creatingChatRef = useRef(false);
 
   // Stable refs for callbacks — updated every render so the effect never needs
@@ -51,12 +47,14 @@ export default function HomePage() {
         const newCtxId = await createNewChatRef.current();
         if (newCtxId) {
           subscribeRef.current(newCtxId);
+          // Navigate to the dedicated chat page so subscription, streaming,
+          // and message processing are handled by /chat/[contextId]/page.tsx
+          router.push(`/chat/${newCtxId}`);
         } else {
           // Fallback: just reset locally if A0 is unreachable
           resetChatRef.current();
           subscribeRef.current(null);
         }
-        setChatStarted(true);
       } finally {
         creatingChatRef.current = false;
       }
@@ -73,7 +71,6 @@ export default function HomePage() {
       }
     }
     await sendMessage(text);
-    setChatStarted(true);
     if (ctxId) {
       router.push(`/chat/${ctxId}`);
     }
@@ -86,19 +83,7 @@ export default function HomePage() {
         onBellClick={() => setNotifOpen(true)}
       />
 
-      {!chatStarted ? (
-        /* HOME STATE */
-        <HomeView onSend={handleSend} />
-      ) : (
-        /* CHAT STATE */
-        <ChatView
-          messages={messages}
-          expo={expo}
-          onSend={handleSend}
-          loading={loading}
-          queueCount={queuedMessages.length}
-        />
-      )}
+      <HomeView onSend={handleSend} />
 
       <NotificationPanel open={notifOpen} onOpenChange={setNotifOpen} cards={cards} />
     </div>
