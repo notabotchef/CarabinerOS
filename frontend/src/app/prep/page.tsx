@@ -51,6 +51,13 @@ const READINESS_CONFIG: Record<
     text: "text-amber-700 dark:text-amber-400",
     ring: "#f59e0b",
   },
+  "At risk": {
+    label: "At Risk",
+    dot: "bg-orange-500",
+    bg: "bg-orange-500/10",
+    text: "text-orange-700 dark:text-orange-400",
+    ring: "#f97316",
+  },
   "Not Started": {
     label: "Not Started",
     dot: "bg-muted-foreground/40",
@@ -121,8 +128,9 @@ function ReadinessRing({ items }: { items: PrepItem[] }) {
 
   const ready = items.filter((i) => i.readiness === "Ready").length;
   const inProgress = items.filter((i) => i.readiness === "In Progress").length;
+  const atRisk = items.filter((i) => i.readiness === "At risk").length;
   const blocked = items.filter((i) => i.readiness === "Blocked").length;
-  const notStarted = total - ready - inProgress - blocked;
+  const notStarted = total - ready - inProgress - atRisk - blocked;
   const pct = Math.round((ready / total) * 100);
 
   const r = 28;
@@ -130,6 +138,7 @@ function ReadinessRing({ items }: { items: PrepItem[] }) {
   const segments = [
     { count: ready, color: READINESS_CONFIG.Ready.ring },
     { count: inProgress, color: READINESS_CONFIG["In Progress"].ring },
+    { count: atRisk, color: READINESS_CONFIG["At risk"].ring },
     { count: blocked, color: READINESS_CONFIG.Blocked.ring },
     { count: notStarted, color: READINESS_CONFIG["Not Started"].ring },
   ].filter((s) => s.count > 0);
