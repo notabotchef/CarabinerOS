@@ -29,9 +29,9 @@ Returns: Average cost %, total items, count above target, and details for highes
 - Omit location_id to analyze across all locations
 
 ## Write Operations (via MCP)
-To create, update, or remove food cost records, use the carabiner-db MCP tools:
-- `carabiner-db.food_cost_create` — Add a new food cost record for a menu item
-- `carabiner-db.food_cost_update` — Update cost percentage, pressure rating, or action recommendation
-- `carabiner-db.food_cost_delete` — Remove a food cost record
+To create, update, or remove food cost records, use the carabiner_db MCP tools:
+- `carabiner_db.food_cost_create` — Add a new food cost record for a menu item
+- `carabiner_db.food_cost_update` — Update cost percentage, pressure rating, or action recommendation
+- `carabiner_db.food_cost_delete` — Remove a food cost record
 
 Use these MCP tools when the user asks to log or adjust food cost data. The `food_cost_tool` above is read-only (analysis only).

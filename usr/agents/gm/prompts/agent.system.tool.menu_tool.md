@@ -31,9 +31,9 @@ Returns: Items grouped by performance category:
 - Omit location_id to see all locations
 
 ## Write Operations (via MCP)
-To add, update, or remove menu items, use the carabiner-db MCP tools:
-- `carabiner-db.menu_item_create` — Add a new menu item with pricing, category, and margin data
-- `carabiner-db.menu_item_update` — Update price, category, performance classification, or other fields
-- `carabiner-db.menu_item_delete` — Remove a menu item
+To add, update, or remove menu items, use the carabiner_db MCP tools:
+- `carabiner_db.menu_create` — Add a new menu item with pricing, category, and margin data
+- `carabiner_db.menu_update` — Update price, category, performance classification, or other fields
+- `carabiner_db.menu_delete` — Remove a menu item
 
 Use these MCP tools whenever the user asks to add, edit, or remove menu items. The `menu_tool` above is read-only (analysis and reporting only).

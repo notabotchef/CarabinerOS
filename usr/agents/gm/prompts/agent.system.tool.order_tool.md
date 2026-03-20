@@ -39,9 +39,9 @@ Returns: Confirmation of update.
 - Channel indicates how the order is submitted: "API", "Email", "Browser fallback"
 
 ## Write Operations (via MCP)
-To create new orders or delete existing ones, use the carabiner-db MCP tools:
-- `carabiner-db.order_create` — Create a new purchase order
-- `carabiner-db.order_update` — Update order fields (also available via the `order_tool` **update** method above)
-- `carabiner-db.order_delete` — Delete a draft order
+To create new orders or delete existing ones, use the carabiner_db MCP tools:
+- `carabiner_db.orders_create` — Create a new purchase order
+- `carabiner_db.orders_update` — Update order fields (also available via the `order_tool` **update** method above)
+- `carabiner_db.orders_delete` — Delete a draft order
 
-Note: The `order_tool` **update** method can update an existing order's status and fields, but use `carabiner-db.order_create` for creating brand-new orders. The `order_tool` cannot create orders on its own.
+Note: The `order_tool` **update** method can update an existing order's status and fields, but use `carabiner_db.orders_create` for creating brand-new orders. The `order_tool` cannot create orders on its own.

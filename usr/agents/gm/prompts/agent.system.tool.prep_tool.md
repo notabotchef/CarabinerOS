@@ -28,9 +28,9 @@ Returns: Count of Ready, At risk, and Blocked tasks with details for any issues.
 - "No shortage" means the task is unblocked
 
 ## Write Operations (via MCP)
-To create, update, or remove prep tasks, use the carabiner-db MCP tools:
-- `carabiner-db.prep_task_create` — Add a new prep task to a station or service lane
-- `carabiner-db.prep_task_update` — Update readiness, shortage, station, or other task fields
-- `carabiner-db.prep_task_delete` — Remove a prep task
+To create, update, or remove prep tasks, use the carabiner_db MCP tools:
+- `carabiner_db.prep_create` — Add a new prep task to a station or service lane
+- `carabiner_db.prep_update` — Update readiness, shortage, station, or other task fields
+- `carabiner_db.prep_delete` — Remove a prep task
 
 Use these MCP tools whenever the user asks to add, edit, or delete prep tasks. The `prep_tool` above is read-only.
