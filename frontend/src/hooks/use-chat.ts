@@ -27,11 +27,14 @@ const THINKING_MESSAGES = [
 ];
 
 function cleanHeading(raw: string): string {
-  // Strip icon:// prefixes and >>> markers, but KEEP A0:/A1: agent prefixes
+  // Strip icon:// prefixes and >>> markers, then map agent numbers to kitchen roles
   return raw
     .replace(/icon:\/\/\S+\s*/g, "")
     .replace(/^>>>\s*/, "")
-    .trim();
+    .trim()
+    .replace(/^A0:\s*/, "GM: ")
+    .replace(/^A1:\s*/, "AGM: ")
+    .replace(/^A(\d+):\s*/, "Team: ");
 }
 
 interface CollectedSteps {
@@ -74,8 +77,8 @@ function collectSteps(logs: A0LogEntry[], responseIndex: number): CollectedSteps
   // Find the last "agent" type heading for the ticket title
   for (let i = steps.length - 1; i >= 0; i--) {
     if (steps[i].type === "agent") {
-      // Strip A0:/A1: prefix for the title only
-      lastAgentHeading = steps[i].heading.replace(/A\d+:\s*/g, "").trim();
+      // Strip kitchen role prefix for the title (heading already has GM:/AGM:/Team:)
+      lastAgentHeading = steps[i].heading.replace(/^(GM|AGM|Sous Chef|Team):\s*/g, "").trim();
       break;
     }
   }
