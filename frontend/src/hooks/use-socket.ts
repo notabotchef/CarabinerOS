@@ -19,6 +19,7 @@ export function useSocket(): UseSocketReturn {
   const [chefStatus, setChefStatus] = useState<ChefStatus | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const logFromRef = useRef(0);
+  const pendingContextRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     const socket = initStateSyncSocket();
@@ -26,8 +27,11 @@ export function useSocket(): UseSocketReturn {
 
     socket.on("connect", () => {
       setConnected(true);
+      // If a subscribe was called before connection, use that context
+      const ctx = pendingContextRef.current !== undefined ? pendingContextRef.current : null;
+      pendingContextRef.current = undefined;
       socket.emit("state_request", {
-        context: null,
+        context: ctx,
         log_from: 0,
         notifications_from: 0,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -76,9 +80,13 @@ export function useSocket(): UseSocketReturn {
 
   const subscribe = useCallback((contextId: string | null) => {
     const socket = getStateSyncSocket();
-    if (!socket?.connected) return;
-
     logFromRef.current = 0;
+
+    if (!socket?.connected) {
+      // Socket not connected yet — queue the context for when it connects
+      pendingContextRef.current = contextId;
+      return;
+    }
 
     socket.emit("state_request", {
       context: contextId,
