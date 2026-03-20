@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { ShoppingCart, DollarSign, ChefHat, UtensilsCrossed, type LucideIcon } from "lucide-react";
 
@@ -13,82 +13,111 @@ interface KpiCard {
   details: { label: string; value: string }[];
 }
 
-const CARDS: KpiCard[] = [
-  {
-    label: "Orders",
-    value: "3",
-    subtitle: "1 needs approval",
-    icon: ShoppingCart,
-    barWidth: "w-1/3",
-    details: [
-      { label: "Pending approval", value: "1" },
-      { label: "In progress", value: "1" },
-      { label: "Ready to send", value: "1" },
-      { label: "Avg lead time", value: "2.3 days" },
-    ],
-  },
-  {
-    label: "Food Cost",
-    value: "28.4%",
-    subtitle: "\u2193 1.2%",
-    icon: DollarSign,
-    barWidth: "w-[72%]",
-    details: [
-      { label: "This week", value: "28.4%" },
-      { label: "Last week", value: "31.2%" },
-      { label: "Target", value: "27.0%" },
-      { label: "Top item", value: "Salmon ($840)" },
-    ],
-  },
-  {
-    label: "Prep",
-    value: "12/18",
-    subtitle: "6 remaining",
-    icon: ChefHat,
-    barWidth: "w-2/3",
-    details: [
-      { label: "Completed", value: "12" },
-      { label: "In progress", value: "3" },
-      { label: "Not started", value: "3" },
-      { label: "Behind sched.", value: "1 item" },
-    ],
-  },
-  {
-    label: "Covers",
-    value: "142",
-    subtitle: "proj. 185",
-    icon: UtensilsCrossed,
-    barWidth: "w-[77%]",
-    details: [
-      { label: "Seated now", value: "142" },
-      { label: "Projected", value: "185" },
-      { label: "Walk-ins", value: "23" },
-      { label: "Reservations left", value: "8" },
-    ],
-  },
-];
-
-const cardVariants: Variants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: {
-      delay: i * 0.08,
-      type: "spring",
-      stiffness: 300,
-      damping: 30,
-    },
-  }),
-};
+function useSummary(endpoint: string) {
+  const [data, setData] = useState<Record<string, unknown>[]>([]);
+  useEffect(() => {
+    fetch(endpoint, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setData(Array.isArray(d) ? d : []))
+      .catch(() => setData([]));
+  }, [endpoint]);
+  return data;
+}
 
 export function SolitaireCards() {
+  const orders = useSummary("/api/orders");
+  const foodCost = useSummary("/api/food-cost");
+  const prep = useSummary("/api/prep");
+
+  const cards: KpiCard[] = useMemo(() => {
+    // Orders
+    const pendingOrders = orders.filter((o) => o.status === "Drafting" || o.status === "Ready to send").length;
+    const orderSubtitle = pendingOrders > 0 ? `${pendingOrders} needs approval` : "all sent";
+
+    // Food Cost — average current_cost_pct
+    const costs = foodCost.map((f) => parseFloat(String(f.current_cost_pct).replace(/[^0-9.]/g, ""))).filter((n) => !isNaN(n));
+    const avgCost = costs.length > 0 ? costs.reduce((a, b) => a + b, 0) / costs.length : 0;
+    const highPressure = foodCost.filter((f) => {
+      const p = String(f.pressure).toLowerCase();
+      return p.includes("+3") || p.includes("+4") || p.includes("+5") || p === "high";
+    }).length;
+
+    // Prep — readiness
+    const ready = prep.filter((p) => String(p.readiness).toLowerCase() === "ready").length;
+    const total = prep.length;
+    const remaining = total - ready;
+
+    return [
+      {
+        label: "Orders",
+        value: String(orders.length),
+        subtitle: orderSubtitle,
+        icon: ShoppingCart,
+        barWidth: orders.length > 0 ? `w-[${Math.round((pendingOrders / Math.max(orders.length, 1)) * 100)}%]` : "w-0",
+        details: [
+          { label: "Total orders", value: String(orders.length) },
+          { label: "Needs approval", value: String(pendingOrders) },
+          { label: "Submitted", value: String(orders.filter((o) => o.status === "Submitted" || o.status === "Confirmed").length) },
+          { label: "Delivered", value: String(orders.filter((o) => o.status === "Delivered").length) },
+        ],
+      },
+      {
+        label: "Food Cost",
+        value: avgCost > 0 ? `${avgCost.toFixed(1)}%` : "—",
+        subtitle: highPressure > 0 ? `${highPressure} high pressure` : "on target",
+        icon: DollarSign,
+        barWidth: avgCost > 0 ? `w-[${Math.min(Math.round(avgCost * 2.5), 100)}%]` : "w-0",
+        details: [
+          { label: "Avg cost %", value: avgCost > 0 ? `${avgCost.toFixed(1)}%` : "—" },
+          { label: "Items tracked", value: String(foodCost.length) },
+          { label: "High pressure", value: String(highPressure) },
+          { label: "Target", value: "27.0%" },
+        ],
+      },
+      {
+        label: "Prep",
+        value: total > 0 ? `${ready}/${total}` : "—",
+        subtitle: remaining > 0 ? `${remaining} remaining` : "all ready",
+        icon: ChefHat,
+        barWidth: total > 0 ? `w-[${Math.round((ready / total) * 100)}%]` : "w-0",
+        details: [
+          { label: "Ready", value: String(ready) },
+          { label: "In progress", value: String(prep.filter((p) => String(p.readiness).toLowerCase() === "in progress").length) },
+          { label: "Not started", value: String(prep.filter((p) => String(p.readiness).toLowerCase() === "not started").length) },
+          { label: "Blocked", value: String(prep.filter((p) => String(p.readiness).toLowerCase() === "blocked").length) },
+        ],
+      },
+      {
+        label: "Covers",
+        value: "142",
+        subtitle: "proj. 185",
+        icon: UtensilsCrossed,
+        barWidth: "w-[77%]",
+        details: [
+          { label: "Seated now", value: "142" },
+          { label: "Projected", value: "185" },
+          { label: "Walk-ins", value: "23" },
+          { label: "Reservations", value: "8 remaining" },
+        ],
+      },
+    ];
+  }, [orders, foodCost, prep]);
+
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
+  const cardVariants: Variants = {
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { delay: i * 0.08, type: "spring", stiffness: 300, damping: 30 },
+    }),
+  };
 
   return (
     <div className="grid grid-cols-4 gap-4 py-8 w-full max-w-[680px] mx-auto">
-      {CARDS.map((card, i) => {
+      {cards.map((card, i) => {
         const Icon = card.icon;
         const isOpen = expandedIndex === i;
 
@@ -103,7 +132,6 @@ export function SolitaireCards() {
             onClick={() => setExpandedIndex(isOpen ? null : i)}
             className="relative overflow-hidden bg-card border border-border rounded-2xl p-5 text-center cursor-pointer min-h-[140px] flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow duration-300"
           >
-            {/* Front face */}
             <div className="size-9 rounded-[10px] bg-muted/50 flex items-center justify-center mb-2.5">
               <Icon className="size-[18px] text-muted-foreground" />
             </div>
@@ -120,7 +148,6 @@ export function SolitaireCards() {
               <div className={`bg-muted-foreground/30 ${card.barWidth} h-full rounded-full`} />
             </div>
 
-            {/* Expanded overlay */}
             <AnimatePresence>
               {isOpen && (
                 <motion.div
@@ -136,7 +163,7 @@ export function SolitaireCards() {
                   {card.details.map((d) => (
                     <div key={d.label} className="flex justify-between text-[11px] py-[3px] border-b border-border/50 last:border-none">
                       <span className="text-muted-foreground">{d.label}</span>
-                      <span className="font-bold">{d.value}</span>
+                      <span className="font-bold tabular-nums">{d.value}</span>
                     </div>
                   ))}
                   <span className="text-[9px] text-muted-foreground/60 text-center mt-2.5">

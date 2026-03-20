@@ -132,7 +132,8 @@ const ACCENT_CFG: Record<KPI["accent"], { bar: string; text: string; bg: string 
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function fmt(n: number): string {
+function fmt(n: number | undefined | null): string {
+  if (n == null || isNaN(n)) return "$0";
   return n.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
@@ -222,8 +223,8 @@ function KpiSkeleton() {
   );
 }
 
-function VarianceCell({ value }: { value: number }) {
-  if (value === 0) {
+function VarianceCell({ value }: { value: number | undefined | null }) {
+  if (value == null || value === 0) {
     return <span className="tabular-nums text-muted-foreground/40">&mdash;</span>;
   }
   const isPositive = value > 0;
@@ -410,7 +411,7 @@ export default function ReportingPage() {
                               isPositiveNet ? "text-emerald-400/80" : "text-red-400/80"
                             }`}
                           >
-                            {row.pctRevenue.toFixed(1)}%
+                            {(row.pctRevenue ?? 0).toFixed(1)}%
                           </TableCell>
                           <TableCell className="text-right tabular-nums text-sm font-bold text-muted-foreground">
                             {fmt(row.budget)}
@@ -459,7 +460,7 @@ export default function ReportingPage() {
                               : "text-muted-foreground/60"
                           }`}
                         >
-                          {row.pctRevenue.toFixed(1)}%
+                          {(row.pctRevenue ?? 0).toFixed(1)}%
                         </TableCell>
                         <TableCell
                           className={`text-right tabular-nums ${

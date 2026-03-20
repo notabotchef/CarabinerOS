@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { initStateSyncSocket, getStateSyncSocket } from "@/lib/socket-client";
+import { getCsrfToken } from "@/lib/csrf";
 import type { A0StatePush, A0Snapshot, ChefStatus } from "@/lib/types";
 import type { Socket } from "socket.io-client";
 
@@ -25,7 +26,6 @@ export function useSocket(): UseSocketReturn {
 
     socket.on("connect", () => {
       setConnected(true);
-      // Subscribe immediately to start receiving state_push events
       socket.emit("state_request", {
         context: null,
         log_from: 0,
@@ -38,10 +38,16 @@ export function useSocket(): UseSocketReturn {
     socket.on("disconnect", () => setConnected(false));
 
     socket.on("state_push", (envelope: A0StatePush) => {
-      // WebSocketManager wraps payloads in { handlerId, eventId, ts, data: {...} }
       const data = envelope?.data;
       const snap = data?.snapshot;
-      if (!snap) return;
+      if (!snap) {
+        console.warn("[state_push] no snapshot in envelope", Object.keys(envelope || {}));
+        return;
+      }
+      const respLogs = snap.logs?.filter((l: { type: string }) => l.type === "response") ?? [];
+      if (respLogs.length > 0) {
+        console.log(`[state_push] ${snap.logs.length} logs, ${respLogs.length} responses, progress_active=${snap.log_progress_active}`);
+      }
       setSnapshot(snap);
       if (snap.logs?.length > 0) {
         logFromRef.current = snap.logs[snap.logs.length - 1].no + 1;
@@ -52,7 +58,12 @@ export function useSocket(): UseSocketReturn {
       setChefStatus(status);
     });
 
-    socket.connect();
+    // Fetch CSRF token FIRST to establish the Flask session cookie,
+    // THEN connect the socket. The WebSocket upgrade request will
+    // carry the session cookie so Agent Zero can validate CSRF.
+    getCsrfToken()
+      .then(() => socket.connect())
+      .catch(() => socket.connect()); // connect anyway, auth callback will retry
 
     return () => {
       socket.off("connect");
