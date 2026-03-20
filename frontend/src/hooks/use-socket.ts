@@ -20,6 +20,7 @@ export function useSocket(): UseSocketReturn {
   const socketRef = useRef<Socket | null>(null);
   const logFromRef = useRef(0);
   const pendingContextRef = useRef<string | null | undefined>(undefined);
+  const subscribedContextRef = useRef<string | null>(null);
 
   useEffect(() => {
     const socket = initStateSyncSocket();
@@ -48,6 +49,20 @@ export function useSocket(): UseSocketReturn {
         console.warn("[state_push] no snapshot in envelope", Object.keys(envelope || {}));
         return;
       }
+
+      // Filter snapshots from other contexts to prevent cross-chat bleeding.
+      // Accept if: no subscribed context yet (null), or snapshot matches subscribed context.
+      const subscribed = subscribedContextRef.current;
+      if (subscribed && snap.context && snap.context !== subscribed) {
+        // Wrong context — still update the contexts list (sidebar chat list)
+        // by merging it into the current snapshot without replacing logs/context.
+        setSnapshot(prev => {
+          if (!prev) return prev;
+          return { ...prev, contexts: snap.contexts };
+        });
+        return;
+      }
+
       const respLogs = snap.logs?.filter((l: { type: string }) => l.type === "response") ?? [];
       if (respLogs.length > 0) {
         console.log(`[state_push] ${snap.logs.length} logs, ${respLogs.length} responses, progress_active=${snap.log_progress_active}`);
@@ -81,6 +96,7 @@ export function useSocket(): UseSocketReturn {
   const subscribe = useCallback((contextId: string | null) => {
     const socket = getStateSyncSocket();
     logFromRef.current = 0;
+    subscribedContextRef.current = contextId;
 
     if (!socket?.connected) {
       // Socket not connected yet — queue the context for when it connects
