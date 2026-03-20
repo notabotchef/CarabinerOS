@@ -1,13 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { PanelLeftOpen, Settings } from "lucide-react";
+import { Menu, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useShell } from "@/components/shell";
 
 interface TopBarProps {
   unreadCount: number;
   onBellClick: () => void;
-  onMenuClick?: () => void;
   locationName?: string;
 }
 
@@ -28,19 +28,20 @@ const frontCardVariants = {
 
 const cardTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
-export function TopBar({ unreadCount, onBellClick, onMenuClick, locationName = "Main Kitchen" }: TopBarProps) {
+export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen" }: TopBarProps) {
+  const { openSidebar } = useShell();
+
   return (
-    <header className="flex items-center justify-between pl-14 pr-5 py-3 shrink-0 border-b border-border bg-card">
-      {/* Left: Menu + Brand */}
+    <header className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-border bg-card">
+      {/* Left: Hamburger + Brand */}
       <div className="flex items-center gap-3">
-        {onMenuClick && (
-          <button
-            onClick={onMenuClick}
-            className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <PanelLeftOpen className="size-4" />
-          </button>
-        )}
+        <button
+          onClick={openSidebar}
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors"
+          title="Open menu"
+        >
+          <Menu className="size-[18px]" strokeWidth={1.5} />
+        </button>
         <div className="flex items-center gap-2.5 select-none">
           <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-[10px] font-black tracking-tight leading-none">
             cOS

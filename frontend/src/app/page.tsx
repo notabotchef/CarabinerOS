@@ -12,7 +12,7 @@ import { useShell } from "@/components/shell";
 import { useState, useEffect } from "react";
 
 export default function HomePage() {
-  const { openSidebar, newChatPending, consumeNewChat } = useShell();
+  const { newChatPending, consumeNewChat } = useShell();
   const { snapshot, chefStatus, subscribe } = useSocketContext();
   const { messages, sendMessage, loading, queuedMessages, resetChat, createNewChat } = useChat(snapshot);
   const expo = useExpoStream(snapshot, chefStatus);

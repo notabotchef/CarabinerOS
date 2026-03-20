@@ -9,13 +9,10 @@ import { useActionCards } from "@/hooks/use-action-cards";
 import { TopBar } from "@/components/top-bar";
 import { ChatView } from "@/components/chat-view";
 import { NotificationPanel } from "@/components/notification-panel";
-import { useShell } from "@/components/shell";
-
 export default function ChatPage() {
   const params = useParams();
   const router = useRouter();
   const contextId = params.contextId as string;
-  const { openSidebar } = useShell();
   const { snapshot, chefStatus, connected, subscribe } = useSocketContext();
   const { messages, sendMessage, loading, queuedMessages } = useChat(snapshot);
   const expo = useExpoStream(snapshot, chefStatus);
