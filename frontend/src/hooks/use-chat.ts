@@ -16,6 +16,7 @@ const LABEL_MAP: Record<string, StepLabel> = {
 };
 
 const THINKING_MESSAGES = [
+  // --- OG 8 ---
   "Checking if Rene Redzepi already paid the interns",
   "Cross-referencing your wine list with last night\u2019s dreams",
   "Consulting the mise en place oracle",
@@ -24,6 +25,41 @@ const THINKING_MESSAGES = [
   "Debating butter quantities with the saucier",
   "Checking the reservation book for ghosts",
   "Calibrating the flavor compass",
+  // --- The line ---
+  "Counting how many side towels disappeared this shift",
+  "Asking the dishwasher if they\u2019ve seen your will to live",
+  "Waiting for the ticket printer to stop \u2014 just kidding, it never stops",
+  "Checking if the walk-in is still judging us",
+  "Consulting the ancient texts (the binder behind the bar)",
+  "Whispering \u201Cheard\u201D to no one in particular",
+  "Doing a quick cry in the walk-in, one sec",
+  "Blaming the previous shift",
+  "Rewriting the 86 list for the third time today",
+  "Pretending this ticket didn\u2019t just print",
+  "Negotiating with the salamander",
+  "Double-checking that nobody 86\u2019d the good tongs",
+  "Asking the line if they\u2019re in the weeds or just standing there",
+  "Looking for the sharpie someone definitely borrowed",
+  "Reading the ticket printer like it\u2019s a fortune teller",
+  "Confirming the special is still special",
+  "Checking who left the burner on overnight",
+  "Performing a quick inventory of lost Sharpies",
+  "Convincing the garde manger this is important",
+  "Wondering who labeled this container \u201Cstuff\u201D",
+  "Ignoring the front-of-house like a true line cook",
+  "Telling the new guy to check the basement",
+  "Looking for a clean apron (good luck)",
+  "Calculating how many covers before we lose it",
+  "Verifying the fish delivery wasn\u2019t yesterday\u2019s fish",
+  "Staring at the board like it owes us money",
+  "Asking Chef if we can sub micro-greens for personality",
+  "Rotating stock and existential dread",
+  "Checking if that\u2019s a fruit fly or a garnish",
+  "Reviewing the Bourdain playbook",
+  "Confirming the quenelles pass the vibe check",
+  "Making sure the pass is clear before we fire",
+  "Trying to remember who has the keys to dry storage",
+  "Tempering chocolate and expectations",
 ];
 
 function cleanHeading(raw: string): string {
