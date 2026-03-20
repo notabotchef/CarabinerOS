@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import type { A0Snapshot, A0LogEntry, ChatMessage, InlineStep } from "@/lib/types";
+import type { A0Snapshot, A0LogEntry, ChatMessage, InlineStep, StepLabel } from "@/lib/types";
 import { getCsrfToken } from "@/lib/csrf";
 
 // --- Step extraction helpers ---
 
-const STEP_LOG_TYPES = new Set(["agent", "tool", "subagent"]);
+const STEP_LOG_TYPES = new Set(["agent", "tool", "subagent", "response"]);
+
+const LABEL_MAP: Record<string, StepLabel> = {
+  agent: "GEN",
+  tool: "USE",
+  subagent: "SUB",
+  response: "RES",
+};
 
 const THINKING_MESSAGES = [
   "Checking if Rene Redzepi already paid the interns",
@@ -20,20 +27,31 @@ const THINKING_MESSAGES = [
 ];
 
 function cleanHeading(raw: string): string {
+  // Strip icon:// prefixes and >>> markers, but KEEP A0:/A1: agent prefixes
   return raw
     .replace(/icon:\/\/\S+\s*/g, "")
-    .replace(/A\d+:\s*/g, "")
     .replace(/^>>>\s*/, "")
     .trim();
 }
 
-function collectSteps(logs: A0LogEntry[], responseIndex: number): InlineStep[] {
+interface CollectedSteps {
+  steps: InlineStep[];
+  stepTitle: string | undefined;
+  stepDuration: number | undefined;
+}
+
+function collectSteps(logs: A0LogEntry[], responseIndex: number): CollectedSteps {
   const steps: InlineStep[] = [];
+  let lastAgentHeading: string | undefined;
+  let firstTimestamp: number | undefined;
+
   // Walk backwards from just before the response to find preceding steps
   for (let i = responseIndex - 1; i >= 0; i--) {
     const log = logs[i];
-    // Stop at previous user message or response
-    if (log.type === "user" || log.type === "response") break;
+    // Stop at previous user message
+    if (log.type === "user") break;
+    // Stop at previous agent-0 response (but include sub-agent responses)
+    if (log.type === "response" && log.agentno === 0) break;
     if (!STEP_LOG_TYPES.has(log.type)) continue;
 
     const heading = cleanHeading(log.heading || "");
@@ -42,11 +60,38 @@ function collectSteps(logs: A0LogEntry[], responseIndex: number): InlineStep[] {
     const isFiller = THINKING_MESSAGES.includes(heading);
     steps.unshift({
       type: log.type as InlineStep["type"],
+      label: LABEL_MAP[log.type] ?? "GEN",
       heading,
       isFiller,
     });
+
+    // Track first timestamp (earliest step)
+    if (log.timestamp && (firstTimestamp === undefined || log.timestamp < firstTimestamp)) {
+      firstTimestamp = log.timestamp;
+    }
   }
-  return steps;
+
+  // Find the last "agent" type heading for the ticket title
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (steps[i].type === "agent") {
+      // Strip A0:/A1: prefix for the title only
+      lastAgentHeading = steps[i].heading.replace(/A\d+:\s*/g, "").trim();
+      break;
+    }
+  }
+
+  // Calculate duration
+  const responseLog = logs[responseIndex];
+  const stepDuration =
+    firstTimestamp !== undefined && responseLog?.timestamp
+      ? responseLog.timestamp - firstTimestamp
+      : undefined;
+
+  return {
+    steps,
+    stepTitle: lastAgentHeading,
+    stepDuration: stepDuration && stepDuration > 0 ? stepDuration : undefined,
+  };
 }
 
 interface UseChatReturn {
@@ -103,13 +148,15 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
       }
 
       if (log.type === "response" && log.content.trim() && log.agentno === 0) {
-        const steps = collectSteps(snapshot.logs, idx);
+        const { steps, stepTitle, stepDuration } = collectSteps(snapshot.logs, idx);
         newMessages.push({
           id: logKey,
           role: "assistant",
           content: log.content,
           timestamp: log.timestamp,
           steps: steps.length > 0 ? steps : undefined,
+          stepTitle,
+          stepDuration,
         });
         processedLogIds.current.add(logKey);
       }

@@ -64,8 +64,11 @@ export interface A0StateRequestResponse {
   correlationId: string;
 }
 
+export type StepLabel = "GEN" | "USE" | "SUB" | "RES";
+
 export interface InlineStep {
   type: "agent" | "tool" | "subagent" | "response";
+  label: StepLabel;
   heading: string;
   isFiller: boolean;
 }
@@ -76,6 +79,8 @@ export interface ChatMessage {
   content: string;
   timestamp: number;
   steps?: InlineStep[];
+  stepTitle?: string;
+  stepDuration?: number;
 }
 
 export interface ActionCard {

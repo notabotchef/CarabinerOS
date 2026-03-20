@@ -19,36 +19,57 @@ const messageVariants = {
   },
 };
 
-// --- Dot color map (matches ExpoTicket) ---
+// --- Dot color map by step type ---
 const DOT_COLORS: Record<InlineStep["type"], string> = {
-  agent: "bg-emerald-500/50",
-  tool: "bg-orange-500/50",
-  subagent: "bg-blue-400/50",
-  response: "bg-emerald-500/50",
+  agent: "bg-emerald-400/70",
+  tool: "bg-amber-400/70",
+  subagent: "bg-blue-400/70",
+  response: "bg-emerald-400/70",
 };
 
-// --- Inline step ticket for a single message ---
-function InlineTicket({ steps }: { steps: InlineStep[] }) {
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}m${s.toString().padStart(2, "0")}s`;
+}
+
+// --- Inline step ticket for a single message (A0-style) ---
+function InlineTicket({
+  steps,
+  stepTitle,
+  stepDuration,
+}: {
+  steps: InlineStep[];
+  stepTitle?: string;
+  stepDuration?: number;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   const toggle = useCallback(() => setExpanded((v) => !v), []);
 
+  const title = stepTitle || "Processing";
+
   return (
     <div className="w-full max-w-[85%]">
-      {/* Toggle button */}
-      <button
-        type="button"
+      {/* Collapsed / expanded header row */}
+      <div
+        className="flex items-center gap-2 px-1 py-1 cursor-pointer select-none group"
         onClick={toggle}
-        className="flex items-center gap-1 px-1 py-0.5 text-[10px] text-emerald-500/50 hover:text-emerald-500/80 transition-colors cursor-pointer select-none"
       >
-        <span>{steps.length} step{steps.length !== 1 ? "s" : ""}</span>
-        <span
-          className="inline-block transition-transform duration-200"
-          style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
-        >
-          ▲
+        <span className="text-[10px] text-muted-foreground/40 group-hover:text-muted-foreground/60 transition-colors">
+          {expanded ? "\u25BC" : "\u25B6"}
         </span>
-      </button>
+        <span className="text-[11px] text-muted-foreground/70 font-medium truncate flex-1 min-w-0">
+          {title}
+        </span>
+        <span className="text-[9px] text-emerald-500/60 font-medium shrink-0">END</span>
+        {stepDuration != null && (
+          <span className="text-[9px] text-muted-foreground/30 shrink-0">
+            {formatDuration(stepDuration)}
+          </span>
+        )}
+      </div>
 
       {/* Expandable step list */}
       <AnimatePresence>
@@ -61,28 +82,27 @@ function InlineTicket({ steps }: { steps: InlineStep[] }) {
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <div className="mb-1 rounded-lg bg-muted/30 border border-border/40 max-h-[30vh] overflow-y-auto">
-              <div className="px-3 py-2 space-y-0.5">
-                {steps.map((step, i) => (
-                  <div key={i} className="flex items-start gap-2 min-h-[16px]">
-                    <span
-                      className={`mt-[4px] inline-block size-[5px] rounded-full shrink-0 ${
-                        step.isFiller ? "bg-white/15" : DOT_COLORS[step.type]
-                      }`}
-                    />
-                    <span
-                      className={`leading-tight truncate ${
-                        step.isFiller
-                          ? "italic text-muted-foreground/40"
-                          : "text-muted-foreground/60"
-                      }`}
-                      style={{ fontSize: "9px" }}
-                    >
+            <div className="mb-1 max-h-[30vh] overflow-y-auto">
+              {steps.map((step, i) =>
+                step.isFiller ? (
+                  <div key={i} className="flex items-center gap-2 pl-4 py-0.5">
+                    {/* No dot for filler — just indented italic text */}
+                    <span className="w-[7px] shrink-0" />
+                    <span className="text-[10px] text-muted-foreground/25 italic truncate">
                       {step.heading}
                     </span>
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <div key={i} className="flex items-center gap-2 pl-4 py-0.5">
+                    <span
+                      className={`inline-block size-[7px] rounded-full shrink-0 ${DOT_COLORS[step.type]}`}
+                    />
+                    <span className="text-[10px] text-muted-foreground/50 truncate">
+                      {step.heading}
+                    </span>
+                  </div>
+                ),
+              )}
             </div>
           </motion.div>
         )}
@@ -120,7 +140,11 @@ export function MessageList({ messages }: MessageListProps) {
                 <>
                   {/* Inline step ticket — above the assistant bubble */}
                   {msg.steps && msg.steps.length > 0 && (
-                    <InlineTicket steps={msg.steps} />
+                    <InlineTicket
+                      steps={msg.steps}
+                      stepTitle={msg.stepTitle}
+                      stepDuration={msg.stepDuration}
+                    />
                   )}
                   <div className="max-w-[85%] rounded-2xl rounded-bl-sm border border-border bg-card px-4 py-3">
                     {/* Brand header */}
