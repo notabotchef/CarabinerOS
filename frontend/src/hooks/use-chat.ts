@@ -133,6 +133,7 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     }
 
     const newMessages: ChatMessage[] = [];
+    let seenUserMessage = false;
 
     for (let idx = 0; idx < snapshot.logs.length; idx++) {
       const log = snapshot.logs[idx];
@@ -141,13 +142,24 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
       if (processedLogIds.current.has(logKey)) continue;
 
       if (log.type === "user") {
-        newMessages.push({
-          id: logKey,
-          role: "user",
-          content: log.content,
-          timestamp: log.timestamp,
-        });
+        seenUserMessage = true;
+        // Skip if we already have this message locally (added on send)
+        const alreadyShown = messages.some(m => m.role === "user" && m.content === log.content && Math.abs(m.timestamp - log.timestamp) < 5);
+        if (!alreadyShown) {
+          newMessages.push({
+            id: logKey,
+            role: "user",
+            content: log.content,
+            timestamp: log.timestamp,
+          });
+        }
         processedLogIds.current.add(logKey);
+      }
+
+      // Skip welcome/system responses that come before any user message
+      if (log.type === "response" && !seenUserMessage) {
+        processedLogIds.current.add(logKey);
+        continue;
       }
 
       if (log.type === "response" && log.content.trim() && log.agentno === 0) {

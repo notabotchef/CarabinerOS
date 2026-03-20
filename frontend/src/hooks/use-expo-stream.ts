@@ -182,18 +182,20 @@ export function useExpoStream(
 
   // Fallback: progress without chefStatus
   useEffect(() => {
-    if (!chefStatus && snapshot && !snapshot.log_progress_active && expo.active) {
+    if (!snapshot) return;
+    // Check if a response log exists for the current turn — means agent is done
+    const hasResponse = snapshot.logs?.some(
+      (l) => l.type === "response" && l.agentno === 0 && l.content?.trim(),
+    );
+    const shouldStop =
+      (!snapshot.log_progress_active && expo.active) ||
+      (hasResponse && expo.active && !snapshot.log_progress_active);
+
+    if (!chefStatus && shouldStop) {
       stickyTextRef.current = null;
+      prevActiveRef.current = false;
       const steps = snapshotTicketSteps(snapshot);
-      setExpo({ text: "Done", thoughts: [], active: false, ticketSteps: steps });
-      const timer = setTimeout(() => {
-        setExpo((prev) =>
-          prev.ticketSteps.length > 0
-            ? prev
-            : { text: null, thoughts: [], active: false, ticketSteps: [] },
-        );
-      }, 2000);
-      return () => clearTimeout(timer);
+      setExpo({ text: null, thoughts: [], active: false, ticketSteps: steps });
     }
   }, [snapshot, chefStatus, expo.active]);
 
