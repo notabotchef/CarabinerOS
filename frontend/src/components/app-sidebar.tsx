@@ -206,7 +206,16 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
                       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <ChatItem chat={chat} isActive={isActive} snapshot={snapshot} onDeleted={() => { window.location.href = "/"; }} />
+                      <ChatItem chat={chat} isActive={isActive} snapshot={snapshot} onDeleted={() => {
+                        // Navigate to next chat in list, or home if none left
+                        const idx = chats.findIndex(c => c.id === chat.id);
+                        const next = chats[idx + 1] ?? chats[idx - 1];
+                        if (next) {
+                          router.push(`/chat/${next.id}`);
+                        } else {
+                          router.push("/");
+                        }
+                      }} />
                     </motion.div>
                   );
                 })}
