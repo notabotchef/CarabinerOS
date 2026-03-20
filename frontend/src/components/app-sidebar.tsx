@@ -131,7 +131,7 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { snapshot, subscribe } = useSocketContext();
-  const { requestNewChat } = useShell();
+  const { requestNewChat, closeSidebar } = useShell();
 
   const chats: A0Context[] = snapshot?.contexts ?? [];
 
@@ -143,12 +143,20 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
   };
 
   return (
-    <nav
-      className={cn(
-        "flex flex-col shrink-0 border-r border-sidebar-border bg-sidebar h-dvh transition-all duration-200 overflow-hidden",
-        hidden ? "w-0 border-r-0" : "w-60"
+    <>
+      {!hidden && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
       )}
-    >
+      <nav
+        className={cn(
+          "flex flex-col shrink-0 border-r border-sidebar-border bg-sidebar h-dvh transition-all duration-200 overflow-hidden relative z-50",
+          hidden ? "w-0 border-r-0" : "w-60"
+        )}
+      >
       {/* Module links */}
       <div className="flex flex-col gap-1 p-2 pt-3">
         {MODULES.map((mod) => {
@@ -234,5 +242,6 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
         </div>
       </div>
     </nav>
+    </>
   );
 }
