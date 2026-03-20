@@ -36,7 +36,7 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <ShellContext.Provider value={{ openSidebar, sidebarHidden, newChatPending, requestNewChat, consumeNewChat }}>
       <AppSidebar hidden={sidebarHidden} onClose={closeSidebar} />
-      <main className={`flex-1 flex flex-col min-h-dvh overflow-hidden relative ${sidebarHidden ? "pl-12" : ""}`}>
+      <main className="flex-1 flex flex-col min-h-dvh overflow-hidden relative">
         {/* Floating menu button — always visible when sidebar is closed */}
         {sidebarHidden && (
           <button

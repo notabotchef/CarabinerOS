@@ -48,7 +48,6 @@ export default function HomePage() {
       <TopBar
         unreadCount={unreadCount}
         onBellClick={() => setNotifOpen(true)}
-        onMenuClick={openSidebar}
       />
 
       {!chatStarted ? (

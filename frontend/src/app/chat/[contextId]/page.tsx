@@ -39,7 +39,6 @@ export default function ChatPage() {
       <TopBar
         unreadCount={unreadCount}
         onBellClick={() => setNotifOpen(true)}
-        onMenuClick={openSidebar}
       />
 
       {waitingForHistory ? (
