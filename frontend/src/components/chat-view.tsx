@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { MessageList } from "@/components/message-list";
 import { ThoughtsStream } from "@/components/thoughts-stream";
+import { ExpoTicket } from "@/components/expo-ticket";
 import { ExpoBar } from "@/components/expo-bar";
 import { ChatComposer } from "@/components/chat-composer";
 import type { ChatMessage } from "@/lib/types";
@@ -16,6 +18,9 @@ interface ChatViewProps {
 }
 
 export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: ChatViewProps) {
+  const [ticketExpanded, setTicketExpanded] = useState(false);
+  const hasTicket = !expo.active && expo.ticketSteps.length > 0;
+
   return (
     <div className="flex flex-1 flex-col min-h-0">
       <MessageList messages={messages} />
@@ -23,8 +28,17 @@ export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: Ch
       {/* Thoughts stream — ghostly inner monologue above expo bar */}
       <ThoughtsStream thoughts={expo.thoughts} active={expo.active} />
 
+      {/* Expo ticket — expandable step list */}
+      <ExpoTicket steps={expo.ticketSteps} expanded={ticketExpanded} />
+
       {/* Expo bar — real status text */}
-      <ExpoBar text={expo.text} active={expo.active} />
+      <ExpoBar
+        text={expo.text}
+        active={expo.active}
+        hasTicket={hasTicket}
+        ticketExpanded={ticketExpanded}
+        onToggleTicket={() => setTicketExpanded((v) => !v)}
+      />
 
       <div className="border-t border-border">
         <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} />

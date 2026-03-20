@@ -3,10 +3,21 @@
 interface ExpoBarProps {
   text: string | null;
   active: boolean;
+  hasTicket?: boolean;
+  ticketExpanded?: boolean;
+  onToggleTicket?: () => void;
 }
 
-export function ExpoBar({ text, active }: ExpoBarProps) {
+export function ExpoBar({
+  text,
+  active,
+  hasTicket = false,
+  ticketExpanded = false,
+  onToggleTicket,
+}: ExpoBarProps) {
   if (!text) return null;
+
+  const showToggle = !active && hasTicket;
 
   return (
     <div
@@ -26,7 +37,7 @@ export function ExpoBar({ text, active }: ExpoBarProps) {
         <span className="inline-block size-[6px] rounded-full bg-emerald-500" />
       )}
       <span
-        className={`text-xs leading-tight truncate ${
+        className={`text-xs leading-tight truncate flex-1 ${
           active
             ? "italic text-primary/70"
             : "font-medium text-emerald-500/80"
@@ -34,6 +45,17 @@ export function ExpoBar({ text, active }: ExpoBarProps) {
       >
         {text}
       </span>
+      {showToggle && (
+        <button
+          type="button"
+          onClick={onToggleTicket}
+          className="text-muted-foreground/50 hover:text-muted-foreground/80 transition-colors px-1"
+          style={{ fontSize: "8px", lineHeight: 1 }}
+          aria-label={ticketExpanded ? "Collapse ticket" : "Expand ticket"}
+        >
+          {ticketExpanded ? "\u25B2" : "\u25BC"}
+        </button>
+      )}
     </div>
   );
 }
