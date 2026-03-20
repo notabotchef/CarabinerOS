@@ -28,9 +28,9 @@ Returns: Count of items below par with details for each.
 - Use check_variances to quickly identify shortages
 
 ## Write Operations (via MCP)
-To add, update, or remove inventory items, use the carabiner-db MCP tools:
-- `carabiner-db.inventory_create` — Add a new inventory item
-- `carabiner-db.inventory_update` — Update quantity, par level, unit, or other fields
-- `carabiner-db.inventory_delete` — Remove an item from inventory
+To add, update, or remove inventory items, use the carabiner_db MCP tools:
+- `carabiner_db.inventory_create` — Add a new inventory item
+- `carabiner_db.inventory_update` — Update quantity, par level, unit, or other fields
+- `carabiner_db.inventory_delete` — Remove an item from inventory
 
 Use these MCP tools whenever the user asks to add, edit, or delete inventory items. The `inventory_tool` above is read-only.

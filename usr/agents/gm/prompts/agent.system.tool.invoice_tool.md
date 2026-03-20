@@ -76,9 +76,9 @@ Returns: Matching orders (if any) or a review flag if no match found.
 - `error` — Extraction failed
 
 ## Write Operations (via MCP)
-To create new invoice records or delete existing ones, use the carabiner-db MCP tools:
-- `carabiner-db.invoice_create` — Create a new invoice record (e.g., before uploading a file)
-- `carabiner-db.invoice_update` — Update invoice fields directly (status, vendor, total, etc.)
-- `carabiner-db.invoice_delete` — Remove an invoice record
+To create new invoice records or delete existing ones, use the carabiner_db MCP tools:
+- `carabiner_db.invoices_create` — Create a new invoice record (e.g., before uploading a file)
+- `carabiner_db.invoices_update` — Update invoice fields directly (status, vendor, total, etc.)
+- `carabiner_db.invoices_delete` — Remove an invoice record
 
 Note: For the standard approve/dispute/process/match workflow, use the `invoice_tool` methods above. Use the MCP tools for direct record management outside the normal workflow.
