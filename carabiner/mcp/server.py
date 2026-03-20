@@ -35,7 +35,7 @@ async def _ensure_db() -> None:
 
     db_url = os.environ.get(
         "DATABASE_URL",
-        "postgresql+asyncpg://carabiner:carabiner@localhost:5432/carabiner",
+        "postgresql+asyncpg://carabiner:carabiner@postgres:5432/carabiner",
     )
     await init_db(db_url)
     _db_initialised = True
