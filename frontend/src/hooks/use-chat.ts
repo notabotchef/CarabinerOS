@@ -168,6 +168,15 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
       return;
     }
 
+    // Detect context switch: if the snapshot's context differs from what we
+    // were tracking, clear all local state so stale processedLogIds don't
+    // cause the new context's logs to be skipped (log.no values restart per
+    // context, so dedup keys like "no-0" would collide).
+    if (snapshot.context && contextIdRef.current && snapshot.context !== contextIdRef.current) {
+      processedLogIds.current.clear();
+      setMessages([]);
+    }
+
     const newMessages: ChatMessage[] = [];
     let seenUserMessage = false;
 
