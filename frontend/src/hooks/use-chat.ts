@@ -56,7 +56,7 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
         processedLogIds.current.add(logKey);
       }
 
-      if (log.type === "response" && log.content.trim()) {
+      if (log.type === "response" && log.content.trim() && log.agentno === 0) {
         newMessages.push({
           id: logKey,
           role: "assistant",
