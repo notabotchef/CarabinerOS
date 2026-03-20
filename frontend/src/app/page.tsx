@@ -16,7 +16,7 @@ export default function HomePage() {
   const router = useRouter();
   const { newChatPending, consumeNewChat } = useShell();
   const { snapshot, chefStatus, subscribe } = useSocketContext();
-  const { messages, sendMessage, loading, queuedMessages, resetChat, createNewChat } = useChat(snapshot);
+  const { messages, sendMessage, loading, queuedMessages, resetChat, createNewChat, contextId } = useChat(snapshot);
   const expo = useExpoStream(snapshot, chefStatus);
   const { cards, unreadCount } = useActionCards(snapshot);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -64,14 +64,18 @@ export default function HomePage() {
   }, [newChatPending]);
 
   const handleSend = async (text: string) => {
-    const newCtxId = await createNewChat();
-    if (newCtxId) {
-      subscribe(newCtxId);
+    // Only create a new chat if one doesn't already exist (e.g. from the "+" flow)
+    let ctxId = contextId;
+    if (!ctxId) {
+      ctxId = await createNewChat();
+      if (ctxId) {
+        subscribe(ctxId);
+      }
     }
     await sendMessage(text);
     setChatStarted(true);
-    if (newCtxId) {
-      router.push(`/chat/${newCtxId}`);
+    if (ctxId) {
+      router.push(`/chat/${ctxId}`);
     }
   };
 
