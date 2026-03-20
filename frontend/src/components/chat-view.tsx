@@ -4,10 +4,11 @@ import { MessageList } from "@/components/message-list";
 import { ExpoBar } from "@/components/expo-bar";
 import { ChatComposer } from "@/components/chat-composer";
 import type { ChatMessage } from "@/lib/types";
+import type { ExpoState } from "@/hooks/use-expo-stream";
 
 interface ChatViewProps {
   messages: ChatMessage[];
-  expo: { text: string | null; active: boolean };
+  expo: ExpoState;
   onSend: (text: string) => void;
   loading: boolean;
   queueCount?: number;
@@ -20,7 +21,7 @@ export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: Ch
       <MessageList messages={messages} />
 
       {/* Expo bar — sits between messages and composer */}
-      <ExpoBar text={expo.text} active={expo.active} />
+      <ExpoBar {...expo} />
 
       {/* Composer — pinned to bottom */}
       <div className="border-t border-border">
