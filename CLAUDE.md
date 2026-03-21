@@ -28,6 +28,8 @@ The agent MUST:
 3. Report back with what was done, files changed, and branch name
 
 This is non-negotiable. Think like an executive chef during service: if the chives are in the reach-in, grab them yourself. If they're in the walk-in, send someone.
+
+
 ## Development Commands
 
 ### Frontend (from `frontend/`)
@@ -102,6 +104,18 @@ Orders, Inventory, Prep, Menu, Recipes, Invoices, Marketing, Reporting, Food Cos
 - **API handler pattern**: Classes inheriting `ApiHandler` with `async def process(...)` method
 - **Error handling**: try/except in Python API handlers; TypeScript uses type narrowing
 - **Tests**: Function-based pytest (no test classes), `@pytest.mark.asyncio` for async tests, separate `tests/` directory
+
+## Common Issues
+
+### Frontend dev server returns 500 / connection refused on API calls
+The Next.js dev server proxies all API requests to the backend via `A0_URL` (default `http://localhost:5000`). If the Flask/Uvicorn backend is not running, every `/api/*`, `/message`, `/chats`, etc. request will fail. Always start the backend first:
+```bash
+python run_ui.py        # terminal 1 (from project root)
+cd frontend && pnpm dev # terminal 2
+```
+
+### MCP server "command not found"
+The `mcp_servers` field in `usr/settings.json` uses `.venv/bin/python` (a relative path). This requires the backend to be started from the project root. If you need a machine-specific override, copy `usr/settings.local.json.example` to `usr/settings.local.json` and adjust paths there.
 
 ## Key Environment Variables
 - `A0_URL` — Backend URL for Next.js rewrites (default: `http://localhost:5000`)
