@@ -201,8 +201,9 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
         processedLogIds.current.add(logKey);
       }
 
-      // Skip welcome/system responses that come before any user message
-      if (log.type === "response" && !seenUserMessage) {
+      // Skip non-agent-0 system responses that come before any user message,
+      // but allow the first agent-0 response through (the welcome message).
+      if (log.type === "response" && !seenUserMessage && log.agentno !== 0) {
         processedLogIds.current.add(logKey);
         continue;
       }
