@@ -150,14 +150,18 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
   const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
   const processedLogIds = useRef(new Set<string>());
   const contextIdRef = useRef<string | null>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);
   const isProcessingRef = useRef(false);
   const freshChatRef = useRef(false); // true after resetChat, cleared on first send
   const seenUserMessageRef = useRef(false); // true once any snapshot contains a user log; reset on context switch
 
-  // Keep contextIdRef in sync
+  // Keep contextIdRef and messagesRef in sync
   useEffect(() => {
     contextIdRef.current = contextId;
   }, [contextId]);
+
+  // Keep messagesRef in sync so snapshot effect can read messages without a dep
+  messagesRef.current = messages;
 
   useEffect(() => {
     if (!snapshot) return;
@@ -204,7 +208,7 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
       if (log.type === "user") {
         if (processedLogIds.current.has(logKey)) continue;
         // Skip if we already have this message locally (added on send)
-        const alreadyShown = messages.some(m => m.role === "user" && m.content === log.content && Math.abs(m.timestamp - log.timestamp) < 5);
+        const alreadyShown = messagesRef.current.some(m => m.role === "user" && m.content === log.content && Math.abs(m.timestamp - log.timestamp) < 5);
         if (!alreadyShown) {
           newMessages.push({
             id: logKey,
@@ -248,7 +252,7 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     // Apply updates: merge new messages and update existing ones in a single pass
     if (newMessages.length > 0 || updatedMessages.size > 0) {
       setMessages(prev => {
-        let result = updatedMessages.size > 0
+        const result = updatedMessages.size > 0
           ? prev.map(m => updatedMessages.get(m.id) ?? m)
           : prev;
         return newMessages.length > 0 ? [...result, ...newMessages] : result;

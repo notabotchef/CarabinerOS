@@ -19,9 +19,6 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
-  Upload,
-  Mail,
-  ScanLine,
   ChevronRight,
   Plus,
   Search,
@@ -111,14 +108,7 @@ const STAGE_ACCENT: Record<string, string> = {
   Paid: "border-emerald-500/20",
 };
 
-const SOURCE_ICONS: Record<
-  string,
-  React.ComponentType<{ className?: string }>
-> = {
-  upload: Upload,
-  email: Mail,
-  scan: ScanLine,
-};
+
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -178,21 +168,6 @@ function StatusBadge({ status }: { status: InvoiceStatus }) {
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${style}`}
     >
       {status}
-    </span>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Source Icon                                                        */
-/* ------------------------------------------------------------------ */
-
-function SourceIcon({ source }: { source: string | null }) {
-  const Icon = source ? (SOURCE_ICONS[source] ?? FileText) : FileText;
-  const label = source ?? "unknown";
-  return (
-    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-      <Icon className="size-3.5" />
-      <span className="text-xs capitalize">{label}</span>
     </span>
   );
 }

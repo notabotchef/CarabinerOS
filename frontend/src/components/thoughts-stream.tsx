@@ -20,12 +20,16 @@ export function ThoughtsStream({ thoughts, active }: ThoughtsStreamProps) {
   // When active goes false, start the top-to-bottom vanish cascade
   useEffect(() => {
     if (!active && thoughts.length > 0 && !dismissing) {
-      setDismissing(true);
-      setDismissedCount(0);
+      Promise.resolve().then(() => {
+        setDismissing(true);
+        setDismissedCount(0);
+      });
     }
     if (active && dismissing) {
-      setDismissing(false);
-      setDismissedCount(0);
+      Promise.resolve().then(() => {
+        setDismissing(false);
+        setDismissedCount(0);
+      });
     }
   }, [active, thoughts.length, dismissing]);
 

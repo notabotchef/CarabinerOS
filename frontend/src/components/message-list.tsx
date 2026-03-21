@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChatMessage, InlineStep } from "@/lib/types";
 
@@ -158,7 +159,7 @@ export function MessageList({ messages }: MessageListProps) {
                     </div>
                     {/* Markdown content */}
                     <div className="markdown-body text-sm leading-relaxed text-foreground">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                     </div>
                   </div>
                 </>

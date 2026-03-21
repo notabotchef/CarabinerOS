@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { MessageList } from "@/components/message-list";
 import { ThoughtsStream } from "@/components/thoughts-stream";
 import { ExpoTicket } from "@/components/expo-ticket";
@@ -20,11 +20,7 @@ interface ChatViewProps {
 export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: ChatViewProps) {
   const [ticketExpanded, setTicketExpanded] = useState(false);
   const hasTicket = !expo.active && expo.ticketSteps.length > 0;
-
-  // Collapse ticket when steps are cleared (e.g. context switch)
-  useEffect(() => {
-    if (!hasTicket) setTicketExpanded(false);
-  }, [hasTicket]);
+  const effectiveTicketExpanded = ticketExpanded && hasTicket;
 
   return (
     <div className="flex flex-1 flex-col min-h-0">
@@ -34,14 +30,14 @@ export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: Ch
       <ThoughtsStream thoughts={expo.thoughts} active={expo.active} />
 
       {/* Expo ticket — expandable step list */}
-      <ExpoTicket steps={expo.ticketSteps} expanded={ticketExpanded} />
+      <ExpoTicket steps={expo.ticketSteps} expanded={effectiveTicketExpanded} />
 
       {/* Expo bar — real status text */}
       <ExpoBar
         text={expo.text}
         active={expo.active}
         hasTicket={hasTicket}
-        ticketExpanded={ticketExpanded}
+        ticketExpanded={effectiveTicketExpanded}
         onToggleTicket={() => setTicketExpanded((v) => !v)}
       />
 

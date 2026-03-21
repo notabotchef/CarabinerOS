@@ -6,7 +6,7 @@ import { ShoppingCart, DollarSign, ChefHat, UtensilsCrossed, type LucideIcon } f
 
 function useMounted(): boolean {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { Promise.resolve().then(() => setMounted(true)); }, []);
   return mounted;
 }
 

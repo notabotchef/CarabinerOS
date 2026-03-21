@@ -23,7 +23,6 @@ export function useWorkspace<T = Record<string, unknown>>(
       ? `${endpoint}?location_id=${locationId}`
       : endpoint;
 
-    setLoading(true);
     fetch(url, { credentials: "include" })
       .then(async (res) => {
         if (!res.ok) throw new Error(`${res.status}`);

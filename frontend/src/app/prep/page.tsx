@@ -89,11 +89,6 @@ const fadeSlideUp: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0, 0, 0.58, 1] as [number, number, number, number] } },
 };
 
-const tabUnderline: Variants = {
-  inactive: { scaleX: 0, opacity: 0 },
-  active: { scaleX: 1, opacity: 1, transition: { duration: 0.2 } },
-};
-
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */

@@ -33,7 +33,7 @@ export function ThemeToggle() {
 
   // Sync with stored value on mount
   useEffect(() => {
-    setTheme(getStoredTheme());
+    Promise.resolve().then(() => setTheme(getStoredTheme()));
   }, []);
 
   // Listen for OS theme changes so "system" mode reacts in real-time

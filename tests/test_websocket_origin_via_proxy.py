@@ -4,6 +4,7 @@ The proxy sets X-Forwarded-Host: localhost:8080 and the browser sends
 Origin: http://localhost:8080, so origin and forwarded host match.
 """
 from typing import Optional
+from unittest.mock import patch
 
 import pytest
 from python.helpers.websocket import validate_ws_origin
@@ -30,9 +31,10 @@ class TestProxiedOriginValidation:
         assert ok is True, f"Expected accept, got reject: {reason}"
 
     def test_cross_origin_rejected_without_proxy(self):
-        """Without proxy headers, cross-origin is rejected."""
+        """Without proxy headers, cross-origin is rejected (production mode)."""
         env = _make_environ("http://localhost:3000", "localhost:5000")
-        ok, reason = validate_ws_origin(env)
+        with patch("python.helpers.runtime.is_development", return_value=False):
+            ok, reason = validate_ws_origin(env)
         assert ok is False, "Expected reject for cross-origin without proxy"
 
     def test_proxied_origin_accepted_via_forwarded_host(self):
@@ -65,3 +67,25 @@ class TestProxiedOriginValidation:
         }
         ok, reason = validate_ws_origin(env)
         assert ok is False, "Expected reject for missing origin"
+
+    def test_localhost_cross_port_accepted_in_development(self):
+        """Dev mode: Next.js on :3000 can connect to backend on :5000."""
+        env = _make_environ("http://localhost:3000", "localhost:5000")
+        with patch("python.helpers.runtime.is_development", return_value=True):
+            ok, reason = validate_ws_origin(env)
+        assert ok is True, f"Expected localhost cross-port to be accepted in dev, got: {reason}"
+
+    def test_localhost_cross_port_rejected_in_production(self):
+        """Production mode: cross-port localhost is still rejected."""
+        env = _make_environ("http://localhost:3000", "localhost:5000")
+        with patch("python.helpers.runtime.is_development", return_value=False):
+            ok, reason = validate_ws_origin(env)
+        assert ok is False, "Expected localhost cross-port to be rejected in production"
+        assert reason == "origin_port_mismatch"
+
+    def test_non_localhost_cross_port_rejected_in_development(self):
+        """Even in dev mode, non-localhost origins are not granted the bypass."""
+        env = _make_environ("http://evil.test:3000", "evil.test:5000")
+        with patch("python.helpers.runtime.is_development", return_value=True):
+            ok, reason = validate_ws_origin(env)
+        assert ok is False, "Expected non-localhost cross-port to be rejected even in dev mode"

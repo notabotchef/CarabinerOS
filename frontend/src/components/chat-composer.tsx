@@ -106,7 +106,7 @@ export function ChatComposer({
   showSuggestions = false,
 }: ChatComposerProps) {
   const [value, setValue] = useState("");
-  const [promptIndex, setPromptIndex] = useState(0);
+  const [promptIndex, setPromptIndex] = useState(() => Math.floor(Math.random() * ROTATING_PROMPTS.length));
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -119,11 +119,6 @@ export function ChatComposer({
     }, 4000);
     return () => clearInterval(timer);
   }, [value, isFocused]);
-
-  // Randomize starting prompt
-  useEffect(() => {
-    setPromptIndex(Math.floor(Math.random() * ROTATING_PROMPTS.length));
-  }, []);
 
   const currentPrompt = ROTATING_PROMPTS[promptIndex];
   const showRotating = !value && !isFocused && !loading && showSuggestions;

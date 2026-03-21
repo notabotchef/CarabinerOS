@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, X } from "lucide-react";
 import { ChatComposer } from "@/components/chat-composer";
@@ -33,7 +33,7 @@ function getTimeContext(): string {
  */
 function useMounted(): boolean {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { Promise.resolve().then(() => setMounted(true)); }, []);
   return mounted;
 }
 

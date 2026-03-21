@@ -15,6 +15,19 @@ Carabiner OS is a restaurant management dashboard built on top of Agent Zero, an
 - **Linting**: ESLint flat config (frontend), no Python linter configured
 - **Python Environment**: venv (`.venv/` at project root)
 
+## Delegation Rule: Reach-In vs Walk-In
+
+**If a task requires more than ~30 lines of changes, delegate it to an agent.** Do not implement it inline.
+
+- **Reach-in** (< 30 lines): Handle it yourself directly. Quick edits, small fixes, config changes.
+- **Walk-in** (> 30 lines): Spawn an agent with `/rune:cook`. The agent works on a safe branch with full autonomy, completes the task, and reports back. You stay on the pass coordinating.
+
+The agent MUST:
+1. Use `/rune:cook` to run the full TDD cycle
+2. Work on a feature branch (never main)
+3. Report back with what was done, files changed, and branch name
+
+This is non-negotiable. Think like an executive chef during service: if the chives are in the reach-in, grab them yourself. If they're in the walk-in, send someone.
 ## Development Commands
 
 ### Frontend (from `frontend/`)

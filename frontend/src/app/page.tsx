@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 export default function HomePage() {
   const router = useRouter();
   const { newChatPending, consumeNewChat } = useShell();
-  const { snapshot, chefStatus, subscribe } = useSocketContext();
+  const { snapshot, subscribe } = useSocketContext();
   const { sendMessage, resetChat, createNewChat, contextId } = useChat(snapshot);
   const actionCards = useActionCards();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -59,7 +59,7 @@ export default function HomePage() {
         creatingChatRef.current = false;
       }
     })();
-  }, [newChatPending]);
+  }, [newChatPending, router]);
 
   const handleSend = async (text: string) => {
     // Only create a new chat if one doesn't already exist (e.g. from the "+" flow)

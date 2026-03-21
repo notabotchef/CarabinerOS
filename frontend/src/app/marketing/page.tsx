@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Megaphone,
   Plus,
@@ -288,7 +288,6 @@ function ChannelFilters({
 function CampaignCard({ campaign }: { campaign: Campaign }) {
   const stage = normalizeStage(campaign.stage);
   const style = STAGE_STYLES[stage];
-  const Icon = channelIcon(campaign.channel);
 
   return (
     <motion.div
@@ -313,7 +312,7 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
 
       {/* Channel pill */}
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Icon className="size-3.5" />
+        {React.createElement(channelIcon(campaign.channel), { className: "size-3.5" })}
         <span className="font-medium">{campaign.channel}</span>
       </div>
 

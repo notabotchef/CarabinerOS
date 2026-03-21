@@ -15,7 +15,7 @@ interface AppSidebarProps {
   hidden: boolean;
 }
 
-function ChatItem({ chat, isActive, snapshot, onDeleted }: { chat: A0Context; isActive: boolean; snapshot: { context?: string } | null; onDeleted: (success: boolean) => void }) {
+function ChatItem({ chat, isActive, onDeleted }: { chat: A0Context; isActive: boolean; onDeleted: (success: boolean) => void }) {
   const [deleteStage, setDeleteStage] = useState<0 | 1 | 2>(0);
   // 0 = normal, 1 = "Delete?" confirmation shown, 2 = deleting
 
@@ -131,7 +131,7 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { snapshot, subscribe } = useSocketContext();
-  const { requestNewChat, closeSidebar } = useShell();
+  const { requestNewChat } = useShell();
 
   const chats: A0Context[] = snapshot?.contexts ?? [];
 
@@ -215,7 +215,7 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
                       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <ChatItem chat={chat} isActive={isActive} snapshot={snapshot} onDeleted={(success) => {
+                      <ChatItem chat={chat} isActive={isActive} onDeleted={(success) => {
                         if (!success) return;
                         // Calculate next chat from the list (excluding the deleted one)
                         const idx = chats.findIndex(c => c.id === chat.id);

@@ -178,7 +178,9 @@ export function useExpoStream(
       stickyTextRef.current = null;
       prevActiveRef.current = false;
       jokeRef.current = getRandomJoke();
-      setExpo({ text: null, thoughts: [], active: false, ticketSteps: [] });
+      Promise.resolve().then(() => {
+        setExpo({ text: null, thoughts: [], active: false, ticketSteps: [] });
+      });
     }
     prevContextRef.current = ctx;
   }, [snapshot?.context]);
@@ -202,12 +204,16 @@ export function useExpoStream(
         jokeRef.current;
 
       prevActiveRef.current = true;
-      setExpo({ text: displayText, thoughts, active: true, ticketSteps: [] });
+      Promise.resolve().then(() => {
+        setExpo({ text: displayText, thoughts, active: true, ticketSteps: [] });
+      });
     } else if (prevActiveRef.current) {
       // Transition from active -> inactive: snapshot ticket steps
       prevActiveRef.current = false;
       const steps = snapshotTicketSteps(snapshot);
-      setExpo((prev) => ({ ...prev, ticketSteps: steps }));
+      Promise.resolve().then(() => {
+        setExpo((prev) => ({ ...prev, ticketSteps: steps }));
+      });
     }
   }, [snapshot, chefStatus]);
 
@@ -217,7 +223,9 @@ export function useExpoStream(
 
     if (!chefStatus.active) {
       stickyTextRef.current = null;
-      setExpo((prev) => ({ ...prev, text: chefStatus.text, thoughts: [], active: false }));
+      Promise.resolve().then(() => {
+        setExpo((prev) => ({ ...prev, text: chefStatus.text, thoughts: [], active: false }));
+      });
       const timer = setTimeout(() => {
         setExpo((prev) =>
           prev.active || prev.ticketSteps.length > 0
@@ -244,7 +252,9 @@ export function useExpoStream(
       stickyTextRef.current = null;
       prevActiveRef.current = false;
       const steps = snapshotTicketSteps(snapshot);
-      setExpo({ text: null, thoughts: [], active: false, ticketSteps: steps });
+      Promise.resolve().then(() => {
+        setExpo({ text: null, thoughts: [], active: false, ticketSteps: steps });
+      });
     }
   }, [snapshot, chefStatus, expo.active]);
 

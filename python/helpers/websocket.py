@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from urllib.parse import urlparse
 from typing import Any, Iterable, Optional, TYPE_CHECKING
 
+from python.helpers import runtime
+
 import socketio
 
 if TYPE_CHECKING:  # pragma: no cover - hints only
@@ -125,6 +127,13 @@ def validate_ws_origin(environ: dict[str, Any]) -> tuple[bool, str | None]:
 
     for host, port in candidates:
         if origin_host == host and origin_port == port:
+            return True, None
+
+    # In development mode, allow cross-port connections from localhost so that
+    # the Next.js dev server on :3000 can connect to the backend on :5000.
+    _localhost_aliases = {"localhost", "127.0.0.1"}
+    if runtime.is_development() and origin_host in _localhost_aliases:
+        if all(host in _localhost_aliases for host, _ in candidates):
             return True, None
 
     # Preserve the original mismatch semantics for debugging.
