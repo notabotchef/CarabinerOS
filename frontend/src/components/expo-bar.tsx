@@ -39,8 +39,8 @@ export function ExpoBar({
       <span
         className={`text-xs leading-tight truncate flex-1 ${
           active
-            ? "italic text-primary/70"
-            : "font-medium text-emerald-500/80"
+            ? "italic text-primary/80"
+            : "font-medium text-emerald-400/80"
         }`}
       >
         {text}
