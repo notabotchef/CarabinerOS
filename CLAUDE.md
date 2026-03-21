@@ -1,96 +1,97 @@
-# CarabinerOS
+# CLAUDE.md
 
-AI-powered restaurant operations platform built on Agent Zero.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Carabiner OS is a restaurant management dashboard built on top of Agent Zero, an agentic AI framework. It combines a **Next.js 16 frontend** with a **Python/Flask + Socket.IO backend** and a **PostgreSQL database** (via SQLAlchemy async).
+
+## Tech Stack
+- **Frontend**: Next.js 16.2 (App Router), React 19, TypeScript 5, Tailwind CSS 4, Framer Motion, shadcn/ui, Socket.IO client
+- **Backend**: Python 3.10+, Flask 3.0, Uvicorn (ASGI), Socket.IO AsyncServer, LiteLLM
+- **Database**: PostgreSQL 16, SQLAlchemy 2.0 async + asyncpg, Alembic migrations
+- **Package Managers**: pnpm (frontend), pip + venv (backend)
+- **Testing**: pytest with pytest-asyncio (backend only, in `tests/`)
+- **Linting**: ESLint flat config (frontend), no Python linter configured
+- **Python Environment**: venv (`.venv/` at project root)
+
+## Development Commands
+
+### Frontend (from `frontend/`)
+```bash
+pnpm dev          # Start Next.js dev server (proxies API to backend at A0_URL, default http://localhost:5000)
+pnpm build        # Production build
+pnpm lint         # ESLint (flat config, next/core-web-vitals + typescript)
+```
+
+### Backend (from project root)
+```bash
+pip install -r requirements.txt    # Install Python deps
+playwright install chromium         # Browser automation binary
+python run_ui.py                    # Start Flask/Uvicorn on port 5000
+```
+
+### Docker (full stack)
+```bash
+docker compose -f docker-compose.dev.yml up    # PostgreSQL + backend + frontend + nginx on :8080
+```
+
+### Tests
+```bash
+pytest tests/                       # Run all tests (pytest, in tests/ directory)
+pytest tests/test_http_auth_csrf.py # Run a single test file
+```
 
 ## Architecture
 
-- **Back of House (BOH):** Agent Zero — Flask + Socket.IO on port 5000. Runs AI agents, tools, LLM.
-- **Front of House (FOH):** Next.js — React app on port 3000. The Expo Station UI.
-- **Database:** PostgreSQL via async SQLAlchemy + Alembic migrations.
+### Two-Layer System
+1. **Agent Zero** (upstream framework) — `agent.py`, `models.py`, `run_ui.py`, `initialize.py`, `python/` directory. Provides the agentic runtime, LLM orchestration (via LiteLLM), tools, memory, and the Flask+Socket.IO server.
+2. **Carabiner** (restaurant domain) — `carabiner/` directory. Adds restaurant-specific ORM models, API routes, and business logic on top of Agent Zero without modifying core files.
 
-## Critical Rule
+### Backend (`run_ui.py` entry point)
+- Flask app wrapped in Starlette + Uvicorn with Socket.IO AsyncServer
+- API endpoints in `python/api/` (75+ handlers) — chat, memory, settings, MCP, scheduler, notifications
+- Carabiner REST routes registered via Flask blueprint (`carabiner/api/flask_blueprint.py`) — all GET-only, JSON responses, optional `?location_id=UUID` filtering
+- Real-time communication via Socket.IO events (action cards, chat streaming, expo)
 
-**Never modify Agent Zero core files** (`agent.py`, `python/`, `run_ui.py`, `initialize.py`, `webui/`).
-All customization goes in:
-- `usr/` — Agent overlay (tools, agent profiles, extensions)
-- `carabiner/` — Domain layer (API, database, protocols)
-- `frontend/` — Next.js app
+### Frontend (`frontend/`)
+- **Next.js 16** App Router with **React 19**, **Tailwind CSS 4**, **Framer Motion**, **shadcn/ui**
+- **IMPORTANT**: This uses Next.js 16 which has breaking changes from earlier versions. Always read `node_modules/next/dist/docs/` before writing Next.js code.
+- Path alias: `@/*` maps to `./src/*`
+- `next.config.ts` rewrites specific API paths (`/message`, `/chats`, `/chat_load`, etc.) to the backend
+- Socket.IO client (`lib/socket-client.ts`) connects directly to the backend for real-time events
+- Key hooks: `use-action-cards.ts` (card state + Socket.IO), `use-chat.ts`, `use-socket.ts`, `use-expo-stream.ts`
+- Types defined in `lib/types.ts` — `ActionCard`, `A0LogEntry`, `A0Snapshot`, `ChatMessage`
 
-## How to Run
+### Database
+- PostgreSQL 16 with SQLAlchemy 2.0 async + asyncpg
+- 22 ORM models in `carabiner/db/models.py` (Location, Order, Inventory, Menu, Recipe, Invoice, Campaign, DailyPL, FoodCost, etc.)
+- Workspace-scoped models in `carabiner/db/workspace_models.py`
+- Alembic migrations in `carabiner/db/migrations/`
+- Connection string via `DATABASE_URL` env var
 
-Terminal 1 — Postgres:
-    docker compose -f docker-compose.dev.yml up
+### Action Cards System (current feature branch)
+- Backend emits action cards via Socket.IO (`action_card` event)
+- Card types: urgent, action, update, info — with priority, deadline, status tracking
+- Frontend components: `action-card.tsx` (collapsed), `action-card-expanded.tsx` (expanded), `notification-panel.tsx`
+- Socket events: `action_card`, `card_reply`, `card_commit`, `card_dismiss`, `card_message`
 
-Terminal 2 — Agent Zero (BOH):
-    python run_ui.py
+### Restaurant Modules
+Orders, Inventory, Prep, Menu, Recipes, Invoices, Marketing, Reporting, Food Cost — each has a page under `frontend/src/app/[module]/` and a corresponding API endpoint.
 
-Terminal 3 — Next.js (FOH):
-    cd frontend && pnpm dev
+## Conventions
+- **Python naming**: snake_case functions/variables, PascalCase classes, `test_` prefix for test files
+- **TypeScript naming**: PascalCase components, camelCase functions/handlers, kebab-case filenames
+- **Python imports**: Absolute from project root (`from python.helpers import ...`, `from carabiner.db import ...`)
+- **TypeScript imports**: Path alias `@/*` → `./src/*`
+- **Python type hints**: Modern union syntax (`str | None`), full annotations on public APIs
+- **API response format**: `{"ok": True, "data": ...}` / `{"ok": False, "error": "..."}`
+- **API handler pattern**: Classes inheriting `ApiHandler` with `async def process(...)` method
+- **Error handling**: try/except in Python API handlers; TypeScript uses type narrowing
+- **Tests**: Function-based pytest (no test classes), `@pytest.mark.asyncio` for async tests, separate `tests/` directory
 
-Visit http://localhost:3000
-
-## LLM Configuration
-
-In `usr/.env` — use `ollama` provider with local models:
-
-    A0_SET_chat_model_provider=ollama
-    A0_SET_chat_model_name=glm-4.7-flash:latest
-    A0_SET_chat_model_api_base=http://host.docker.internal:11434
-
-Note: Inside Docker, use `host.docker.internal` (not `localhost`) to reach Ollama on the host.
-
-## Tech Stack
-
-- Agent Zero (Python/Flask/Socket.IO) — MIT licensed
-- Next.js 15, React 19, TypeScript, Tailwind CSS, shadcn/ui
-- PostgreSQL 16, SQLAlchemy (async), Alembic
-- socket.io-client for frontend ↔ Agent Zero communication
-- Ollama (dev) / Cloud LLM APIs (prod) via litellm
-
-## Upstream Updates
-
-    git fetch upstream
-    git merge upstream/main
-
-## Security
-
-- Never commit secrets, API keys, or credentials to git
-- Never run destructive commands without explicit confirmation
-- Validate all external input at system boundaries
-- Use parameterized queries for database operations
-
-## Build & Test
-
-Build: `npm run build`
-Test: `npm test`
-
-Run tests before committing. Run the build to catch type errors.
-
-## Ruflo Integration
-
-Ruflo is registered as an MCP server and available in every session. Use these proactively:
-
-- `mcp__ruflo__memory_search` — Search persistent cross-session knowledge before researching from scratch
-- `mcp__ruflo__memory_store` — Store non-obvious fixes and insights after solving problems
-- `mcp__ruflo__hooks_post-task` — Record task completion to feed the learning system
-- `mcp__ruflo__hooks_session-end` — Run at session end to persist state
-- `mcp__ruflo__analyze_diff` — Risk-assess changes before committing
-- `mcp__ruflo__hooks_intelligence` — Check learning status at session start
-- `mcp__ruflo__hive-mind_spawn` — Spawn coordinated worker agents for complex tasks
-- `mcp__ruflo__task_create` / `mcp__ruflo__task_list` — Track work items
-
-Read `docs/plans/ruflo-integration-playbook.md` for the full capability map.
-
-## Workflow Rules
-
-1. **Session start** — At the beginning of every conversation, start the ruflo daemon (`npx ruflo@latest daemon start`), init the hive-mind (`mcp__ruflo__hive-mind_init` with hierarchical topology, queen=chef), read `docs/plans/open-work.md`, and greet with a summary of open items and recommended next steps.
-2. **Commit on fix** — Commit immediately after every working fix. Don't batch changes.
-3. **Check before rewriting** — Always read the current file with `git diff` before rewriting. Never break previously working features.
-4. **Session end** — When the user says goodbye, `/exit`, or "that's it": run ruflo session-end hooks, stop the ruflo daemon (`npx ruflo@latest daemon stop`), update `docs/plans/open-work.md` with any new open items, and commit uncommitted work.
-5. **Design-first frontend** — Always invoke `/frontend-design`, `/shadcn`, and `/web-design-guidelines` skills before any UI work.
-6. **Never modify Agent Zero core** — All changes go in `usr/`, `carabiner/`, or `frontend/`.
-7. **Use ruflo first** — Use ruflo (swarm, hive-mind, tasks, memory) as primary orchestration. Never double-dispatch with Claude Code agents.
-8. **Chef delegation** — If it's ≤30 lines and the fix is clear, do it yourself (reach-in). If it needs research, touches multiple files, or the solution is uncertain, spawn an autonomous agent in an isolated worktree (walk-in). Never leave the line to go to the walk-in yourself.
-9. **Don't restart during test** — Never restart Docker services, change models, or modify config while the user is actively testing in the browser. Wait for their feedback first.
-10. **Worktree isolation** — Agents that edit code MUST work in isolated worktrees on their own branch. Verify isolation before letting them edit. Stash or commit current work before spawning editing agents.
-11. **A0 debug skill** — Always invoke the `/a0-debug` skill when debugging Agent Zero ↔ frontend communication issues.
+## Key Environment Variables
+- `A0_URL` — Backend URL for Next.js rewrites (default: `http://localhost:5000`)
+- `DATABASE_URL` — PostgreSQL connection string (asyncpg dialect)
+- `WEB_UI_PORT` / `WEB_UI_HOST` — Backend bind config
+- `A0_SET_*` — Override Agent Zero settings without modifying code
