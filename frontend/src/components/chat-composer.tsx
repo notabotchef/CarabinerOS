@@ -236,7 +236,7 @@ export function ChatComposer({
               placeholder:text-muted-foreground/40
               outline-none transition-all duration-200
               focus:border-primary/50 focus:ring-2 focus:ring-primary/25
-              focus:shadow-[0_0_20px_oklch(0.70_0.16_165_/_0.12)]
+              focus:shadow-[0_0_20px_oklch(0.72_0.22_160_/_0.12)]
               hover:border-primary/25
             "
           />
@@ -249,7 +249,7 @@ export function ChatComposer({
               absolute right-1.5 top-1/2 -translate-y-1/2
               size-8 rounded-xl flex items-center justify-center
               bg-gradient-to-br from-primary to-primary/80 text-primary-foreground
-              hover:shadow-[0_0_12px_oklch(0.70_0.16_165_/_0.3)]
+              hover:shadow-[0_0_12px_oklch(0.72_0.22_160_/_0.3)]
               disabled:opacity-20 disabled:shadow-none
               transition-all duration-200
             "
