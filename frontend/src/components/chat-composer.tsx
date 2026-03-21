@@ -106,12 +106,16 @@ export function ChatComposer({
   showSuggestions = false,
 }: ChatComposerProps) {
   const [value, setValue] = useState("");
-  const [promptIndex, setPromptIndex] = useState(() => Math.floor(Math.random() * ROTATING_PROMPTS.length));
+  const [promptIndex, setPromptIndex] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Rotate prompts every 4 seconds
+  // Randomize starting index on mount, then rotate every 4 seconds
+  useEffect(() => {
+    setPromptIndex(Math.floor(Math.random() * ROTATING_PROMPTS.length));
+  }, []);
+
   useEffect(() => {
     if (value || isFocused) return;
     const timer = setInterval(() => {
