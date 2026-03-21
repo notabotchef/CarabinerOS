@@ -3,16 +3,16 @@
 **Feature**: Action Cards — expo window for CarabinerOS
 **Spec**: `docs/superpowers/specs/2026-03-20-action-cards-design.md`
 **Workspace**: `.rune/features/action-cards/`
-**Branch**: `feature/frontend-refresh` (current)
+**Branch**: `feature/action-cards`
 
 ## Phases
 
 | # | Phase | Status | Files | Session |
 |---|-------|--------|-------|---------|
-| 1 | Types + Hook (data layer) | ⬚ Pending | 3 files | 1 |
-| 2 | Collapsed Card + Panel UI | ⬚ Pending | 3 files | 1 |
-| 3 | Expanded Card + Inline Chat UI | ⬚ Pending | 2 files | 2 |
-| 4 | Expo Agent (backend) | ⬚ Pending | 3 files | 3 |
+| 1 | Types + Hook (data layer) | ✅ Done | 3 files | 1 |
+| 2 | Collapsed Card + Panel UI | ✅ Done | 3 files | 1 |
+| 3 | Expanded Card + Inline Chat UI | ✅ Done | 2 files | 1 |
+| 4 | Expo Agent (backend) | ⬚ Pending | 3 files | 2 |
 
 ## Phase Dependencies
 
