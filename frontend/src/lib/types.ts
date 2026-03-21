@@ -83,16 +83,42 @@ export interface ChatMessage {
   stepDuration?: number;
 }
 
+// Action Cards — expo window types
+
+export interface ActionCardChange {
+  op: "+" | "!" | "→";
+  text: string;
+}
+
+export interface ActionCardStat {
+  label: string;
+  value: string;
+}
+
+export type ActionCardType = "urgent" | "action" | "update" | "info";
+export type ActionCardStatus = "new" | "read" | "committed" | "dismissed";
+
 export interface ActionCard {
   id: string;
-  type: string;
+  type: ActionCardType;
   module: string;
-  action: string;
-  itemId?: string;
-  item?: Record<string, unknown>;
+  action: "create" | "update" | "delete";
   summary: string;
+  detail: string;
+  itemId?: string;
+  changes: ActionCardChange[];
+  stats: ActionCardStat[];
+  priority: 0 | 1 | 2;
+  deadline?: string;
+  status: ActionCardStatus;
   timestamp: number;
-  read: boolean;
+  source: "reactive" | "proactive";
+}
+
+export interface CardChatMessage {
+  role: "user" | "assistant";
+  text: string;
+  timestamp: number;
 }
 
 export interface ChefStatus {

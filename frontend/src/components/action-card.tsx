@@ -1,26 +1,35 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import type { ActionCard as ActionCardType } from "@/lib/types";
+import { motion } from "framer-motion";
+import type { ActionCard as ActionCardType, ActionCardType as CardType } from "@/lib/types";
 
 interface ActionCardProps {
   card: ActionCardType;
-  onAction?: (action: string) => void;
+  onExpand: (id: string) => void;
 }
 
-function getTypeColor(type: string): string {
-  const t = type.toLowerCase();
-  if (t.includes("alert") || t.includes("warn") || t.includes("approve")) {
-    return "text-amber-500 bg-amber-500/10";
-  }
-  if (t.includes("order") || t.includes("create") || t.includes("update")) {
-    return "text-blue-400 bg-blue-400/10";
-  }
-  if (t.includes("complete") || t.includes("done") || t.includes("success")) {
-    return "text-emerald-400 bg-emerald-400/10";
-  }
-  return "text-muted-foreground bg-muted";
-}
+const TYPE_STYLES: Record<CardType, { dot: string; tag: string; border: string }> = {
+  urgent: {
+    dot: "bg-amber-400",
+    tag: "text-amber-400 bg-amber-400/10",
+    border: "border-amber-500/25 warm-glow",
+  },
+  action: {
+    dot: "bg-blue-400",
+    tag: "text-blue-400 bg-blue-400/10",
+    border: "border-blue-400/20",
+  },
+  update: {
+    dot: "bg-emerald-400",
+    tag: "text-emerald-400 bg-emerald-400/10",
+    border: "border-border",
+  },
+  info: {
+    dot: "bg-violet-400",
+    tag: "text-violet-400 bg-violet-400/10",
+    border: "border-border",
+  },
+};
 
 function relativeTime(timestamp: number): string {
   const now = Date.now() / 1000;
@@ -31,48 +40,63 @@ function relativeTime(timestamp: number): string {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-export function ActionCard({ card, onAction }: ActionCardProps) {
-  const typeColor = getTypeColor(card.type);
+function formatDeadline(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+export function ActionCard({ card, onExpand }: ActionCardProps) {
+  const style = TYPE_STYLES[card.type];
+  const isUrgent = card.type === "urgent";
+  const isCommitted = card.status === "committed";
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 transition-shadow hover:shadow-sm">
-      {/* Header row */}
+    <motion.div
+      layout
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => onExpand(card.id)}
+      className={`relative rounded-xl border bg-card/80 glass-subtle p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${style.border} ${isCommitted ? "opacity-50" : ""}`}
+    >
+      {/* Urgent top bar */}
+      {isUrgent && (
+        <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl bg-gradient-to-r from-amber-500/60 to-amber-400/30" />
+      )}
+
+      {/* Header: dot + type/module + time */}
       <div className="flex items-center justify-between mb-2">
-        <span
-          className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${typeColor}`}
-        >
-          {card.type}
-        </span>
-        <span className="text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <motion.span
+            animate={isUrgent ? { scale: [1, 1.3, 1], opacity: [0.6, 1, 0.6] } : {}}
+            transition={isUrgent ? { duration: 2, repeat: Infinity } : {}}
+            className={`size-1.5 rounded-full shrink-0 ${style.dot}`}
+          />
+          <span className={`text-[9px] font-bold uppercase tracking-wider ${style.tag} px-1.5 py-0.5 rounded`}>
+            {card.type} · {card.module}
+          </span>
+        </div>
+        <span className="text-[10px] text-muted-foreground/50">
           {relativeTime(card.timestamp)}
         </span>
       </div>
 
       {/* Summary */}
-      <p className="text-sm leading-relaxed text-foreground/80 mb-3">
+      <p className="text-[13px] font-medium leading-relaxed text-foreground/80 mb-2">
         {card.summary}
       </p>
 
-      {/* Actions */}
-      {onAction && (
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
-            onClick={() => onAction("primary")}
-          >
-            View
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-xs"
-            onClick={() => onAction("dismiss")}
-          >
-            Dismiss
-          </Button>
+      {/* Deadline badge */}
+      {card.deadline && card.priority >= 1 && (
+        <div className="inline-flex items-center gap-1.5 bg-amber-500/10 text-amber-400 rounded-md px-2 py-1 text-[10px] font-semibold">
+          <span>⏰</span>
+          <span>{formatDeadline(card.deadline)} cutoff</span>
         </div>
       )}
-    </div>
+
+      {/* Committed check */}
+      {isCommitted && (
+        <div className="absolute top-3 right-3 text-emerald-400/60 text-sm">✓</div>
+      )}
+    </motion.div>
   );
 }

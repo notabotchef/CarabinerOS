@@ -28,7 +28,7 @@ class CarabinerWorkspace(ApiHandler):
 
     @classmethod
     def requires_auth(cls) -> bool:
-        return False
+        return True
 
     @classmethod
     def requires_csrf(cls) -> bool:

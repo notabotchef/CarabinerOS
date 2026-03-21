@@ -43,6 +43,7 @@ class ApiFilesGet(ApiHandler):
                 )
 
             result = {}
+            base_dir = os.path.realpath(files.get_abs_path(""))
 
             for path in paths:
                 try:
@@ -61,6 +62,14 @@ class ApiFilesGet(ApiHandler):
                         # Assume it's already an external/absolute path
                         external_path = path
                         filename = os.path.basename(path)
+
+                    # Canonicalize and enforce directory boundary
+                    real_path = os.path.realpath(external_path)
+                    if not real_path.startswith(base_dir + os.sep) and real_path != base_dir:
+                        PrintStyle.warning(f"Path traversal blocked: {path}")
+                        continue
+
+                    external_path = real_path
 
                     # Check if file exists
                     if not os.path.exists(external_path):
