@@ -224,7 +224,7 @@ class MenuOut(TimestampSchema):
     performance: str
     margin_pct: str
     recommendation: str
-    recipe: Optional[Dict[str, Any]] = None
+    recipe: Optional[Dict[str, Any] | str] = None
     recipe_id: Optional[uuid.UUID] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
@@ -238,7 +238,7 @@ class MenuCreate(BaseModel):
     performance: str
     margin_pct: str
     recommendation: str
-    recipe: Optional[Dict[str, Any]] = None
+    recipe: Optional[Dict[str, Any] | str] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
@@ -250,7 +250,7 @@ class MenuUpdate(BaseModel):
     performance: Optional[str] = None
     margin_pct: Optional[str] = None
     recommendation: Optional[str] = None
-    recipe: Optional[Dict[str, Any]] = None
+    recipe: Optional[Dict[str, Any] | str] = None
     recipe_id: Optional[uuid.UUID] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
