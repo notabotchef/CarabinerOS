@@ -15,7 +15,7 @@ export default function ChatPage() {
   const { snapshot, chefStatus, subscribe } = useSocketContext();
   const { messages, sendMessage, loading, queuedMessages } = useChat(snapshot);
   const expo = useExpoStream(snapshot, chefStatus);
-  const { cards, unreadCount } = useActionCards(snapshot);
+  const actionCards = useActionCards();
   const [notifOpen, setNotifOpen] = useState(false);
 
   useEffect(() => {
@@ -30,8 +30,8 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-dvh bg-background">
       <TopBar
-        unreadCount={unreadCount}
-        onBellClick={() => setNotifOpen(true)}
+        unreadCount={actionCards.unreadCount}
+        onBellClick={() => { setNotifOpen(true); actionCards.markAllRead(); }}
       />
 
       <ChatView
@@ -42,7 +42,22 @@ export default function ChatPage() {
         queueCount={queuedMessages.length}
       />
 
-      <NotificationPanel open={notifOpen} onOpenChange={setNotifOpen} cards={cards} />
+      <NotificationPanel
+        open={notifOpen}
+        onOpenChange={setNotifOpen}
+        cards={actionCards.sortedCards}
+        urgentBanner={actionCards.urgentBanner}
+        unreadCount={actionCards.unreadCount}
+        expandedCardId={actionCards.expandedCardId}
+        expandedCard={actionCards.expandedCardId ? actionCards.sortedCards.find(c => c.id === actionCards.expandedCardId) ?? null : null}
+        chatThread={actionCards.chatThread}
+        chatLoading={actionCards.chatLoading}
+        onExpand={actionCards.expandCard}
+        onCollapse={actionCards.collapseCard}
+        onCommit={actionCards.commitCard}
+        onDismiss={actionCards.dismissCard}
+        onSendMessage={actionCards.sendCardMessage}
+      />
     </div>
   );
 }
