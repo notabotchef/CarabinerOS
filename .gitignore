@@ -14,6 +14,10 @@ tmp/**
 agent_history.gif
 .agent/**
 
+# === Rune ===
+.rune/
+frontend/.rune/
+
 # === CarabinerOS ===
 # Frontend
 frontend/node_modules/
