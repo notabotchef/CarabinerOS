@@ -27,7 +27,7 @@ Returns: Complete recipe with nested components, ingredients (weights, percentag
 {
   "method": "create",
   "location_id": "uuid-of-location",
-  "description": "Duck confit with orange glaze, sous vide at 155°F for 36 hours, served with roasted root vegetables and a citrus gastrique"
+  "description": "Duck confit with orange glaze, sous vide at 155F for 36 hours, served with roasted root vegetables and a citrus gastrique"
 }
 ```
 The tool uses the LLM to convert the description into a structured Modernist Cuisine recipe with:
@@ -46,7 +46,7 @@ The recipe is created as a **draft** for review and editing in the Recipes modul
   "recipe_id": "uuid-of-recipe",
   "updates": {
     "name": "New Name",
-    "category": "Entreé",
+    "category": "Entree",
     "description": "Updated description",
     "status": "active",
     "components": []
