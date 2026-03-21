@@ -331,7 +331,15 @@ def configure_websocket_namespaces(
                     )
                     return False
 
-                if _auth_required:
+                # In development mode, the Next.js dev server on :3000 proxies
+                # REST via rewrites but Socket.IO connects directly to :5000.
+                # The Flask session cookie from the rewrite response is not
+                # available on the direct :5000 connection, so session-based
+                # auth and CSRF checks cannot succeed. Origin validation
+                # (validate_ws_origin above) is sufficient for localhost dev.
+                _skip_session_checks = runtime.is_development()
+
+                if _auth_required and not _skip_session_checks:
                     credentials_hash = login.get_credentials_hash()
                     if credentials_hash:
                         if session.get("authentication") != credentials_hash:
@@ -344,7 +352,7 @@ def configure_websocket_namespaces(
                             "WebSocket authentication required but credentials not configured; proceeding"
                         )
 
-                if _csrf_required:
+                if _csrf_required and not _skip_session_checks:
                     expected_token = session.get("csrf_token")
                     if not isinstance(expected_token, str) or not expected_token:
                         PrintStyle.warning(
