@@ -92,6 +92,286 @@ mcp = FastMCP(
     json_response=True,
 )
 
+# ===================================================================
+# SMART ROUTER TOOLS — 3 high-level tools that replace 40 individual
+# CRUD operations. Reduces system-prompt token cost from ~16k to ~800.
+# ===================================================================
+
+# Maps module name -> (list_fn, get_fn, create_fn, update_fn, delete_fn)
+# Each value is the import name from carabiner.db.repositories.
+_MODULE_REGISTRY: dict[str, dict[str, str]] = {
+    "inventory": {
+        "list": "list_inventory",
+        "get": "get_inventory",
+        "create": "create_inventory",
+        "update": "update_inventory",
+        "delete": "delete_inventory",
+    },
+    "orders": {
+        "list": "list_orders",
+        "get": "get_order",
+        "create": "create_order",
+        "update": "update_order",
+        "delete": "delete_order",
+    },
+    "prep": {
+        "list": "list_prep",
+        "get": "get_prep",
+        "create": "create_prep",
+        "update": "update_prep",
+        "delete": "delete_prep",
+    },
+    "invoices": {
+        "list": "list_invoices",
+        "get": "get_invoice",
+        "create": "create_invoice",
+        "update": "update_invoice",
+        "delete": "delete_invoice",
+    },
+    "recipes": {
+        "list": "list_recipes",
+        "get": "get_recipe",
+        "create": "create_recipe",
+        "update": "update_recipe",
+        "delete": "delete_recipe",
+    },
+    "menu": {
+        "list": "list_menu",
+        "get": "get_menu",
+        "create": "create_menu",
+        "update": "update_menu",
+        "delete": "delete_menu",
+    },
+    "food_cost": {
+        "list": "list_food_cost",
+        "get": "get_food_cost",
+        "create": "create_food_cost",
+        "update": "update_food_cost",
+        "delete": "delete_food_cost",
+    },
+    "campaigns": {
+        "list": "list_campaigns",
+        "get": "get_campaign",
+        "create": "create_campaign",
+        "update": "update_campaign",
+        "delete": "delete_campaign",
+    },
+}
+
+_VALID_MODULES = sorted(_MODULE_REGISTRY.keys())
+_VALID_ACTIONS = ("create", "update", "delete")
+
+
+async def _resolve_repo_fn(module: str, action: str) -> Any:
+    """Dynamically import and return a repository function by module+action."""
+    import importlib
+
+    repo = importlib.import_module("carabiner.db.repositories")
+    fn_name = _MODULE_REGISTRY[module][action]
+    return getattr(repo, fn_name)
+
+
+def _prepare_data(module: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Parse UUID fields in the data dict before passing to repository."""
+    data = dict(data)  # shallow copy
+    if "location_id" in data:
+        data["location_id"] = _parse_uuid(data["location_id"])
+    if module == "menu" and "recipe_id" in data and data["recipe_id"]:
+        data["recipe_id"] = _parse_uuid(data["recipe_id"])
+    return data
+
+
+@mcp.tool()
+async def db_query(module: str, filters: Optional[str] = None) -> str:
+    """Query restaurant data from any module.
+
+Args:
+    module: One of: campaigns, food_cost, inventory, invoices, menu, orders, prep, recipes.
+    filters: Optional JSON string with filter fields. Common: {"location_id": "uuid"}.
+             Recipes also accept: status, category, search (name substring).
+             Pass {"id": "uuid"} to fetch a single record by its primary key.
+
+Examples:
+    db_query(module="inventory")
+    db_query(module="inventory", filters='{"location_id": "abc-123"}')
+    db_query(module="orders", filters='{"id": "order-uuid-here"}')
+    db_query(module="recipes", filters='{"category": "desserts", "status": "active"}')
+"""
+    await _ensure_db()
+
+    if module not in _MODULE_REGISTRY:
+        return json.dumps({
+            "error": "invalid_module",
+            "message": f"Unknown module {module!r}. Valid modules: {_VALID_MODULES}",
+        })
+
+    try:
+        parsed_filters: dict[str, Any] = json.loads(filters) if filters else {}
+    except json.JSONDecodeError as exc:
+        return json.dumps({
+            "error": "invalid_filters",
+            "message": f"Could not parse filters JSON: {exc}",
+        })
+
+    # Single-record lookup by id
+    if "id" in parsed_filters:
+        fn = await _resolve_repo_fn(module, "get")
+        row = await fn(_parse_uuid(parsed_filters["id"]))
+        if row is None:
+            return json.dumps({"error": "not_found", "id": parsed_filters["id"]})
+        return json.dumps(_serialise(row), default=str)
+
+    # List with optional filters
+    fn = await _resolve_repo_fn(module, "list")
+    kwargs: dict[str, Any] = {}
+    if "location_id" in parsed_filters:
+        kwargs["location_id"] = _parse_uuid(parsed_filters["location_id"])
+    # Recipes support extra filter kwargs
+    if module == "recipes":
+        for key in ("status", "category", "search"):
+            if key in parsed_filters:
+                kwargs[key] = parsed_filters[key]
+
+    rows = await fn(**kwargs)
+    return json.dumps(_serialise(rows), default=str)
+
+
+@mcp.tool()
+async def db_mutate(module: str, action: str, data: str) -> str:
+    """Create, update, or delete a record in any module.
+
+Args:
+    module: One of: campaigns, food_cost, inventory, invoices, menu, orders, prep, recipes.
+    action: One of: create, update, delete.
+    data: JSON string with record fields.
+          - create: include all required fields for the module (e.g. location_id, item_name, ...).
+          - update: must include "id" (UUID of record to update) plus fields to change.
+          - delete: must include "id" (UUID of record to delete).
+
+Examples:
+    db_mutate(module="inventory", action="create", data='{"location_id":"abc","item_name":"Tomatoes","on_hand":50,"par":100,"variance":-50}')
+    db_mutate(module="orders", action="update", data='{"id":"order-uuid","status":"completed"}')
+    db_mutate(module="prep", action="delete", data='{"id":"task-uuid"}')
+"""
+    await _ensure_db()
+
+    if module not in _MODULE_REGISTRY:
+        return json.dumps({
+            "error": "invalid_module",
+            "message": f"Unknown module {module!r}. Valid modules: {_VALID_MODULES}",
+        })
+
+    if action not in _VALID_ACTIONS:
+        return json.dumps({
+            "error": "invalid_action",
+            "message": f"Unknown action {action!r}. Valid actions: {list(_VALID_ACTIONS)}",
+        })
+
+    try:
+        parsed: dict[str, Any] = json.loads(data)
+    except json.JSONDecodeError as exc:
+        return json.dumps({
+            "error": "invalid_data",
+            "message": f"Could not parse data JSON: {exc}",
+        })
+
+    fn = await _resolve_repo_fn(module, action)
+    prepared = _prepare_data(module, parsed)
+
+    if action == "create":
+        row = await fn(prepared)
+        return json.dumps(_serialise(row), default=str)
+
+    elif action == "update":
+        record_id = prepared.pop("id", None)
+        if not record_id:
+            return json.dumps({
+                "error": "missing_id",
+                "message": "Update requires an 'id' field in data.",
+            })
+        row = await fn(_parse_uuid(str(record_id)), prepared)
+        if row is None:
+            return json.dumps({"error": "not_found", "id": str(record_id)})
+        return json.dumps(_serialise(row), default=str)
+
+    else:  # delete
+        record_id = parsed.get("id")
+        if not record_id:
+            return json.dumps({
+                "error": "missing_id",
+                "message": "Delete requires an 'id' field in data.",
+            })
+        deleted = await fn(_parse_uuid(str(record_id)))
+        return json.dumps({"deleted": deleted, "id": str(record_id)})
+
+
+@mcp.tool()
+async def db_batch(operations: str) -> str:
+    """Execute multiple database operations in one call.
+
+Args:
+    operations: JSON string containing an array of operation objects.
+                Each object has: module, action, data (optional filters for "query" action).
+                action is one of: query, create, update, delete.
+
+Example:
+    db_batch(operations='[
+        {"module": "inventory", "action": "query", "data": {"location_id": "abc"}},
+        {"module": "orders", "action": "query", "data": {"id": "order-uuid"}},
+        {"module": "prep", "action": "create", "data": {"location_id": "abc", "task": "Dice onions", "station": "Prep", "readiness": "pending"}}
+    ]')
+
+Returns a JSON array of results, one per operation, in the same order.
+Each result is either the operation output or {"error": "...", "message": "..."}.
+"""
+    await _ensure_db()
+
+    try:
+        ops: list[dict[str, Any]] = json.loads(operations)
+    except json.JSONDecodeError as exc:
+        return json.dumps({
+            "error": "invalid_operations",
+            "message": f"Could not parse operations JSON: {exc}",
+        })
+
+    if not isinstance(ops, list):
+        return json.dumps({
+            "error": "invalid_operations",
+            "message": "operations must be a JSON array of {module, action, data} objects.",
+        })
+
+    results: list[Any] = []
+    for i, op in enumerate(ops):
+        try:
+            mod = op.get("module", "")
+            act = op.get("action", "")
+            op_data = op.get("data", {})
+
+            if act == "query":
+                # Route through db_query logic
+                filters_str = json.dumps(op_data) if op_data else None
+                result = await db_query(module=mod, filters=filters_str)
+            else:
+                # Route through db_mutate logic
+                data_str = json.dumps(op_data) if op_data else "{}"
+                result = await db_mutate(module=mod, action=act, data=data_str)
+
+            results.append(json.loads(result))
+        except Exception as exc:
+            results.append({
+                "error": "operation_failed",
+                "index": i,
+                "message": str(exc),
+            })
+
+    return json.dumps(results, default=str)
+
+
+# ===================================================================
+# LEGACY INDIVIDUAL TOOLS — will be removed after router validation.
+# Kept for backward compatibility during the transition period.
+# ===================================================================
+
 # ===== INVENTORY =====
 
 
@@ -156,7 +436,7 @@ async def inventory_delete(id: str) -> str:
     return json.dumps({"deleted": deleted, "id": id})
 
 
-# ===== ORDERS =====
+# ===== ORDERS ===== (legacy)
 
 
 @mcp.tool()
@@ -220,7 +500,7 @@ async def orders_delete(id: str) -> str:
     return json.dumps({"deleted": deleted, "id": id})
 
 
-# ===== PREP =====
+# ===== PREP ===== (legacy)
 
 
 @mcp.tool()
@@ -284,7 +564,7 @@ async def prep_delete(id: str) -> str:
     return json.dumps({"deleted": deleted, "id": id})
 
 
-# ===== INVOICES =====
+# ===== INVOICES ===== (legacy)
 
 
 @mcp.tool()
@@ -348,7 +628,7 @@ async def invoices_delete(id: str) -> str:
     return json.dumps({"deleted": deleted, "id": id})
 
 
-# ===== RECIPES =====
+# ===== RECIPES ===== (legacy)
 
 
 @mcp.tool()
@@ -417,7 +697,7 @@ async def recipes_delete(id: str) -> str:
     return json.dumps({"deleted": deleted, "id": id})
 
 
-# ===== MENU ITEMS =====
+# ===== MENU ITEMS ===== (legacy)
 
 
 @mcp.tool()
@@ -485,7 +765,7 @@ async def menu_delete(id: str) -> str:
     return json.dumps({"deleted": deleted, "id": id})
 
 
-# ===== FOOD COST =====
+# ===== FOOD COST ===== (legacy)
 
 
 @mcp.tool()
@@ -549,7 +829,7 @@ async def food_cost_delete(id: str) -> str:
     return json.dumps({"deleted": deleted, "id": id})
 
 
-# ===== CAMPAIGNS (Marketing) =====
+# ===== CAMPAIGNS (Marketing) ===== (legacy)
 
 
 @mcp.tool()
