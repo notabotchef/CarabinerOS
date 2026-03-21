@@ -152,6 +152,7 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
   const contextIdRef = useRef<string | null>(null);
   const isProcessingRef = useRef(false);
   const freshChatRef = useRef(false); // true after resetChat, cleared on first send
+  const seenUserMessageRef = useRef(false); // true once any snapshot contains a user log; reset on context switch
 
   // Keep contextIdRef in sync
   useEffect(() => {
@@ -174,21 +175,27 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     // context, so dedup keys like "no-0" would collide).
     if (snapshot.context && contextIdRef.current && snapshot.context !== contextIdRef.current) {
       processedLogIds.current.clear();
+      seenUserMessageRef.current = false;
       setMessages([]);
     }
 
     const newMessages: ChatMessage[] = [];
     const updatedMessages = new Map<string, ChatMessage>();
 
-    // Check if we've ever seen a user message — either in the current snapshot
-    // or in previously processed logs. This is needed because incremental
-    // snapshots may only contain response updates without the original user log.
-    let seenUserMessage = messages.some(m => m.role === "user");
+    // seenUserMessage tracks whether a user log has appeared in this context
+    // across ALL snapshots (not just the current one). This handles two cases:
+    // 1. Welcome bleed: in the first full snapshot, responses before the user
+    //    log are welcome/system greetings and must be suppressed.
+    // 2. Incremental streaming: subsequent snapshots may contain only response
+    //    updates (no user log). The ref remembers seeing the user log earlier
+    //    so these responses are not falsely suppressed.
+    let seenUserMessage = seenUserMessageRef.current;
 
     for (let idx = 0; idx < snapshot.logs.length; idx++) {
       const log = snapshot.logs[idx];
       if (log.type === "user") {
         seenUserMessage = true;
+        seenUserMessageRef.current = true;
       }
 
       // Use log.no as the dedup key — log.id can be null
@@ -346,6 +353,7 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     setQueuedMessages([]);
     isProcessingRef.current = false;
     processedLogIds.current.clear();
+    seenUserMessageRef.current = false;
     freshChatRef.current = true;
   }, []);
 
