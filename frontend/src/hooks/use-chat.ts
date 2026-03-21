@@ -386,7 +386,8 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
         return data.ctxid;
       }
       return null;
-    } catch {
+    } catch (err) {
+      console.error("[createNewChat] failed:", err);
       return null;
     }
   }, [resetChat]);

@@ -15,7 +15,7 @@ export async function getCsrfToken(): Promise<string> {
 
         // Agent Zero's WebSocket handler checks for this cookie by name
         // Its own frontend (api.js) sets it the same way
-        document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;
+        document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Lax; Path=/`;
 
         return data.token;
       }
