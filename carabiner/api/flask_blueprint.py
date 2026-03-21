@@ -10,6 +10,7 @@ Optional ``?location_id=UUID`` query parameter for filtering.
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from datetime import date, timedelta
 from typing import Optional
@@ -42,6 +43,8 @@ from carabiner.api.schemas import (
     PrepOut,
     RecipeOut,
 )
+
+logger = logging.getLogger(__name__)
 
 blueprint = Blueprint("carabiner_workspace_api", __name__)
 
@@ -140,6 +143,7 @@ async def list_orders():
         data = await _list_workspace_model(WorkspaceOrder, OrderOut, location_id)
         return _json_response(data)
     except Exception:
+        logger.exception("Failed to fetch orders")
         return _empty_response()
 
 
@@ -150,6 +154,7 @@ async def list_inventory():
         data = await _list_workspace_model(WorkspaceInventory, InventoryOut, location_id)
         return _json_response(data)
     except Exception:
+        logger.exception("Failed to fetch inventory")
         return _empty_response()
 
 
@@ -160,6 +165,7 @@ async def list_prep():
         data = await _list_workspace_model(WorkspacePrep, PrepOut, location_id)
         return _json_response(data)
     except Exception:
+        logger.exception("Failed to fetch prep tasks")
         return _empty_response()
 
 
@@ -170,6 +176,7 @@ async def list_food_cost():
         data = await _list_workspace_model(WorkspaceFoodCost, FoodCostOut, location_id)
         return _json_response(data)
     except Exception:
+        logger.exception("Failed to fetch food cost data")
         return _empty_response()
 
 
@@ -180,6 +187,7 @@ async def list_menu():
         data = await _list_workspace_model(WorkspaceMenu, MenuOut, location_id)
         return _json_response(data)
     except Exception:
+        logger.exception("Failed to fetch menu items")
         return _empty_response()
 
 
@@ -190,6 +198,7 @@ async def list_campaigns():
         data = await _list_workspace_model(WorkspaceCampaign, CampaignOut, location_id)
         return _json_response(data)
     except Exception:
+        logger.exception("Failed to fetch campaigns")
         return _empty_response()
 
 
@@ -200,6 +209,7 @@ async def list_recipes():
         data = await _list_workspace_model(WorkspaceRecipe, RecipeOut, location_id)
         return _json_response(data)
     except Exception:
+        logger.exception("Failed to fetch recipes")
         return _empty_response()
 
 
@@ -210,6 +220,7 @@ async def list_invoices():
         data = await _list_workspace_model(WorkspaceInvoice, InvoiceOut, location_id)
         return _json_response(data)
     except Exception:
+        logger.exception("Failed to fetch invoices")
         return _empty_response()
 
 
@@ -220,4 +231,5 @@ async def list_daily_pl():
         data = await _list_daily_pl(location_id)
         return _json_response(data)
     except Exception:
+        logger.exception("Failed to fetch daily P&L report")
         return _empty_response()
