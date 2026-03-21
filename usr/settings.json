@@ -76,7 +76,7 @@
   "stt_silence_duration": 1000,
   "stt_waiting_timeout": 2000,
   "tts_kokoro": true,
-  "mcp_servers": "{\"mcpServers\":{\"carabiner-db\":{\"command\":\"python\",\"args\":[\"-m\",\"carabiner.mcp.server\"],\"env\":{\"DATABASE_URL\":\"postgresql+asyncpg://carabiner:carabiner@postgres:5432/carabiner\"},\"init_timeout\":30}}}",
+  "mcp_servers": "{\"mcpServers\":{\"carabiner-db\":{\"command\":\".venv/bin/python\",\"args\":[\"-m\",\"carabiner.mcp.server\"],\"env\":{\"DATABASE_URL\":\"postgresql+asyncpg://carabiner:carabiner@localhost:5432/carabiner\"},\"init_timeout\":30}}}",
   "mcp_client_init_timeout": 10,
   "mcp_client_tool_timeout": 120,
   "mcp_server_enabled": true,

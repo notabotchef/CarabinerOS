@@ -75,6 +75,7 @@ frontend/.claude/
 # (override A0's default usr/** ignore)
 !usr/**
 # Then re-ignore runtime state inside usr/ (must be after !usr/**)
+usr/settings.local.json
 usr/memory/
 usr/chats/
 usr/prompts/
