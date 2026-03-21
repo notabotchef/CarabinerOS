@@ -178,16 +178,24 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
     }
 
     const newMessages: ChatMessage[] = [];
-    let seenUserMessage = false;
+    const updatedMessages = new Map<string, ChatMessage>();
+
+    // Check if we've ever seen a user message — either in the current snapshot
+    // or in previously processed logs. This is needed because incremental
+    // snapshots may only contain response updates without the original user log.
+    let seenUserMessage = messages.some(m => m.role === "user");
 
     for (let idx = 0; idx < snapshot.logs.length; idx++) {
       const log = snapshot.logs[idx];
-      // Use log.no as the dedup key — log.id can be null
-      const logKey = log.id ?? `no-${log.no}`;
-      if (processedLogIds.current.has(logKey)) continue;
-
       if (log.type === "user") {
         seenUserMessage = true;
+      }
+
+      // Use log.no as the dedup key — log.id can be null
+      const logKey = log.id ?? `no-${log.no}`;
+
+      if (log.type === "user") {
+        if (processedLogIds.current.has(logKey)) continue;
         // Skip if we already have this message locally (added on send)
         const alreadyShown = messages.some(m => m.role === "user" && m.content === log.content && Math.abs(m.timestamp - log.timestamp) < 5);
         if (!alreadyShown) {
@@ -209,7 +217,7 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
 
       if (log.type === "response" && log.content.trim() && log.agentno === 0) {
         const { steps, stepTitle, stepDuration } = collectSteps(snapshot.logs, idx);
-        newMessages.push({
+        const msg: ChatMessage = {
           id: logKey,
           role: "assistant",
           content: log.content,
@@ -217,13 +225,26 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
           steps: steps.length > 0 ? steps : undefined,
           stepTitle,
           stepDuration,
-        });
-        processedLogIds.current.add(logKey);
+        };
+
+        if (processedLogIds.current.has(logKey)) {
+          // Already exists — update content in-place for streaming effect
+          updatedMessages.set(logKey, msg);
+        } else {
+          newMessages.push(msg);
+          processedLogIds.current.add(logKey);
+        }
       }
     }
 
-    if (newMessages.length > 0) {
-      setMessages(prev => [...prev, ...newMessages]);
+    // Apply updates: merge new messages and update existing ones in a single pass
+    if (newMessages.length > 0 || updatedMessages.size > 0) {
+      setMessages(prev => {
+        let result = updatedMessages.size > 0
+          ? prev.map(m => updatedMessages.get(m.id) ?? m)
+          : prev;
+        return newMessages.length > 0 ? [...result, ...newMessages] : result;
+      });
     }
 
     if (snapshot.context) {

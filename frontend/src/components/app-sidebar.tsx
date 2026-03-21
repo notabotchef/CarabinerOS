@@ -144,13 +144,6 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
 
   return (
     <>
-      {!hidden && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={closeSidebar}
-          aria-hidden="true"
-        />
-      )}
       <nav
         className={cn(
           "flex flex-col shrink-0 border-r border-sidebar-border bg-sidebar/90 glass-subtle h-dvh transition-all duration-200 overflow-hidden relative z-50",

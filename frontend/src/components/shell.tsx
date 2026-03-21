@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, type ReactNode, type MouseEvent } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 
 interface ShellContextValue {
@@ -34,10 +34,19 @@ export function Shell({ children }: { children: ReactNode }) {
   const requestNewChat = useCallback(() => setNewChatPending(true), []);
   const consumeNewChat = useCallback(() => setNewChatPending(false), []);
 
+  // Close sidebar when clicking empty space on main content.
+  // Interactive elements (links, buttons, inputs) pass through without closing.
+  const handleMainClick = useCallback((e: MouseEvent) => {
+    if (sidebarHidden) return;
+    const target = e.target as HTMLElement;
+    const interactive = target.closest("a, button, input, textarea, select, [role='button'], [tabindex]");
+    if (!interactive) closeSidebar();
+  }, [sidebarHidden, closeSidebar]);
+
   return (
     <ShellContext.Provider value={{ openSidebar, closeSidebar, sidebarHidden, newChatPending, requestNewChat, consumeNewChat }}>
       <AppSidebar hidden={sidebarHidden} />
-      <main className="flex-1 flex flex-col min-h-dvh overflow-hidden relative">
+      <main className="flex-1 flex flex-col min-h-dvh overflow-hidden relative" onClick={handleMainClick}>
         {children}
       </main>
     </ShellContext.Provider>

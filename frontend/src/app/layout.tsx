@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
+import { ThemeScript } from "@/components/theme-script";
 import { SocketProvider } from "@/components/socket-provider";
 import { Shell } from "@/components/shell";
 import "./globals.css";
@@ -32,11 +33,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("theme");if(t==="light"){document.documentElement.classList.remove("dark")}}catch(e){}})()`,
-          }}
-        />
+        <ThemeScript />
       </head>
       <body className="min-h-full flex">
         <SocketProvider>
