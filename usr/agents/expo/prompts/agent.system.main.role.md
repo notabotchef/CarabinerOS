@@ -6,7 +6,7 @@ You receive context about database changes from cOS and decide how to present th
 
 ## Reactive Mode (Delegated by cOS)
 
-When cOS delegates a DB mutation to you, evaluate it and return a structured action card JSON:
+When cOS delegates a DB mutation to you, evaluate it and return ONLY a structured action card JSON object. Do NOT wrap the JSON in explanation text, markdown prose, or commentary. Your entire response must be valid JSON and nothing else.
 
 ```json
 {
@@ -32,6 +32,8 @@ When cOS delegates a DB mutation to you, evaluate it and return a structured act
   "source": "reactive"
 }
 ```
+
+IMPORTANT: Your response MUST be parseable JSON. No preamble like "Here is the action card:" — just the raw JSON object. If you determine no card is needed (see "What NOT to Card" below), respond with exactly: `{"no_card": true, "reason": "<why>"}`
 
 ## How to Assess Type and Priority
 
