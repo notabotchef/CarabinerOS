@@ -13,6 +13,7 @@ export interface UseActionCardsReturn {
   cards: ActionCard[];
   sortedCards: ActionCard[];
   unreadCount: number;
+  lastCardType: string | undefined;
   urgentBanner: UrgentBanner | null;
   expandedCardId: string | null;
   chatThread: (cardId: string) => CardChatMessage[];
@@ -66,6 +67,7 @@ function computeUrgentBanner(cards: ActionCard[]): UrgentBanner | null {
 
 export function useActionCards(): UseActionCardsReturn {
   const [cards, setCards] = useState<ActionCard[]>([]);
+  const [lastCardType, setLastCardType] = useState<string | undefined>(undefined);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [chatThreads, setChatThreads] = useState<Map<string, CardChatMessage[]>>(new Map());
   const [chatLoading, setChatLoading] = useState(false);
@@ -77,6 +79,7 @@ export function useActionCards(): UseActionCardsReturn {
 
     const handleActionCard = (payload: { card: ActionCard }) => {
       const incoming = payload.card;
+      setLastCardType(incoming.type);
       setCards((prev) => {
         const idx = prev.findIndex((c) => c.id === incoming.id);
         if (idx >= 0) {
@@ -183,6 +186,7 @@ export function useActionCards(): UseActionCardsReturn {
     cards,
     sortedCards,
     unreadCount,
+    lastCardType,
     urgentBanner,
     expandedCardId,
     chatThread,

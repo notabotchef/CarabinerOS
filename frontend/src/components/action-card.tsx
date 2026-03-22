@@ -1,7 +1,26 @@
 "use client";
 
 import { motion } from "framer-motion";
+import {
+  ShoppingCart, Warehouse, ChefHat, DollarSign,
+  UtensilsCrossed, BookOpen, Receipt, Megaphone, BarChart3,
+  Info, Check,
+  type LucideIcon,
+} from "lucide-react";
 import type { ActionCard as ActionCardType, ActionCardType as CardType } from "@/lib/types";
+
+const MODULE_ICONS: Record<string, LucideIcon> = {
+  orders: ShoppingCart,
+  inventory: Warehouse,
+  prep: ChefHat,
+  "food-cost": DollarSign,
+  food_cost: DollarSign,
+  menu: UtensilsCrossed,
+  recipes: BookOpen,
+  invoices: Receipt,
+  marketing: Megaphone,
+  reporting: BarChart3,
+};
 
 interface ActionCardProps {
   card: ActionCardType;
@@ -49,6 +68,7 @@ export function ActionCard({ card, onExpand }: ActionCardProps) {
   const style = TYPE_STYLES[card.type];
   const isUrgent = card.type === "urgent";
   const isCommitted = card.status === "committed";
+  const ModuleIcon = MODULE_ICONS[card.module] ?? Info;
 
   return (
     <motion.div
@@ -56,7 +76,7 @@ export function ActionCard({ card, onExpand }: ActionCardProps) {
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
       onClick={() => onExpand(card.id)}
-      className={`relative rounded-xl border bg-card/80 glass-subtle p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${style.border} ${isCommitted ? "opacity-50" : ""}`}
+      className={`relative rounded-xl border bg-card/80 glass-subtle p-4 cursor-pointer transition-all duration-200 hover:shadow-md ${style.border}`}
     >
       {/* Urgent top bar */}
       {isUrgent && (
@@ -71,7 +91,8 @@ export function ActionCard({ card, onExpand }: ActionCardProps) {
             transition={isUrgent ? { duration: 2, repeat: Infinity } : {}}
             className={`size-1.5 rounded-full shrink-0 ${style.dot}`}
           />
-          <span className={`text-[9px] font-bold uppercase tracking-wider ${style.tag} px-1.5 py-0.5 rounded`}>
+          <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider ${style.tag} px-1.5 py-0.5 rounded`}>
+            <ModuleIcon className="size-3.5 opacity-60" />
             {card.type} · {card.module}
           </span>
         </div>
@@ -81,7 +102,7 @@ export function ActionCard({ card, onExpand }: ActionCardProps) {
       </div>
 
       {/* Summary */}
-      <p className="text-[13px] font-medium leading-relaxed text-foreground/80 mb-2">
+      <p className={`text-[13px] font-medium leading-relaxed text-foreground/80 mb-2 ${isCommitted ? "line-through opacity-60" : ""}`}>
         {card.summary}
       </p>
 
@@ -95,7 +116,9 @@ export function ActionCard({ card, onExpand }: ActionCardProps) {
 
       {/* Committed check */}
       {isCommitted && (
-        <div className="absolute top-3 right-3 text-emerald-400/60 text-sm">✓</div>
+        <div className="absolute top-3 right-3 flex items-center gap-1">
+          <Check className="size-4 text-emerald-400" />
+        </div>
       )}
     </motion.div>
   );

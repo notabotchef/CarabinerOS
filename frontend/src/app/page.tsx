@@ -89,6 +89,7 @@ export default function HomePage() {
     <div className="flex flex-col h-dvh bg-background">
       <TopBar
         unreadCount={actionCards.unreadCount}
+        lastCardType={actionCards.lastCardType}
         onBellClick={() => { setNotifOpen(true); actionCards.markAllRead(); }}
       />
 

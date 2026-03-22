@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useEffect, useRef, useCallback } from "react";
+import { motion, useAnimation } from "framer-motion";
 import { Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MenuButton } from "@/components/menu-button";
@@ -10,7 +11,15 @@ interface TopBarProps {
   unreadCount: number;
   onBellClick: () => void;
   locationName?: string;
+  lastCardType?: string;
 }
+
+const TYPE_COLORS: Record<string, { border: string; bg: string }> = {
+  urgent: { border: "#fbbf24", bg: "rgba(251,191,36,0.1)" },
+  action: { border: "#60a5fa", bg: "rgba(96,165,250,0.1)" },
+  update: { border: "#34d399", bg: "rgba(52,211,153,0.1)" },
+  info: { border: "#a78bfa", bg: "rgba(167,139,250,0.1)" },
+};
 
 const parentVariants = {
   idle: {},
@@ -29,7 +38,60 @@ const frontCardVariants = {
 
 const cardTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
-export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen" }: TopBarProps) {
+export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen", lastCardType }: TopBarProps) {
+  const backControls = useAnimation();
+  const frontControls = useAnimation();
+  const prevUnreadRef = useRef(unreadCount);
+  const lastAnimTimeRef = useRef(0);
+
+  const playNotifyAnimation = useCallback(async (cardType?: string) => {
+    const colors = TYPE_COLORS[cardType ?? "info"] ?? TYPE_COLORS.info;
+
+    // Back card swings to front position with type color
+    await Promise.all([
+      backControls.start({
+        rotate: -6,
+        x: -2,
+        borderColor: colors.border,
+        backgroundColor: colors.bg,
+        transition: { type: "spring", stiffness: 350, damping: 20 },
+      }),
+      frontControls.start({
+        rotate: 8,
+        x: 2,
+        transition: { type: "spring", stiffness: 350, damping: 20 },
+      }),
+    ]);
+
+    // Settle back to idle
+    await Promise.all([
+      backControls.start({
+        rotate: 5,
+        x: 0,
+        borderColor: "var(--color-foreground)",
+        backgroundColor: "var(--color-card)",
+        transition: { type: "spring", stiffness: 400, damping: 25, delay: 0.15 },
+      }),
+      frontControls.start({
+        rotate: -2,
+        x: 0,
+        transition: { type: "spring", stiffness: 400, damping: 25, delay: 0.15 },
+      }),
+    ]);
+  }, [backControls, frontControls]);
+
+  useEffect(() => {
+    if (unreadCount > prevUnreadRef.current) {
+      const now = Date.now();
+      // Debounce: only animate once per 500ms
+      if (now - lastAnimTimeRef.current >= 500) {
+        lastAnimTimeRef.current = now;
+        playNotifyAnimation(lastCardType);
+      }
+    }
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount, lastCardType, playNotifyAnimation]);
+
   return (
     <header className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-border bg-card/80 glass-subtle">
       {/* Left: Hamburger + Brand */}
@@ -79,12 +141,15 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
             <motion.div
               className="absolute w-[20px] h-[26px] rounded border-[1.8px] border-foreground/50 bg-card top-0 left-2 z-[1]"
               variants={backCardVariants}
+              animate={backControls}
               transition={cardTransition}
+              style={{ borderColor: "var(--color-foreground)", backgroundColor: "var(--color-card)" }}
             />
             {/* Front card */}
             <motion.div
               className="absolute w-[20px] h-[26px] rounded border-[1.8px] border-foreground/50 bg-card top-[1px] left-[2px] z-[2]"
               variants={frontCardVariants}
+              animate={frontControls}
               transition={cardTransition}
             />
           </motion.div>

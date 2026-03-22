@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { Inbox } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -12,6 +13,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ActionCard } from "@/components/action-card";
 import { ActionCardExpanded } from "@/components/action-card-expanded";
 import type { ActionCard as ActionCardType, CardChatMessage } from "@/lib/types";
+
+const cardEntryVariants = {
+  initial: { opacity: 0, y: -20, scale: 0.95 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, x: 100, scale: 0.95 },
+};
+
+const cardSpring = { type: "spring" as const, stiffness: 300, damping: 25 };
 
 interface UrgentBanner {
   count: number;
@@ -91,7 +100,7 @@ export function NotificationPanel({
               className="flex flex-col h-full"
             >
               {/* Header */}
-              <SheetHeader className="border-b border-border px-5 py-4 shrink-0">
+              <SheetHeader className="border-b border-border px-5 py-4 shrink-0 glass-subtle">
                 <SheetTitle className="text-base font-semibold">Action Cards</SheetTitle>
                 <SheetDescription className="text-xs text-muted-foreground">
                   {activeCards.length === 0
@@ -115,17 +124,31 @@ export function NotificationPanel({
               <ScrollArea className="flex-1">
                 <div className="p-4 space-y-3">
                   {activeCards.length === 0 ? (
-                    <p className="py-12 text-center text-sm text-muted-foreground">
-                      All clear. Nothing to review.
-                    </p>
+                    <div className="py-16 flex flex-col items-center gap-3 text-center">
+                      <Inbox className="size-10 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground/60">
+                        All clear. Nothing needs your attention.
+                      </p>
+                    </div>
                   ) : (
-                    activeCards.map((card) => (
-                      <ActionCard
-                        key={card.id}
-                        card={card}
-                        onExpand={onExpand}
-                      />
-                    ))
+                    <AnimatePresence initial={false}>
+                      {activeCards.map((card, i) => (
+                        <motion.div
+                          key={card.id}
+                          layout
+                          variants={cardEntryVariants}
+                          initial="initial"
+                          animate="animate"
+                          exit="exit"
+                          transition={{ ...cardSpring, delay: i * 0.05 }}
+                        >
+                          <ActionCard
+                            card={card}
+                            onExpand={onExpand}
+                          />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   )}
                 </div>
               </ScrollArea>

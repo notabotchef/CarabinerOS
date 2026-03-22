@@ -1,13 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Check, Loader2 } from "lucide-react";
+import {
+  ArrowLeft, Check, Loader2,
+  ShoppingCart, Warehouse, ChefHat, DollarSign,
+  UtensilsCrossed, BookOpen, Receipt, Megaphone, BarChart3,
+  Info,
+  type LucideIcon,
+} from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type {
   ActionCard,
   ActionCardType as CardType,
   CardChatMessage,
 } from "@/lib/types";
+
+const MODULE_ICONS: Record<string, LucideIcon> = {
+  orders: ShoppingCart,
+  inventory: Warehouse,
+  prep: ChefHat,
+  "food-cost": DollarSign,
+  food_cost: DollarSign,
+  menu: UtensilsCrossed,
+  recipes: BookOpen,
+  invoices: Receipt,
+  marketing: Megaphone,
+  reporting: BarChart3,
+};
 
 interface ActionCardExpandedProps {
   card: ActionCard;
@@ -27,9 +46,9 @@ const TYPE_TAG_STYLES: Record<CardType, string> = {
 };
 
 const CHANGE_OP_STYLES: Record<string, string> = {
-  "+": "text-emerald-400 bg-emerald-400/5",
-  "!": "text-amber-400 bg-amber-400/5",
-  "→": "text-muted-foreground bg-muted/50",
+  "+": "text-emerald-400 bg-emerald-400/5 border-l-2 border-emerald-400/40",
+  "!": "text-amber-400 bg-amber-400/5 border-l-2 border-amber-400/40",
+  "→": "text-muted-foreground bg-muted/50 border-l-2 border-muted-foreground/20",
 };
 
 export function ActionCardExpanded({
@@ -93,7 +112,8 @@ export function ActionCardExpanded({
             <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${TYPE_TAG_STYLES[card.type]}`}>
               {card.type}
             </span>
-            <span className="text-[9px] font-semibold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded uppercase tracking-wider">
+            <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded uppercase tracking-wider">
+              {(() => { const Icon = MODULE_ICONS[card.module] ?? Info; return <Icon className="size-4 opacity-60" />; })()}
               {card.module}
             </span>
           </div>
@@ -114,7 +134,7 @@ export function ActionCardExpanded({
               {card.stats.map((stat) => (
                 <div
                   key={stat.label}
-                  className="bg-muted/30 rounded-lg p-3"
+                  className="bg-primary/10 rounded-lg p-3"
                 >
                   <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">
                     {stat.label}
