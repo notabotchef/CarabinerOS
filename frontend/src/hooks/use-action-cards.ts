@@ -147,7 +147,14 @@ export function useActionCards(): UseActionCardsReturn {
 
   const sendCardMessage = useCallback((id: string, text: string) => {
     const socket = getStateSyncSocket();
-    socket?.emit("card_message", { cardId: id, text });
+
+    // Find the card to include context for A0 processing
+    const card = cards.find((c) => c.id === id);
+    const cardContext = card
+      ? { summary: card.summary, module: card.module, type: card.type, detail: card.detail }
+      : undefined;
+
+    socket?.emit("card_message", { cardId: id, text, card: cardContext });
 
     const userMsg: CardChatMessage = {
       role: "user",
@@ -161,7 +168,7 @@ export function useActionCards(): UseActionCardsReturn {
       return next;
     });
     setChatLoading(true);
-  }, []);
+  }, [cards]);
 
   const chatThread = useCallback(
     (cardId: string) => chatThreads.get(cardId) ?? [],
