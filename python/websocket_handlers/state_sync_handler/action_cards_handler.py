@@ -8,6 +8,7 @@ Events:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from typing import Any
@@ -15,6 +16,36 @@ from typing import Any
 from python.helpers.websocket import WebSocketHandler, WebSocketResult
 
 logger = logging.getLogger(__name__)
+
+# Timeout (seconds) for waiting on A0 to respond to a card message.
+_A0_TIMEOUT_SECONDS = 30
+
+_FALLBACK_TIMEOUT_MSG = "I'm still working on this. Please check back."
+_FALLBACK_ERROR_MSG = "Something went wrong. Try asking in the main chat."
+_FALLBACK_UNAVAILABLE_MSG = "Agent unavailable. Try asking in the main chat."
+
+
+def _build_card_prompt(text: str, card: dict[str, Any] | None) -> str:
+    """Build an A0-consumable prompt that includes card context."""
+    if not card:
+        return text
+
+    card_type = card.get("type", "unknown")
+    module = card.get("module", "unknown")
+    summary = card.get("summary", "")
+    detail = card.get("detail", "")
+
+    parts = [
+        f"Chef is responding to a {card_type} action card",
+        f"about {module}",
+    ]
+    if summary:
+        parts.append(f": '{summary}'")
+    if detail:
+        parts.append(f" (detail: {detail})")
+    parts.append(f". Message: {text}")
+
+    return "".join(parts)
 
 
 class ActionCardsHandler(WebSocketHandler):
@@ -69,11 +100,16 @@ class ActionCardsHandler(WebSocketHandler):
             text[:80],
         )
 
-        # v0.1: acknowledge with a stub reply.  Full A0 routing will be added
-        # when the card-message->agent pipeline is wired in a later iteration.
+        # Build prompt with card context from frontend
+        card_context = data.get("card")  # optional dict from frontend
+        prompt = _build_card_prompt(text, card_context)
+
+        # Route through A0 agent processing
+        response_text = await self._get_a0_response(prompt)
+
         reply_message = {
             "role": "assistant",
-            "text": f"Acknowledged. Card {card_id[:8]} noted.",
+            "text": response_text,
             "timestamp": time.time(),
         }
 
@@ -87,3 +123,38 @@ class ActionCardsHandler(WebSocketHandler):
             logger.warning("[ActionCards] failed to emit card_reply: %s", exc)
 
         return self.result_ok({"cardId": card_id, "status": "replied"})
+
+    async def _get_a0_response(self, prompt: str) -> str:
+        """Send prompt to A0 and return the text response.
+
+        Uses the first available AgentContext (the main chat context).
+        Falls back to a user-friendly error message on any failure.
+        """
+        try:
+            from agent import AgentContext, UserMessage
+
+            context = AgentContext.first()
+            if not context:
+                logger.warning("[ActionCards] no AgentContext available")
+                return _FALLBACK_UNAVAILABLE_MSG
+
+            task = context.communicate(UserMessage(prompt))
+            result = await asyncio.wait_for(
+                task.result(),
+                timeout=_A0_TIMEOUT_SECONDS,
+            )
+
+            if not result or not isinstance(result, str):
+                logger.warning("[ActionCards] A0 returned empty/non-string: %r", result)
+                return _FALLBACK_ERROR_MSG
+
+            return result
+
+        except asyncio.TimeoutError:
+            logger.warning(
+                "[ActionCards] A0 timed out after %ds", _A0_TIMEOUT_SECONDS
+            )
+            return _FALLBACK_TIMEOUT_MSG
+        except Exception:
+            logger.exception("[ActionCards] A0 processing failed")
+            return _FALLBACK_ERROR_MSG
