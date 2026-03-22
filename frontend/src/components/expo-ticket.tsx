@@ -28,7 +28,7 @@ export function ExpoTicket({ steps, expanded }: ExpoTicketProps) {
           className="overflow-hidden"
           aria-hidden="true"
         >
-          <div className="mx-3 mb-1 rounded-lg bg-muted/30 border border-border/40 max-h-[40vh] overflow-y-auto">
+          <div className="mx-3 mb-1 max-h-[40vh] overflow-y-auto">
             <div className="px-3 py-2 space-y-0.5">
               {steps.map((step, i) => (
                 <div key={i} className="flex items-start gap-2 min-h-[16px]">

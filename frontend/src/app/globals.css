@@ -236,8 +236,42 @@
   text-underline-offset: 2px;
 }
 
-/* ── Tables ── */
-.markdown-body table {
+/* ── Tables (data-card style) ── */
+/* The .data-card wrapper is applied by the React component override. */
+/* These styles target the table inside the card. */
+.data-card-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-card-table thead {
+  background: var(--secondary);
+}
+
+.data-card-table th {
+  padding: 0.5em 0.75em;
+  text-align: left;
+  font-weight: 600;
+  color: var(--foreground);
+  border-bottom: 2px solid var(--border);
+}
+
+.data-card-table td {
+  padding: 0.5em 0.75em;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+.data-card-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-card-table tbody tr:hover {
+  background: oklch(0.72 0.22 160 / 5%);
+}
+
+/* Fallback for plain .markdown-body tables (without data-card wrapper) */
+.markdown-body table:not(.data-card-table) {
   width: 100%;
   margin-top: 0.75em;
   margin-bottom: 0.75em;
@@ -248,11 +282,11 @@
   border: 1px solid var(--border);
 }
 
-.markdown-body thead {
+.markdown-body table:not(.data-card-table) thead {
   background: var(--secondary);
 }
 
-.markdown-body th {
+.markdown-body table:not(.data-card-table) th {
   padding: 0.5em 0.75em;
   text-align: left;
   font-weight: 600;
@@ -260,17 +294,17 @@
   border-bottom: 2px solid var(--border);
 }
 
-.markdown-body td {
+.markdown-body table:not(.data-card-table) td {
   padding: 0.5em 0.75em;
   border-bottom: 1px solid var(--border);
   color: var(--foreground);
 }
 
-.markdown-body tbody tr:last-child td {
+.markdown-body table:not(.data-card-table) tbody tr:last-child td {
   border-bottom: none;
 }
 
-.markdown-body tbody tr:hover {
+.markdown-body table:not(.data-card-table) tbody tr:hover {
   background: var(--secondary);
 }
 

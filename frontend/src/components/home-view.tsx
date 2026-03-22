@@ -163,7 +163,7 @@ function DailyBriefing() {
           <Sparkles className="size-3.5 text-primary" />
         </div>
         <span className="text-xs font-semibold uppercase tracking-wider text-primary/80">
-          Daily Briefing
+          Daily Brief
         </span>
       </div>
 

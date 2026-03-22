@@ -1,25 +1,38 @@
 # Progress
 
-## [2026-03-21 17:45] Session Summary
+## [2026-03-21 19:30] Session Summary
 
-**Completed:**
-- [x] Markdown table styling for CarabinerOS chat (remark-gfm + CSS)
-- [x] Next.js API proxy rewrite for `/api/*` routes
-- [x] MCP carabiner_db connection fix (python path + DB host)
-- [x] Structural gaps fix (pinned deps, portable MCP config, settings.local.json pattern)
-- [x] Action Cards v0.1 backend wiring (card_commit, card_dismiss, card_message handlers)
-- [x] Git cleanup (8 stale branches deleted, main consolidated)
-- [x] Docker rebuild with all changes
+**Completed This Session:**
+- [x] Hydration mismatch + script tag warnings fixed (chat-composer, theme-script)
+- [x] Chat conversation loading confirmed working
+- [x] Table data cards — tables render as standalone briefing-style cards outside chat bubbles
+- [x] "Daily Briefing" renamed to "Daily Brief"
+- [x] Full system test (5 prompts) with live Docker log monitoring
+- [x] Bug report cross-referenced with backend logs — 16 bugs identified and prioritized
+- [x] **C1**: MCP carabiner_db tools now available in Docker (env inheritance fix)
+- [x] **C2**: Action card emission pipeline fixed (sio injection + JSON extraction + Expo prompt)
+- [x] **C3**: invoice_tool schema mismatch fixed (Alembic migration 008)
+- [x] **C4**: Homepage always creates fresh chat context
+- [x] **H2**: Expo whispering streams steps in real-time
+- [x] **H4**: ipython installed in Docker for code_execution_tool
+- [x] **M2**: Duplicate message guard (sendingRef + 2s dedup)
 
 **In Progress:**
-- [ ] Action Cards end-to-end testing — backend handlers stubbed, need real A0 routing for card_message
-- [ ] CarabinerOS chat not loading A0 conversations (sidebar shows "No conversations yet" in dev mode; untested in Docker)
+- [ ] Docker rebuild with all fixes — building now
+- [ ] Retest all 5 prompts on Docker after rebuild
 
-**Blocked:**
-- [ ] None currently
+**Remaining Bugs (not yet fixed):**
+- H1: 5-min delay on first message (VectorDB init — needs profiling)
+- H3: Table data cards need Docker rebuild to take effect (in progress)
+- H5: Closing pgAdmin stopped cOS streaming (Docker network investigation)
+- H6: Ollama stalls under concurrent load (inference config)
+- M1: Tool-not-found dumps 750+ line catalog (A0 core — overlay pattern)
+- M3: Quirky loading notes while A0 thinks (frontend UX)
+- M4: Sparse seed data — only 5 inventory items
 
-**Next Session Should:**
-- Verify action cards work end-to-end on Docker (port 8080)
-- Test CarabinerOS chat conversation loading on Docker
-- Verify markdown tables render in CarabinerOS chat (send a query that returns tabular data)
-- If card_message needs real A0 routing (not just stub reply), implement that
+**Next:**
+- Verify all fixes on Docker (port 8080)
+- Rerun the 5 test prompts
+- Verify action cards appear in notification panel
+- Verify whispering shows A0 steps in real-time
+- Verify table data cards break out of chat bubble

@@ -1,0 +1,20 @@
+Current bugs report @ 5:28 PM 3/21/2026
+
+Prompt used: Create a rush order for 10 cases of salmon from Coastal Produce
+    1. Chat from homepage is not starting a new chat in a0, causing the chat to be created in the last chat session instead of a new one. 
+    2. First message takes very long time, i dont believe is my computer not being fast enough, it took 10 seconds to start processing the first message. (meesage was sent at 5:25, first action from a0 started at 5:30)
+    3. Expo whispering is currently not working, /Users/estebannunez/Library/Application Support/CleanShot/media/media_5XvveeIwWQ/CleanShot 2026-03-21 at 17.31.24@2x.png a0 is showing all the proccess that is doing, cOS is not (this was working yesterday)
+    4. a0 cant find proper tool, currently halucinating. /Users/estebannunez/Library/Application Support/CleanShot/media/media_uOX13LXRCe/CleanShot 2026-03-21 at 17.35.53@2x.png
+    5. The wispering started funtioning at the end of the task.
+
+ Prompt used: What inventory items are below par? (meesage sent @ 5:30 pm, first a0 reasoning @ 5:40)
+    1. The loading expo message doesnt read the full a0 transcript, also it should send quirky notes in meantime while a0 is thinking
+    2. The table generated with a great style but never made it out of the chatbox. /Users/estebannunez/Library/Application Support/CleanShot/media/media_JY1O1jY6Qn/CleanShot 2026-03-21 at 17.45.40@2x.png
+    3. No action card was generated
+
+Prompt: Process yesterday's invoices (meesage sent @ 5:45 pm, first a0 reasoning @ 5:50)
+    1. I requested to add an accion card, a0 says is done but doesnt reflect on cOS. /Users/estebannunez/Library/Application Support/CleanShot/media/media_iftEEFohhk/CleanShot 2026-03-21 at 18.34.13@2x.png
+
+Prompt: What should I 86 before dinner service? and Log a waste entry for 5 lbs of ribeye — dropped on floor, runned at the same time (@ 6:36 pm first reasoning @ 6:40)
+    1. I closed http://localhost:5050 at 6:45 pm and carabineros stopped streaming from a0, do i need to have it on? That is silly. Seems to be working.
+    2. Test stopped at 6:51 pm. a0 is hallucinating.

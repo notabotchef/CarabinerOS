@@ -6,6 +6,22 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { ChatMessage, InlineStep } from "@/lib/types";
+import type { Components } from "react-markdown";
+
+// --- Data card table: renders markdown tables as standalone briefing-style cards ---
+function DataCardTable(props: React.TableHTMLAttributes<HTMLTableElement>) {
+  return (
+    <div className="data-card -mx-4 my-3 rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/8 to-primary/3 shadow-[0_0_40px_oklch(0.72_0.22_160_/_0.06)] overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="data-card-table w-full border-collapse text-[0.85em]" {...props} />
+      </div>
+    </div>
+  );
+}
+
+const markdownComponents: Components = {
+  table: DataCardTable,
+};
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -159,7 +175,7 @@ export function MessageList({ messages }: MessageListProps) {
                     </div>
                     {/* Markdown content */}
                     <div className="markdown-body text-sm leading-relaxed text-foreground">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
                     </div>
                   </div>
                 </>

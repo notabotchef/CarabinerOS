@@ -83,6 +83,27 @@ def _parse_uuid(value: str) -> uuid.UUID:
         raise ValueError(f"Invalid UUID: {value!r}") from exc
 
 
+async def _default_location_id() -> uuid.UUID:
+    """Return the first available location UUID as a fallback."""
+    await _ensure_db()
+    from carabiner.db.repositories import list_locations
+
+    rows = await list_locations()
+    if not rows:
+        raise ValueError("No locations found in database")
+    return rows[0].id
+
+
+async def _resolve_location_id(parsed: dict) -> dict:
+    """Ensure parsed dict has a valid location_id, defaulting to first location."""
+    loc = parsed.get("location_id")
+    if not loc or loc in ("unknown", "null", "none", ""):
+        parsed["location_id"] = await _default_location_id()
+    else:
+        parsed["location_id"] = _parse_uuid(loc)
+    return parsed
+
+
 # ---------------------------------------------------------------------------
 # MCP Server
 # ---------------------------------------------------------------------------
@@ -279,6 +300,7 @@ Examples:
     prepared = _prepare_data(module, parsed)
 
     if action == "create":
+        prepared = await _resolve_location_id(prepared)
         row = await fn(prepared)
         return json.dumps(_serialise(row), default=str)
 
@@ -405,8 +427,7 @@ async def inventory_create(data: str) -> str:
     from carabiner.db.repositories import create_inventory
 
     parsed = json.loads(data)
-    if "location_id" in parsed:
-        parsed["location_id"] = _parse_uuid(parsed["location_id"])
+    parsed = await _resolve_location_id(parsed)
     row = await create_inventory(parsed)
     return json.dumps(_serialise(row), default=str)
 
@@ -469,8 +490,7 @@ async def orders_create(data: str) -> str:
     from carabiner.db.repositories import create_order
 
     parsed = json.loads(data)
-    if "location_id" in parsed:
-        parsed["location_id"] = _parse_uuid(parsed["location_id"])
+    parsed = await _resolve_location_id(parsed)
     row = await create_order(parsed)
     return json.dumps(_serialise(row), default=str)
 
@@ -533,8 +553,7 @@ async def prep_create(data: str) -> str:
     from carabiner.db.repositories import create_prep
 
     parsed = json.loads(data)
-    if "location_id" in parsed:
-        parsed["location_id"] = _parse_uuid(parsed["location_id"])
+    parsed = await _resolve_location_id(parsed)
     row = await create_prep(parsed)
     return json.dumps(_serialise(row), default=str)
 
@@ -597,8 +616,7 @@ async def invoices_create(data: str) -> str:
     from carabiner.db.repositories import create_invoice
 
     parsed = json.loads(data)
-    if "location_id" in parsed:
-        parsed["location_id"] = _parse_uuid(parsed["location_id"])
+    parsed = await _resolve_location_id(parsed)
     row = await create_invoice(parsed)
     return json.dumps(_serialise(row), default=str)
 
@@ -666,8 +684,7 @@ async def recipes_create(data: str) -> str:
     from carabiner.db.repositories import create_recipe
 
     parsed = json.loads(data)
-    if "location_id" in parsed:
-        parsed["location_id"] = _parse_uuid(parsed["location_id"])
+    parsed = await _resolve_location_id(parsed)
     row = await create_recipe(parsed)
     return json.dumps(_serialise(row), default=str)
 
@@ -730,8 +747,7 @@ async def menu_create(data: str) -> str:
     from carabiner.db.repositories import create_menu
 
     parsed = json.loads(data)
-    if "location_id" in parsed:
-        parsed["location_id"] = _parse_uuid(parsed["location_id"])
+    parsed = await _resolve_location_id(parsed)
     if "recipe_id" in parsed and parsed["recipe_id"]:
         parsed["recipe_id"] = _parse_uuid(parsed["recipe_id"])
     row = await create_menu(parsed)
@@ -798,8 +814,7 @@ async def food_cost_create(data: str) -> str:
     from carabiner.db.repositories import create_food_cost
 
     parsed = json.loads(data)
-    if "location_id" in parsed:
-        parsed["location_id"] = _parse_uuid(parsed["location_id"])
+    parsed = await _resolve_location_id(parsed)
     row = await create_food_cost(parsed)
     return json.dumps(_serialise(row), default=str)
 
@@ -862,8 +877,7 @@ async def campaigns_create(data: str) -> str:
     from carabiner.db.repositories import create_campaign
 
     parsed = json.loads(data)
-    if "location_id" in parsed:
-        parsed["location_id"] = _parse_uuid(parsed["location_id"])
+    parsed = await _resolve_location_id(parsed)
     row = await create_campaign(parsed)
     return json.dumps(_serialise(row), default=str)
 

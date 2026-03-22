@@ -27,3 +27,11 @@
 **Decision:** One Claude Code session at a time. Delegated agents use `isolation: "worktree"` for parallel work.
 **Rationale:** Git has one working tree — concurrent checkouts corrupt each other's state.
 **Impact:** Workflow pattern, not code. Saved in memory for future sessions.
+
+## [2026-03-21 20:30] Decision: Bridge notify_user → action cards instead of Expo JSON parsing
+
+**Context:** We built an Expo extension that parses tool response JSON for action card data, but it's fragile (JSON extraction, prompt engineering for raw JSON output). Meanwhile, A0 has a built-in `notify_user` tool that it naturally uses to send structured notifications with title, message, type, priority.
+**Decision:** Create a post-tool extension that intercepts `notify_user` calls and converts them to action card Socket.IO events. Keep the existing Expo extension as a secondary path.
+**Rationale:** A0 already WANTS to notify the user — it used notify_user spontaneously when it created the rush order (27B local model, no prompting). Fighting that instinct (forcing Expo to output raw JSON) is harder than riding it. The type mapping is clean: success→update, warning→urgent, info→info.
+**Impact:** New extension in usr/extensions/tool_execute_after/ that hooks notify_user → action_card emit. Frontend action card system unchanged. Expo extension remains as fallback.
+**Evidence:** A0 session 2026-03-21 — installed PostgreSQL, created schema from memory, inserted order, used notify_user to alert chef. The notification pattern was correct on first try.
