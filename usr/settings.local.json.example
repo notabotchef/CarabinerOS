@@ -2,7 +2,9 @@
   "_comment": "Copy this file to usr/settings.local.json and adjust for your machine.",
   "_comment2": "Values here override usr/settings.json. Only include keys you need to change.",
 
-  "mcp_servers": "{\"mcpServers\":{\"carabiner-db\":{\"command\":\".venv/bin/python\",\"args\":[\"-m\",\"carabiner.mcp.server\"],\"env\":{\"DATABASE_URL\":\"postgresql+asyncpg://carabiner:carabiner@localhost:5432/carabiner\"},\"init_timeout\":30}}}",
+  "_comment3": "MCP config no longer needs env.DATABASE_URL — the server inherits it from the parent process.",
+  "_comment4": "Set DATABASE_URL in your shell or .env file instead.",
+  "mcp_servers": "{\"mcpServers\":{\"carabiner-db\":{\"command\":\".venv/bin/python\",\"args\":[\"-m\",\"carabiner.mcp.server\"],\"init_timeout\":30}}}",
 
   "chat_model_api_base": "http://localhost:11434",
   "util_model_api_base": "http://localhost:11434",

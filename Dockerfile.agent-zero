@@ -17,6 +17,13 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy entire app
 COPY . .
 
+# Create .venv/bin/python symlink so MCP server config (.venv/bin/python)
+# works identically in Docker (system python) and local dev (real venv)
+RUN mkdir -p .venv/bin && ln -sf /usr/local/bin/python .venv/bin/python
+
+# ipython is required by Agent Zero's code_execution_tool for Python runtime
+RUN pip install --no-cache-dir ipython
+
 EXPOSE 5000
 
 CMD ["python", "run_ui.py", "--dockerized=true"]
