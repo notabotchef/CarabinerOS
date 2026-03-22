@@ -203,9 +203,13 @@ export function useExpoStream(
         stickyTextRef.current ??
         jokeRef.current;
 
+      // Stream ticket steps in real-time so users see what A0 is doing
+      // while waiting for a response (H2 fix: expo whispering).
+      const liveSteps = snapshotTicketSteps(snapshot);
+
       prevActiveRef.current = true;
       Promise.resolve().then(() => {
-        setExpo({ text: displayText, thoughts, active: true, ticketSteps: [] });
+        setExpo({ text: displayText, thoughts, active: true, ticketSteps: liveSteps });
       });
     } else if (prevActiveRef.current) {
       // Transition from active -> inactive: snapshot ticket steps

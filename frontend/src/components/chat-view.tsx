@@ -19,8 +19,10 @@ interface ChatViewProps {
 
 export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: ChatViewProps) {
   const [ticketExpanded, setTicketExpanded] = useState(false);
-  const hasTicket = !expo.active && expo.ticketSteps.length > 0;
-  const effectiveTicketExpanded = ticketExpanded && hasTicket;
+  const hasTicket = expo.ticketSteps.length > 0;
+  // Auto-expand the ticket while A0 is actively processing so users see
+  // the step-by-step log in real-time (H2 fix: expo whispering).
+  const effectiveTicketExpanded = expo.active ? hasTicket : (ticketExpanded && hasTicket);
 
   return (
     <div className="flex flex-1 flex-col min-h-0">

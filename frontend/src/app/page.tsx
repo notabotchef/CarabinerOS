@@ -14,10 +14,11 @@ export default function HomePage() {
   const router = useRouter();
   const { newChatPending, consumeNewChat } = useShell();
   const { snapshot, subscribe } = useSocketContext();
-  const { sendMessage, resetChat, createNewChat, contextId } = useChat(snapshot);
+  const { sendMessage, resetChat, createNewChat } = useChat(snapshot);
   const actionCards = useActionCards();
   const [notifOpen, setNotifOpen] = useState(false);
   const creatingChatRef = useRef(false);
+  const sendingRef = useRef(false);
 
   // Stable refs for callbacks — updated every render so the effect never needs
   // them in its dependency array, which prevents re-firing when references change.
@@ -30,9 +31,11 @@ export default function HomePage() {
   resetChatRef.current = resetChat;
   consumeNewChatRef.current = consumeNewChat;
 
-  // Unsubscribe from any previous context when the home page mounts
+  // Unsubscribe from any previous context and reset chat state when the
+  // home page mounts so stale contextId from a prior session is cleared.
   useEffect(() => {
     subscribeRef.current(null);
+    resetChatRef.current();
   }, []);
 
   // When a new chat is requested (from sidebar "+" button), create it on A0's side.
@@ -62,17 +65,23 @@ export default function HomePage() {
   }, [newChatPending, router]);
 
   const handleSend = async (text: string) => {
-    // Only create a new chat if one doesn't already exist (e.g. from the "+" flow)
-    let ctxId = contextId;
-    if (!ctxId) {
-      ctxId = await createNewChat();
+    // Guard against double-fire (M2: duplicate user message on first send)
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+
+    try {
+      // Homepage ALWAYS creates a fresh chat context before sending (C4 fix).
+      // Any stale contextId from a prior session is irrelevant here.
+      const ctxId = await createNewChat();
       if (ctxId) {
         subscribe(ctxId);
       }
-    }
-    await sendMessage(text);
-    if (ctxId) {
-      router.push(`/chat/${ctxId}`);
+      await sendMessage(text);
+      if (ctxId) {
+        router.push(`/chat/${ctxId}`);
+      }
+    } finally {
+      sendingRef.current = false;
     }
   };
 

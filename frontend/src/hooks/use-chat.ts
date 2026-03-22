@@ -154,6 +154,8 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
   const isProcessingRef = useRef(false);
   const freshChatRef = useRef(false); // true after resetChat, cleared on first send
   const seenUserMessageRef = useRef(false); // true once any snapshot contains a user log; reset on context switch
+  const lastSentTextRef = useRef<string | null>(null); // M2: guard against duplicate sends
+  const lastSentTimeRef = useRef(0);
 
   // Keep contextIdRef and messagesRef in sync
   useEffect(() => {
@@ -267,6 +269,14 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
   }, [snapshot]);
 
   const doSend = useCallback(async (text: string): Promise<string> => {
+    // M2 guard: reject duplicate sends of the same text within 2 seconds
+    const now = Date.now();
+    if (lastSentTextRef.current === text && now - lastSentTimeRef.current < 2000) {
+      return contextIdRef.current || "";
+    }
+    lastSentTextRef.current = text;
+    lastSentTimeRef.current = now;
+
     // First message in a fresh chat — start accepting snapshot logs again
     freshChatRef.current = false;
 
