@@ -4,6 +4,55 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { getStateSyncSocket } from "@/lib/socket-client";
 import type { ActionCard, CardChatMessage } from "@/lib/types";
 
+const STORAGE_KEY = "cos_action_cards";
+const THREAD_STORAGE_KEY = "cos_card_threads";
+const STALE_THRESHOLD_SECONDS = 86400; // 24 hours
+
+function readCardsFromStorage(): ActionCard[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: ActionCard[] = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const now = Date.now() / 1000;
+    return parsed.filter(
+      (c) => c.status !== "dismissed" && now - c.timestamp <= STALE_THRESHOLD_SECONDS,
+    );
+  } catch {
+    try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* silent */ }
+    return [];
+  }
+}
+
+function readThreadsFromStorage(): Map<string, CardChatMessage[]> {
+  if (typeof window === "undefined") return new Map();
+  try {
+    const raw = sessionStorage.getItem(THREAD_STORAGE_KEY);
+    if (!raw) return new Map();
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return new Map();
+    return new Map(Object.entries(parsed) as [string, CardChatMessage[]][]);
+  } catch {
+    try { sessionStorage.removeItem(THREAD_STORAGE_KEY); } catch { /* silent */ }
+    return new Map();
+  }
+}
+
+function writeCardsToStorage(cards: ActionCard[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+  } catch { /* silent — storage full or unavailable */ }
+}
+
+function writeThreadsToStorage(threads: Map<string, CardChatMessage[]>): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(Object.fromEntries(threads)));
+  } catch { /* silent */ }
+}
+
 interface UrgentBanner {
   count: number;
   earliestDeadline: string;
@@ -72,6 +121,32 @@ export function useActionCards(): UseActionCardsReturn {
   const [chatThreads, setChatThreads] = useState<Map<string, CardChatMessage[]>>(new Map());
   const [chatLoading, setChatLoading] = useState(false);
   const listenersAttached = useRef(false);
+  const hydrated = useRef(false);
+
+  // Hydrate from sessionStorage on mount (client-only, avoids hydration mismatch)
+  useEffect(() => {
+    const storedCards = readCardsFromStorage();
+    if (storedCards.length > 0) {
+      setCards(storedCards);
+    }
+    const storedThreads = readThreadsFromStorage();
+    if (storedThreads.size > 0) {
+      setChatThreads(storedThreads);
+    }
+    hydrated.current = true;
+  }, []);
+
+  // Persist cards to sessionStorage on every change (after hydration)
+  useEffect(() => {
+    if (!hydrated.current) return;
+    writeCardsToStorage(cards);
+  }, [cards]);
+
+  // Persist chat threads to sessionStorage on every change (after hydration)
+  useEffect(() => {
+    if (!hydrated.current) return;
+    writeThreadsToStorage(chatThreads);
+  }, [chatThreads]);
 
   useEffect(() => {
     const socket = getStateSyncSocket();
