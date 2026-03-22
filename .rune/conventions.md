@@ -38,3 +38,10 @@
 - **Local dev**: `pnpm dev` (frontend :3000) + `.venv/bin/python run_ui.py` (backend :5000)
 - **Docker**: `docker compose -f docker-compose.dev.yml up` — serves on :8080 via nginx
 - **Preferred**: Docker (port 8080) — handles all proxying correctly
+
+## Action Cards
+- **Auto-emit**: DB write tools (`db_mutate`, `*_create`, `*_update`, `*_delete`) auto-generate cards via `_30_action_card_emit.py` extension — zero extra LLM tokens
+- **Proactive**: A0 calls `action_card` tool for non-DB notifications (menu ideas, reminders, alerts)
+- **sio access**: Always walk agent hierarchy to find sio — subordinates don't have it directly
+- **Card types**: urgent (amber), action (blue), update (emerald), info (violet)
+- **Frontend**: `useActionCards` hook, sessionStorage persistence, card-stack animation on arrival

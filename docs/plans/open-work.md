@@ -1,25 +1,26 @@
 # CarabinerOS — Open Work Items
 
-Updated: 2026-03-21 (session 5)
+Updated: 2026-03-22 (session 6)
 
 ## CRITICAL (Blocks core functionality)
 
-- [ ] **MCP DATABASE_URL in Docker** — MCP server connects to `localhost:5432` but PostgreSQL is in the `db` container (`db:5432`). The C1 fix (env inheritance) isn't fully working. All write tools fail. This is THE blocker — everything else depends on it.
-- [ ] **Bake Codex patch into Dockerfile** — The codex-proxy plugin installs into `/app/python/` which resets on container restart. Need to add install step to Dockerfile.agent-zero + `chpasswd` fix (set `check=False` in settings.py).
+- [x] ~~**MCP DATABASE_URL in Docker**~~ — Fixed: merged parent env into MCP subprocess via `mcp_handler.py`. MCP server now inherits DATABASE_URL from docker-compose.
+- [x] ~~**Bake Codex patch into Dockerfile**~~ — Fixed: Dockerfile.agent-zero runs `initialize.py` at container startup (not build time, since usr/ is volume-mounted). chpasswd `check=False` fix applied.
 - [ ] **Run migration 009** — "cOS Test Kitchen" single-location consolidation. Migration file committed but has known fix for ARRAY(TEXT) format (asyncpg needs Python lists, not PG string literals). Fixed version on worktree branch.
 
 ## HIGH Priority (Demo Blockers)
 
-- [ ] **Functional module pages** — Orders, Inventory, Prep, Menu, Recipes, Invoices, Marketing, Reporting pages need real CRUD functionality (not just mock data). These serve as fallback when A0 is unavailable or user runs out of tokens. Each page should read from the real DB and support basic operations.
-- [ ] **notify_user → action cards bridge** — A0 naturally uses `notify_user` tool. Create extension that intercepts these and emits `action_card` Socket.IO events. Type mapping: success→update, warning→urgent, info→info. (Architectural decision recorded in .rune/decisions.md)
+- [ ] **UI/UX design refresh** — CarabinerOS looks like "another Claude Code website." Needs restaurant-first visual identity: dashboards, KPI panels, prep boards. Chat should be one input mode, not the whole UI. Run `rune:design` audit. Explore Google Stitch for UI generation.
+- [ ] **Functional module pages** — Orders, Inventory, Prep, Menu, Recipes, Invoices, Marketing, Reporting pages need real CRUD functionality (not just mock data). Each page should read from the real DB and support basic operations.
+- [ ] **Soft delete for orders** — A0 should set `deleted=true` instead of hard delete. CarabinerOS auto-purges after 30 days. Useful for undo, repeat orders, and audit trail. Needs DB column + migration + UI section on orders page.
 - [ ] **Expo filtering** — MCP tool calls invisible (add `"mcp"` to TICKET_LOG_TYPES), "Calling LLM..." leaks through (filter as filler), raw tool names need kitchen-language mapping, thoughts extracted but never rendered, warnings/errors invisible.
+- [ ] **Action card auto-emit testing** — Extension upgraded to auto-emit cards on DB writes (zero extra tokens). Needs live Docker test to verify cards reach frontend. Also test `action_card` tool for proactive notifications (menu ideas, alerts).
 - [ ] **Table data cards not rendering in Docker** — Changes on main but Docker needs rebuild. Tables should break out of chat bubble as standalone data cards.
 
 ## MEDIUM Priority
 
 - [ ] **5-min delay on first message** — VectorDB init + knowledge file processing. Needs profiling or lazy loading.
 - [ ] **Closing pgAdmin stops cOS streaming** — Docker network dependency investigation.
-- [ ] **Ollama stalls under concurrent load** — Inference appears single-threaded. Less relevant now with Codex proxy.
 - [ ] **Tool-not-found dumps 750+ line catalog** — A0 core behavior. Wastes LLM context window. May need overlay-pattern-compatible fix.
 - [ ] **Quirky loading notes while A0 thinks** — Expo should show personality while waiting.
 - [ ] **Sparse seed data** — Only 5 inventory items in current DB. Migration 009 fixes this (16 items) once it runs.
@@ -31,8 +32,29 @@ Updated: 2026-03-21 (session 5)
 - [ ] **Welcome emoji** — Using shrimp emoji, should match CarabinerOS brand.
 - [ ] **Chat naming** — Sidebar shows timestamps instead of descriptive names for some chats.
 - [ ] **Named Cloudflare tunnel** — Set up persistent tunnel with custom domain.
-- [ ] **Duplicate message on first send** — Frontend guard added (M2 fix) but needs Docker rebuild to take effect.
 - [ ] **Pydantic deprecation warnings** — Noisy in Docker logs. Suppress with warnings filter at startup.
+
+## COMPLETED (2026-03-22)
+
+### Session 6 (action cards + infrastructure)
+- [x] MCP type coercion — Decimal/int/UUID from strings (asyncpg compatibility)
+- [x] UUID double-wrapping fix — `_parse_uuid()` handles `UUID('...')` repr format
+- [x] `action_card` tool — A0 can emit structured cards directly via Socket.IO
+- [x] Tool prompt + system prompt extension teaching A0 when/how to use action cards
+- [x] Module icons on cards — lucide icons matching sidebar nav (ShoppingCart, Warehouse, etc.)
+- [x] Card-stack arrival animation — top-bar icon flips with type color on new card
+- [x] Card list entry/exit animations — spring slide+fade in/out
+- [x] Midnight Kitchen polish — glass header, stats tint, change borders, warm empty state
+- [x] Card chat wired to A0 — card_message routes to agent via `AgentContext.communicate()`
+- [x] Card context sent from frontend — summary/module/type/detail included in card_message
+- [x] sessionStorage persistence — cards + chat threads survive page refresh, 24h auto-cleanup
+- [x] Welcome message ordering fix — sort by timestamp prevents user msg above welcome
+- [x] MCP DATABASE_URL fix — merged parent env into subprocess via mcp_handler.py
+- [x] Codex plugin persistence — Dockerfile runs initializer at startup, token in volume-mounted usr/
+- [x] chpasswd check=False — prevents container crash on startup
+- [x] Action card sio hierarchy walk — subordinate agents (A1) find sio from root agent (A0)
+- [x] Auto-emit extension — DB writes auto-generate action cards (zero extra tokens)
+- [x] Architectural decision: two-path action cards (auto DB writes + proactive tool)
 
 ## COMPLETED (2026-03-21)
 
