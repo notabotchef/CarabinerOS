@@ -97,7 +97,7 @@ export function NotificationPanel({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
-              className="flex flex-col h-full"
+              className="flex flex-col h-full min-h-0 overflow-hidden"
             >
               {/* Header */}
               <SheetHeader className="border-b border-border px-5 py-4 shrink-0 glass-subtle">

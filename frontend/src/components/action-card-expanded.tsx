@@ -90,13 +90,13 @@ export function ActionCardExpanded({
         <div className="flex items-center gap-3">
           <button
             onClick={() => { onDismiss(card.id); onBack(); }}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap shrink-0"
           >
             Dismiss
           </button>
           <button
             onClick={() => { onCommit(card.id); onBack(); }}
-            className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25 transition-colors"
+            className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25 transition-colors shrink-0"
             title="Commit this card"
           >
             <Check className="size-4" />

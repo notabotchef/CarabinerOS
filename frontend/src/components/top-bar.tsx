@@ -155,7 +155,17 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
           </motion.div>
           {unreadCount > 0 && (
             <Badge
-              className="absolute -top-1 -right-1 h-[18px] min-w-[18px] px-1 text-[10px] font-semibold bg-primary text-primary-foreground border-none"
+              className={`absolute -top-1 -right-1 z-[60] h-[18px] min-w-[18px] px-1 text-[10px] font-semibold border-none text-primary-foreground ${
+                lastCardType === "urgent"
+                  ? "bg-amber-500"
+                  : lastCardType === "action"
+                    ? "bg-blue-500"
+                    : lastCardType === "update"
+                      ? "bg-emerald-500"
+                      : lastCardType === "info"
+                        ? "bg-violet-500"
+                        : "bg-primary"
+              }`}
             >
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>
