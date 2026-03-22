@@ -76,7 +76,13 @@ def _serialise(obj: Any) -> Any:
 
 
 def _parse_uuid(value: str) -> uuid.UUID:
-    """Parse a string into a UUID, raising a clear error on failure."""
+    """Parse a string into a UUID, handling Python repr format."""
+    if isinstance(value, uuid.UUID):
+        return value
+    value = str(value).strip()
+    # Handle UUID('...') repr format from LLMs
+    if value.upper().startswith("UUID(") and value.endswith(")"):
+        value = value[5:-1].strip("'\"")
     try:
         return uuid.UUID(value)
     except (ValueError, AttributeError) as exc:
@@ -192,13 +198,74 @@ async def _resolve_repo_fn(module: str, action: str) -> Any:
     return getattr(repo, fn_name)
 
 
-def _prepare_data(module: str, data: dict[str, Any]) -> dict[str, Any]:
-    """Parse UUID fields in the data dict before passing to repository."""
+def _coerce_types_for_model(model_cls: type, data: dict[str, Any]) -> dict[str, Any]:
+    """Coerce string values to match SQLAlchemy column types on *model_cls*.
+
+    - sa.Numeric  -> Decimal
+    - sa.Integer  -> int
+    - sa.Float    -> float
+    - UUID columns -> uuid.UUID (via _parse_uuid)
+    - None values and already-correct types are skipped.
+    """
+    import sqlalchemy as sa
+    from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+
     data = dict(data)  # shallow copy
-    if "location_id" in data:
-        data["location_id"] = _parse_uuid(data["location_id"])
-    if module == "menu" and "recipe_id" in data and data["recipe_id"]:
-        data["recipe_id"] = _parse_uuid(data["recipe_id"])
+    table = model_cls.__table__
+    for col_name, col_obj in table.columns.items():
+        if col_name not in data or data[col_name] is None:
+            continue
+        col_type = col_obj.type
+        value = data[col_name]
+
+        # UUID columns
+        if isinstance(col_type, (PG_UUID, sa.Uuid)):
+            if not isinstance(value, uuid.UUID):
+                data[col_name] = _parse_uuid(value)
+        # Numeric columns -> Decimal
+        elif isinstance(col_type, sa.Numeric) and not isinstance(col_type, sa.Float):
+            if isinstance(value, str):
+                data[col_name] = Decimal(value)
+        # Integer columns -> int
+        elif isinstance(col_type, sa.Integer):
+            if isinstance(value, str):
+                data[col_name] = int(value)
+        # Float columns -> float
+        elif isinstance(col_type, sa.Float):
+            if isinstance(value, str):
+                data[col_name] = float(value)
+    return data
+
+
+# Module name -> workspace model class (lazy-resolved)
+_MODULE_MODEL_MAP: dict[str, str] = {
+    "orders": "WorkspaceOrder",
+    "inventory": "WorkspaceInventory",
+    "prep": "WorkspacePrep",
+    "food_cost": "WorkspaceFoodCost",
+    "menu": "WorkspaceMenu",
+    "campaigns": "WorkspaceCampaign",
+    "invoices": "WorkspaceInvoice",
+    "recipes": "WorkspaceRecipe",
+}
+
+
+def _coerce_types(module: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Coerce string values in *data* to match the column types for *module*."""
+    class_name = _MODULE_MODEL_MAP.get(module)
+    if class_name is None:
+        return data
+    import carabiner.db.workspace_models as wm
+
+    model_cls = getattr(wm, class_name, None)
+    if model_cls is None:
+        return data
+    return _coerce_types_for_model(model_cls, data)
+
+
+def _prepare_data(module: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Coerce types and parse UUID fields before passing to the repository."""
+    data = _coerce_types(module, data)
     return data
 
 
