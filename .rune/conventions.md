@@ -44,4 +44,8 @@
 - **Proactive**: A0 calls `action_card` tool for non-DB notifications (menu ideas, reminders, alerts)
 - **sio access**: Always walk agent hierarchy to find sio — subordinates don't have it directly
 - **Card types**: urgent (amber), action (blue), update (emerald), info (violet)
-- **Frontend**: `useActionCards` hook, sessionStorage persistence, card-stack animation on arrival
+- **Frontend**: `useActionCards` hook, sessionStorage persistence, 2-col solitaire grid with flip expand
+- **Visual identity**: Kitchen Display System aesthetic — left-border station colors, monospace labels, "Tickets/FIRE/Cleared" vocabulary
+- **Action buttons**: ✗ (red/dismiss) + ✓ (green/commit) + contextual action label per type+module (e.g., "86 It", "Order Now", "Approve")
+- **Chat suggestions**: `getDefaultSuggestion(card)` + `getDefaultChips(card)` — type+module lookup map for pre-fill and quick-action chips
+- **Completed cards**: Green-tinted "Cleared" section at bottom of panel, still expandable, hover to dismiss

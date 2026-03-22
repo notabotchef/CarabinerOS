@@ -29,9 +29,27 @@
 - [ ] Migration 009 not yet run
 - [ ] Expo filtering not started
 
+## [2026-03-22 06:40] Session 7 Summary — Action Cards UI Overhaul
+
+**Completed:**
+- [x] Action cards UI audit — user tested with 6 fake cards, filed 10 issues with screenshots
+- [x] Phase 1: Foundation fixes — badge z-index + type color, scroll overflow, button overlap (Agent A)
+- [x] Phase 2: Solitaire card redesign — KDS aesthetic, 2-col grid, flip expand, action buttons, chat pre-fill, quick-action chips, completed cards section (Agent B)
+- [x] Merged both agent branches to main, resolved conflicts (rewrite wins over patch)
+- [x] Neural memory capture — 5 learnings saved (design, animation, merge strategy, chat UX, rune:team bug)
+
+**Open Bug (carried from session 6):**
+- [ ] Action cards not reaching frontend from A0 — auto-emit extension fires server-side but cards don't appear. Needs live debugging.
+- [ ] A0 still calls `call_subordinate` for card formatting — system prompt should tell it the extension handles this
+
+**In Progress (carried from session 6):**
+- [ ] Migration 009 not yet run
+- [ ] Expo filtering not started
+
 **Next Session Should:**
-1. Debug action card frontend delivery — add console.log to extension, verify sio.emit fires, check frontend socket connection
-2. Run `rune:design` audit — CarabinerOS looks like "another Claude Code website", needs restaurant-first visual identity
-3. Explore Google Stitch for UI generation
-4. Consider soft delete for orders (deleted=true, 30-day auto-purge)
-5. Run migration 009
+1. Test the new solitaire card UI — load fake cards, verify 2-col grid, flip animation, action buttons, chat chips, completed section
+2. Fix `bg-current/[0.08]` on action button if it doesn't render visually
+3. Debug action card frontend delivery — the original open bug from session 6
+4. Explore Google Stitch for UI generation
+5. Consider soft delete for orders (deleted=true, 30-day auto-purge)
+6. Run migration 009

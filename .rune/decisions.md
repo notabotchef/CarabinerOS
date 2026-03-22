@@ -63,3 +63,17 @@
 **Decision:** Walk up the agent hierarchy via `agent.get_data(Agent.DATA_NAME_SUPERIOR)` to find sio from the root agent (A0).
 **Rationale:** A0 always has sio. Subordinates hold a reference to their superior. One hop finds it.
 **Impact:** `python/tools/action_card.py`, `usr/extensions/tool_execute_after/_30_action_card_emit.py`
+
+## [2026-03-22 06:40] Decision: Kitchen Display System aesthetic for action cards
+
+**Context:** User tested action cards with fake data and said it looks like "another Claude Code website." Needed restaurant-first visual identity.
+**Decision:** Adopted KDS (Kitchen Display System) aesthetic — left-border station colors, monospace labels, "Tickets"/"FIRE"/"Cleared" vocabulary, 2-column solitaire grid with flip-to-expand.
+**Rationale:** Restaurant operators recognize KDS patterns instinctively. Kitchen tickets are the mental model — not notification panels.
+**Impact:** `action-card.tsx` (rewrite), `action-card-expanded.tsx` (rewrite), `notification-panel.tsx` (rewrite)
+
+## [2026-03-22 06:40] Decision: Inline expand with Framer Motion layoutId over view-swap
+
+**Context:** Original action card expand used AnimatePresence to swap between list view and expanded view — felt like a page navigation, not a card flip.
+**Decision:** Use Framer Motion `layoutId` for shared-layout animation between collapsed and expanded card states. Card expands inline, pushing others away.
+**Rationale:** User described it as "picking a card from a table, turning it over, bringing it close to your face." layoutId enables this with zero manual animation code.
+**Impact:** `action-card.tsx` (layoutId), `action-card-expanded.tsx` (layoutId), `notification-panel.tsx` (LayoutGroup)
