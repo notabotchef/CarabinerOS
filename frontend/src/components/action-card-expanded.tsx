@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
-  ArrowLeft, Check, Loader2,
+  Check, X, Loader2, Send,
   ShoppingCart, Warehouse, ChefHat, DollarSign,
   UtensilsCrossed, BookOpen, Receipt, Megaphone, BarChart3,
   Info,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { getActionLabel } from "@/components/action-card";
 import type {
   ActionCard,
   ActionCardType as CardType,
@@ -28,6 +30,70 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
   reporting: BarChart3,
 };
 
+const TYPE_TAG_STYLES: Record<CardType, string> = {
+  urgent: "text-amber-300 bg-amber-500/15",
+  action: "text-blue-300 bg-blue-500/15",
+  update: "text-emerald-300 bg-emerald-500/15",
+  info: "text-violet-300 bg-violet-500/15",
+};
+
+const TYPE_BORDER_STYLES: Record<CardType, string> = {
+  urgent: "border-l-amber-500",
+  action: "border-l-blue-500",
+  update: "border-l-emerald-500",
+  info: "border-l-violet-500",
+};
+
+const CHANGE_OP_STYLES: Record<string, string> = {
+  "+": "text-emerald-400 bg-emerald-400/5 border-l-2 border-emerald-400/40",
+  "!": "text-amber-400 bg-amber-400/5 border-l-2 border-amber-400/40",
+  "->": "text-muted-foreground bg-muted/50 border-l-2 border-muted-foreground/20",
+};
+
+// --- Suggestion helpers ---
+
+/** Maps type+module to a contextual suggestion for the chat pre-fill. */
+export function getDefaultSuggestion(card: ActionCard): string {
+  const key = `${card.type}+${card.module}`;
+  const map: Record<string, string> = {
+    "urgent+inventory": "Want me to place an emergency order?",
+    "action+inventory": "Want me to place an emergency order?",
+    "urgent+orders": "Should I notify the kitchen?",
+    "action+orders": "Should I notify the kitchen?",
+    "action+menu": "Add this to tonight's specials?",
+    "update+menu": "Add this to tonight's specials?",
+    "action+invoices": "Approve all matched invoices?",
+    "update+invoices": "Approve all matched invoices?",
+    "update+prep": "Mark these as complete?",
+    "action+prep": "Mark these as complete?",
+    "urgent+food-cost": "Send this to the team?",
+    "update+food-cost": "Send this to the team?",
+    "action+food-cost": "Send this to the team?",
+    "info+food-cost": "Send this to the team?",
+  };
+  return map[key] ?? `Tell me what to do with this ${card.module} item`;
+}
+
+/** Returns an array of quick-action chip labels based on card context. */
+export function getDefaultChips(card: ActionCard): string[] {
+  if (card.suggestedChips && card.suggestedChips.length > 0) {
+    return card.suggestedChips;
+  }
+
+  const key = `${card.type}+${card.module}`;
+  const map: Record<string, string[]> = {
+    "urgent+orders": ["Alert kitchen", "Delay 15 min", "Show details"],
+    "urgent+inventory": ["86 it now", "Emergency order", "Show details"],
+    "action+inventory": ["Place order", "Check par levels", "Show details"],
+    "action+menu": ["Add to specials", "Price check", "Show details"],
+    "update+prep": ["Mark complete", "Reassign", "Show details"],
+    "update+invoices": ["Approve", "Flag for review", "Show details"],
+  };
+  return map[key] ?? ["Notify team", "Remind me later", "Show details"];
+}
+
+// --- Component ---
+
 interface ActionCardExpandedProps {
   card: ActionCard;
   chatThread: CardChatMessage[];
@@ -37,19 +103,6 @@ interface ActionCardExpandedProps {
   onDismiss: (id: string) => void;
   onSendMessage: (id: string, text: string) => void;
 }
-
-const TYPE_TAG_STYLES: Record<CardType, string> = {
-  urgent: "text-amber-400 bg-amber-400/10",
-  action: "text-blue-400 bg-blue-400/10",
-  update: "text-emerald-400 bg-emerald-400/10",
-  info: "text-violet-400 bg-violet-400/10",
-};
-
-const CHANGE_OP_STYLES: Record<string, string> = {
-  "+": "text-emerald-400 bg-emerald-400/5 border-l-2 border-emerald-400/40",
-  "!": "text-amber-400 bg-amber-400/5 border-l-2 border-amber-400/40",
-  "→": "text-muted-foreground bg-muted/50 border-l-2 border-muted-foreground/20",
-};
 
 export function ActionCardExpanded({
   card,
@@ -61,11 +114,23 @@ export function ActionCardExpanded({
   onSendMessage,
 }: ActionCardExpandedProps) {
   const [message, setMessage] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSend = () => {
-    const text = message.trim();
-    if (!text) return;
-    onSendMessage(card.id, text);
+  const suggestion = card.suggestedAction ?? getDefaultSuggestion(card);
+  const chips = getDefaultChips(card);
+  const ModuleIcon = MODULE_ICONS[card.module] ?? Info;
+  const actionLabel = getActionLabel(card.type, card.module);
+
+  // Auto-scroll chat thread
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatThread.length]);
+
+  const handleSend = (text?: string) => {
+    const sendText = text ?? message.trim();
+    if (!sendText) return;
+    onSendMessage(card.id, sendText);
     setMessage("");
   };
 
@@ -76,70 +141,75 @@ export function ActionCardExpanded({
     }
   };
 
+  const handleChipClick = (chipLabel: string) => {
+    handleSend(chipLabel);
+  };
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="size-4" />
-          <span>Back to cards</span>
-        </button>
-        <div className="flex items-center gap-3">
+    <motion.div
+      layout
+      layoutId={`card-${card.id}`}
+      className={`flex flex-col h-full border-l-[3px] ${TYPE_BORDER_STYLES[card.type]}`}
+    >
+      {/* Header bar -- station callout style */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 shrink-0">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onBack}
+            className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors font-mono uppercase tracking-wider"
+          >
+            Back
+          </button>
+          <span className="text-muted-foreground/20">|</span>
+          <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.08em] ${TYPE_TAG_STYLES[card.type]} px-1.5 py-0.5 rounded font-mono`}>
+            <ModuleIcon className="size-3 opacity-70" />
+            {card.module}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
           <button
             onClick={() => { onDismiss(card.id); onBack(); }}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap shrink-0"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            title="Dismiss"
           >
-            Dismiss
+            <X className="size-4" />
           </button>
           <button
             onClick={() => { onCommit(card.id); onBack(); }}
-            className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25 transition-colors shrink-0"
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25 transition-colors text-[10px] font-bold uppercase tracking-wider font-mono"
             title="Commit this card"
           >
-            <Check className="size-4" />
+            <Check className="size-3.5" />
+            {actionLabel}
           </button>
         </div>
       </div>
 
       {/* Scrollable body */}
-      <ScrollArea className="flex-1">
-        <div className="p-5">
-          {/* Type + Module tags */}
-          <div className="flex gap-2 mb-3">
-            <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${TYPE_TAG_STYLES[card.type]}`}>
-              {card.type}
-            </span>
-            <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded uppercase tracking-wider">
-              {(() => { const Icon = MODULE_ICONS[card.module] ?? Info; return <Icon className="size-4 opacity-60" />; })()}
-              {card.module}
-            </span>
-          </div>
-
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="p-4">
           {/* Title */}
-          <h2 className="text-base font-bold text-foreground mb-2 leading-tight">
+          <h2 className="text-base font-bold text-foreground leading-tight mb-1.5">
             {card.summary}
           </h2>
 
           {/* Detail */}
-          <p className="text-[13px] text-muted-foreground leading-relaxed mb-5">
+          <p className="text-[13px] text-muted-foreground/70 leading-relaxed mb-4">
             {card.detail}
           </p>
 
-          {/* Stats grid */}
+          {/* Stats grid -- KDS metric tiles */}
           {card.stats.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 mb-5">
+            <div className="grid grid-cols-2 gap-2 mb-4">
               {card.stats.map((stat) => (
                 <div
                   key={stat.label}
-                  className="bg-primary/10 rounded-lg p-3"
+                  className="bg-muted/30 rounded-lg p-2.5 border border-border/40"
                 >
-                  <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">
+                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground/60 font-mono mb-0.5">
                     {stat.label}
                   </div>
-                  <div className="text-lg font-extrabold tabular-nums">
+                  <div className="text-lg font-extrabold tabular-nums font-mono">
                     {stat.value}
                   </div>
                 </div>
@@ -147,19 +217,19 @@ export function ActionCardExpanded({
             </div>
           )}
 
-          {/* Changes diff */}
+          {/* Changes diff -- like a ticket modification log */}
           {card.changes.length > 0 && (
-            <div className="mb-5">
-              <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                What changed
+            <div className="mb-4">
+              <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground/50 font-mono mb-2">
+                Changes
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 {card.changes.map((change, i) => (
                   <div
                     key={i}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg ${CHANGE_OP_STYLES[change.op] ?? "bg-muted/30"}`}
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded ${CHANGE_OP_STYLES[change.op] ?? "bg-muted/30"}`}
                   >
-                    <span className="text-xs font-bold w-3 text-center shrink-0">
+                    <span className="text-xs font-bold w-3 text-center shrink-0 font-mono">
                       {change.op}
                     </span>
                     <span className="text-[12px] text-foreground/70">
@@ -173,58 +243,72 @@ export function ActionCardExpanded({
 
           {/* Chat thread */}
           {chatThread.length > 0 && (
-            <div className="mb-4">
-              <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                Conversation
+            <div className="mb-3">
+              <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground/50 font-mono mb-2">
+                Thread
               </div>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5">
                 {chatThread.map((msg, i) => (
                   <div
                     key={i}
                     className={`rounded-lg px-3 py-2 text-[12px] leading-relaxed ${
                       msg.role === "user"
                         ? "bg-primary/10 text-foreground/80 ml-6"
-                        : "bg-muted/40 text-foreground/70 mr-6"
+                        : "bg-muted/30 text-foreground/70 mr-6"
                     }`}
                   >
                     {msg.text}
                   </div>
                 ))}
                 {chatLoading && (
-                  <div className="flex items-center gap-2 text-muted-foreground/50 text-xs mr-6">
+                  <div className="flex items-center gap-2 text-muted-foreground/40 text-xs mr-6">
                     <Loader2 className="size-3 animate-spin" />
-                    <span>Working on it...</span>
+                    <span className="font-mono text-[10px]">Working...</span>
                   </div>
                 )}
+                <div ref={chatEndRef} />
               </div>
             </div>
           )}
         </div>
       </ScrollArea>
 
-      {/* Inline chat input */}
-      <div className="border-t border-border px-4 py-3 shrink-0">
-        <div className="text-[10px] text-muted-foreground/50 font-medium mb-1.5">
-          Make changes to this {card.module}
+      {/* Quick-action chips + chat input */}
+      <div className="border-t border-border/60 px-4 py-3 shrink-0">
+        {/* Chips -- horizontal scroll, pill buttons */}
+        <div className="flex gap-1.5 mb-2 overflow-x-auto scrollbar-none">
+          {chips.map((chip) => (
+            <button
+              key={chip}
+              onClick={() => handleChipClick(chip)}
+              disabled={chatLoading}
+              className="shrink-0 text-[10px] font-semibold px-2.5 py-1 rounded-full border border-border/60 text-muted-foreground/70 hover:text-foreground hover:border-foreground/20 hover:bg-muted/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {chip}
+            </button>
+          ))}
         </div>
+
+        {/* Input */}
         <div className="flex gap-2">
           <input
+            ref={inputRef}
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={`Add items, change quantities...`}
-            className="flex-1 h-9 rounded-lg bg-muted/30 border border-border px-3 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30"
+            placeholder={suggestion}
+            className="flex-1 h-9 rounded-lg bg-muted/20 border border-border/50 px-3 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono"
           />
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!message.trim() || chatLoading}
             className="flex size-9 items-center justify-center rounded-lg bg-primary/15 border border-primary/25 text-primary hover:bg-primary/25 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <span className="text-sm">↑</span>
+            <Send className="size-3.5" />
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

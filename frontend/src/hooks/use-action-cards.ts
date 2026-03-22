@@ -61,6 +61,8 @@ interface UrgentBanner {
 export interface UseActionCardsReturn {
   cards: ActionCard[];
   sortedCards: ActionCard[];
+  activeCards: ActionCard[];
+  committedCards: ActionCard[];
   unreadCount: number;
   lastCardType: string | undefined;
   urgentBanner: UrgentBanner | null;
@@ -77,6 +79,10 @@ export interface UseActionCardsReturn {
 
 function sortCards(cards: ActionCard[]): ActionCard[] {
   return [...cards].sort((a, b) => {
+    // 0. committed cards always last
+    const aCommitted = a.status === "committed" ? 1 : 0;
+    const bCommitted = b.status === "committed" ? 1 : 0;
+    if (aCommitted !== bCommitted) return aCommitted - bCommitted;
     // 1. priority DESC
     if (b.priority !== a.priority) return b.priority - a.priority;
     // 2. deadline ASC (cards with deadline first, nearest first)
@@ -189,6 +195,16 @@ export function useActionCards(): UseActionCardsReturn {
 
   const sortedCards = useMemo(() => sortCards(cards), [cards]);
 
+  const activeCards = useMemo(
+    () => sortedCards.filter((c) => c.status !== "committed" && c.status !== "dismissed"),
+    [sortedCards],
+  );
+
+  const committedCards = useMemo(
+    () => sortedCards.filter((c) => c.status === "committed"),
+    [sortedCards],
+  );
+
   const unreadCount = useMemo(
     () => cards.filter((c) => c.status === "new").length,
     [cards],
@@ -267,6 +283,8 @@ export function useActionCards(): UseActionCardsReturn {
   return {
     cards,
     sortedCards,
+    activeCards,
+    committedCards,
     unreadCount,
     lastCardType,
     urgentBanner,
