@@ -113,6 +113,8 @@ export interface ActionCard {
   status: ActionCardStatus;
   timestamp: number;
   source: "reactive" | "proactive";
+  suggestedAction?: string;
+  suggestedChips?: string[];
 }
 
 export interface CardChatMessage {
