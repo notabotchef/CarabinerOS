@@ -134,7 +134,7 @@ export function NotificationPanel({
                       <>
                         {/* Active cards -- 2-column grid */}
                         {activeCards.length > 0 && (
-                          <div className="grid grid-cols-2 gap-2.5">
+                          <div className="grid grid-cols-2 gap-4">
                             <AnimatePresence initial={false}>
                               {activeCards.map((card, i) => (
                                 <motion.div
@@ -175,7 +175,7 @@ export function NotificationPanel({
                             </div>
 
                             {/* Completed grid */}
-                            <div className="grid grid-cols-2 gap-2.5 rounded-lg bg-emerald-500/[0.03] p-2.5 border border-emerald-500/10">
+                            <div className="grid grid-cols-2 gap-4 rounded-lg bg-emerald-500/[0.03] p-2.5 border border-emerald-500/10">
                               <AnimatePresence initial={false}>
                                 {committedCards.map((card) => (
                                   <motion.div

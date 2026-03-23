@@ -1,26 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  ShoppingCart, Warehouse, ChefHat, DollarSign,
-  UtensilsCrossed, BookOpen, Receipt, Megaphone, BarChart3,
-  Info, Check, X,
-  type LucideIcon,
-} from "lucide-react";
+import { X, Send, Check } from "lucide-react";
 import type { ActionCard as ActionCardType, ActionCardType as CardType } from "@/lib/types";
-
-const MODULE_ICONS: Record<string, LucideIcon> = {
-  orders: ShoppingCart,
-  inventory: Warehouse,
-  prep: ChefHat,
-  "food-cost": DollarSign,
-  food_cost: DollarSign,
-  menu: UtensilsCrossed,
-  recipes: BookOpen,
-  invoices: Receipt,
-  marketing: Megaphone,
-  reporting: BarChart3,
-};
 
 interface ActionCardProps {
   card: ActionCardType;
@@ -29,13 +11,14 @@ interface ActionCardProps {
   onDismiss?: (id: string) => void;
 }
 
-/** Kitchen-ticket inspired color map. Left border = station color. */
-const TYPE_STYLES: Record<CardType, {
+/** Color map for module pill badges. */
+export const TYPE_STYLES: Record<CardType, {
   border: string;
   accent: string;
   tag: string;
   dot: string;
   bg: string;
+  pill: string;
 }> = {
   urgent: {
     border: "border-l-amber-500",
@@ -43,6 +26,7 @@ const TYPE_STYLES: Record<CardType, {
     tag: "text-amber-300 bg-amber-500/15",
     dot: "bg-amber-400",
     bg: "bg-amber-500/[0.03]",
+    pill: "bg-amber-500/20 text-amber-300",
   },
   action: {
     border: "border-l-blue-500",
@@ -50,6 +34,7 @@ const TYPE_STYLES: Record<CardType, {
     tag: "text-blue-300 bg-blue-500/15",
     dot: "bg-blue-400",
     bg: "bg-blue-500/[0.03]",
+    pill: "bg-blue-500/20 text-blue-300",
   },
   update: {
     border: "border-l-emerald-500",
@@ -57,6 +42,7 @@ const TYPE_STYLES: Record<CardType, {
     tag: "text-emerald-300 bg-emerald-500/15",
     dot: "bg-emerald-400",
     bg: "bg-transparent",
+    pill: "bg-emerald-500/20 text-emerald-300",
   },
   info: {
     border: "border-l-violet-500",
@@ -64,6 +50,7 @@ const TYPE_STYLES: Record<CardType, {
     tag: "text-violet-300 bg-violet-500/15",
     dot: "bg-violet-400",
     bg: "bg-transparent",
+    pill: "bg-violet-500/20 text-violet-300",
   },
 };
 
@@ -101,102 +88,87 @@ function formatDeadline(iso: string): string {
 
 export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardProps) {
   const style = TYPE_STYLES[card.type];
-  const isUrgent = card.type === "urgent";
   const isCommitted = card.status === "committed";
-  const ModuleIcon = MODULE_ICONS[card.module] ?? Info;
   const actionLabel = getActionLabel(card.type, card.module);
 
   return (
     <motion.div
       layout
       layoutId={`card-${card.id}`}
-      whileHover={{ y: -1 }}
+      whileHover={{ y: -2, scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       onClick={() => onExpand(card.id)}
       className={[
-        "relative rounded-lg border border-border/60 border-l-[3px] cursor-pointer",
-        "transition-shadow duration-150 hover:shadow-lg hover:shadow-black/10",
-        style.border,
-        style.bg,
+        "relative rounded-[13px] bg-card cursor-pointer",
+        "shadow-sm hover:shadow-lg transition-shadow duration-300",
+        "flex flex-col aspect-[4/5]",
         isCommitted ? "opacity-60" : "",
       ].join(" ")}
     >
-      {/* Compact ticket layout */}
-      <div className="px-3 py-2.5">
-        {/* Row 1: Station tag + time */}
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-1.5">
-            {/* Pulsing dot for urgent */}
-            <motion.span
-              animate={isUrgent ? { scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] } : {}}
-              transition={isUrgent ? { duration: 1.5, repeat: Infinity } : {}}
-              className={`size-1.5 rounded-full shrink-0 ${style.dot}`}
-            />
-            <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.08em] ${style.tag} px-1.5 py-0.5 rounded font-mono`}>
-              <ModuleIcon className="size-3 opacity-70" />
-              {card.module}
-            </span>
-          </div>
-          <span className="text-[10px] text-muted-foreground/40 font-mono tabular-nums">
-            {relativeTime(card.timestamp)}
-          </span>
-        </div>
+      {/* Content area */}
+      <div className="p-4 flex-1 flex flex-col">
+        {/* Module pill badge */}
+        <span className={[
+          "inline-block self-start px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm mb-2",
+          style.pill,
+        ].join(" ")}>
+          {card.module}
+        </span>
 
-        {/* Row 2: Summary -- the ticket body */}
-        <p className={`text-[13px] font-semibold leading-snug text-foreground/85 mb-2 line-clamp-2 ${isCommitted ? "line-through opacity-50" : ""}`}>
+        {/* Title */}
+        <p className={[
+          "text-xs font-bold leading-tight mb-1",
+          isCommitted ? "line-through opacity-50" : "",
+        ].join(" ")}>
           {card.summary}
         </p>
 
-        {/* Row 3: Deadline + action buttons */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {card.deadline && card.priority >= 1 && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400/80 bg-amber-500/10 rounded px-1.5 py-0.5 font-mono">
-                {formatDeadline(card.deadline)}
-              </span>
-            )}
-          </div>
+        {/* Description */}
+        {card.detail && (
+          <p className="text-[10px] text-muted-foreground leading-relaxed opacity-80 line-clamp-3">
+            {card.detail}
+          </p>
+        )}
+      </div>
 
-          {/* Action cluster: dismiss / action / commit */}
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            {onDismiss && !isCommitted && (
+      {/* Footer */}
+      <div
+        className="bg-muted/30 p-3 rounded-b-[13px] border-t border-border/40 mt-auto flex items-center justify-between"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Action label */}
+        {!isCommitted ? (
+          <p className="text-[11px] font-black text-primary">{actionLabel}?</p>
+        ) : (
+          <div className="flex items-center gap-1 text-emerald-400/60">
+            <Check className="size-3.5" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Done</span>
+          </div>
+        )}
+
+        {/* Icon buttons */}
+        {!isCommitted && (
+          <div className="flex gap-1.5">
+            {onDismiss && (
               <button
                 onClick={() => onDismiss(card.id)}
-                className="flex size-6 items-center justify-center rounded-md text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                className="w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive transition-colors"
                 title="Dismiss"
               >
-                <X className="size-3.5" />
+                <X className="size-4" />
               </button>
             )}
-
-            {!isCommitted && (
-              <button
-                onClick={() => onExpand(card.id)}
-                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${style.accent} bg-current/[0.08] hover:bg-current/[0.15] transition-colors`}
-                style={{ backgroundColor: undefined }}
-              >
-                <span className={style.accent}>{actionLabel}</span>
-              </button>
-            )}
-
-            {onCommit && !isCommitted && (
+            {onCommit && (
               <button
                 onClick={() => onCommit(card.id)}
-                className="flex size-6 items-center justify-center rounded-md text-muted-foreground/40 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
-                title="Commit"
+                className="w-7 h-7 flex items-center justify-center rounded-full text-primary hover:bg-primary/10 transition-colors"
+                title="Send"
               >
-                <Check className="size-3.5" />
+                <Send className="size-4" />
               </button>
             )}
-
-            {isCommitted && (
-              <div className="flex items-center gap-1 text-emerald-400/60">
-                <Check className="size-3.5" />
-                <span className="text-[10px] font-bold uppercase tracking-wider font-mono">Done</span>
-              </div>
-            )}
           </div>
-        </div>
+        )}
       </div>
     </motion.div>
   );
