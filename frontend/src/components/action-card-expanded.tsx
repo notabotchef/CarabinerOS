@@ -3,46 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Check, X, Loader2, Send,
-  ShoppingCart, Warehouse, ChefHat, DollarSign,
-  UtensilsCrossed, BookOpen, Receipt, Megaphone, BarChart3,
-  Info,
-  type LucideIcon,
+  Check, X, Loader2, ArrowUp, ChevronLeft,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { getActionLabel } from "@/components/action-card";
+import { getActionLabel, TYPE_STYLES } from "@/components/action-card";
 import type {
   ActionCard,
-  ActionCardType as CardType,
   CardChatMessage,
 } from "@/lib/types";
-
-const MODULE_ICONS: Record<string, LucideIcon> = {
-  orders: ShoppingCart,
-  inventory: Warehouse,
-  prep: ChefHat,
-  "food-cost": DollarSign,
-  food_cost: DollarSign,
-  menu: UtensilsCrossed,
-  recipes: BookOpen,
-  invoices: Receipt,
-  marketing: Megaphone,
-  reporting: BarChart3,
-};
-
-const TYPE_TAG_STYLES: Record<CardType, string> = {
-  urgent: "text-amber-300 bg-amber-500/15",
-  action: "text-blue-300 bg-blue-500/15",
-  update: "text-emerald-300 bg-emerald-500/15",
-  info: "text-violet-300 bg-violet-500/15",
-};
-
-const TYPE_BORDER_STYLES: Record<CardType, string> = {
-  urgent: "border-l-amber-500",
-  action: "border-l-blue-500",
-  update: "border-l-emerald-500",
-  info: "border-l-violet-500",
-};
 
 const CHANGE_OP_STYLES: Record<string, string> = {
   "+": "text-emerald-400 bg-emerald-400/5 border-l-2 border-emerald-400/40",
@@ -119,8 +87,8 @@ export function ActionCardExpanded({
 
   const suggestion = card.suggestedAction ?? getDefaultSuggestion(card);
   const chips = getDefaultChips(card);
-  const ModuleIcon = MODULE_ICONS[card.module] ?? Info;
   const actionLabel = getActionLabel(card.type, card.module);
+  const style = TYPE_STYLES[card.type];
 
   // Auto-scroll chat thread
   useEffect(() => {
@@ -149,34 +117,34 @@ export function ActionCardExpanded({
     <motion.div
       layout
       layoutId={`card-${card.id}`}
-      className={`flex flex-col h-full border-l-[3px] ${TYPE_BORDER_STYLES[card.type]}`}
+      className="flex flex-col h-full"
     >
-      {/* Header bar -- station callout style */}
+      {/* Header bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/60 shrink-0">
         <div className="flex items-center gap-2">
           <button
             onClick={onBack}
-            className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors font-mono uppercase tracking-wider"
+            className="flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
           >
+            <ChevronLeft className="size-3.5" />
             Back
           </button>
           <span className="text-muted-foreground/20">|</span>
-          <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.08em] ${TYPE_TAG_STYLES[card.type]} px-1.5 py-0.5 rounded font-mono`}>
-            <ModuleIcon className="size-3 opacity-70" />
+          <span className={`inline-block px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm ${style.pill}`}>
             {card.module}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => { onDismiss(card.id); onBack(); }}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            className="flex size-7 items-center justify-center rounded-xl text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
             title="Dismiss"
           >
             <X className="size-4" />
           </button>
           <button
             onClick={() => { onCommit(card.id); onBack(); }}
-            className="flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/25 transition-colors text-[10px] font-bold uppercase tracking-wider font-mono"
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground hover:shadow-[0_0_12px_oklch(0.72_0.22_160_/_0.3)] transition-all text-[10px] font-bold uppercase tracking-wider"
             title="Commit this card"
           >
             <Check className="size-3.5" />
@@ -198,7 +166,7 @@ export function ActionCardExpanded({
             {card.detail}
           </p>
 
-          {/* Stats grid -- KDS metric tiles */}
+          {/* Stats grid */}
           {card.stats.length > 0 && (
             <div className="grid grid-cols-2 gap-2 mb-4">
               {card.stats.map((stat) => (
@@ -206,7 +174,7 @@ export function ActionCardExpanded({
                   key={stat.label}
                   className="bg-muted/30 rounded-lg p-2.5 border border-border/40"
                 >
-                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground/60 font-mono mb-0.5">
+                  <div className="text-[9px] font-medium text-muted-foreground/60 mb-0.5">
                     {stat.label}
                   </div>
                   <div className="text-lg font-extrabold tabular-nums font-mono">
@@ -217,10 +185,10 @@ export function ActionCardExpanded({
             </div>
           )}
 
-          {/* Changes diff -- like a ticket modification log */}
+          {/* Changes diff */}
           {card.changes.length > 0 && (
             <div className="mb-4">
-              <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground/50 font-mono mb-2">
+              <div className="text-xs font-medium text-muted-foreground/60 mb-2">
                 Changes
               </div>
               <div className="flex flex-col gap-1">
@@ -244,7 +212,7 @@ export function ActionCardExpanded({
           {/* Chat thread */}
           {chatThread.length > 0 && (
             <div className="mb-3">
-              <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-muted-foreground/50 font-mono mb-2">
+              <div className="text-xs font-medium text-muted-foreground/60 mb-2">
                 Thread
               </div>
               <div className="flex flex-col gap-1.5">
@@ -263,7 +231,7 @@ export function ActionCardExpanded({
                 {chatLoading && (
                   <div className="flex items-center gap-2 text-muted-foreground/40 text-xs mr-6">
                     <Loader2 className="size-3 animate-spin" />
-                    <span className="font-mono text-[10px]">Working...</span>
+                    <span className="text-[10px]">Working...</span>
                   </div>
                 )}
                 <div ref={chatEndRef} />
@@ -275,7 +243,7 @@ export function ActionCardExpanded({
 
       {/* Quick-action chips + chat input */}
       <div className="border-t border-border/60 px-4 py-3 shrink-0">
-        {/* Chips -- horizontal scroll, pill buttons */}
+        {/* Chips */}
         <div className="flex gap-1.5 mb-2 overflow-x-auto scrollbar-none">
           {chips.map((chip) => (
             <button
@@ -290,7 +258,7 @@ export function ActionCardExpanded({
         </div>
 
         {/* Input */}
-        <div className="flex gap-2">
+        <div className="relative">
           <input
             ref={inputRef}
             type="text"
@@ -298,14 +266,14 @@ export function ActionCardExpanded({
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={suggestion}
-            className="flex-1 h-9 rounded-lg bg-muted/20 border border-border/50 px-3 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/30 font-mono"
+            className="w-full rounded-2xl border border-border bg-card/80 glass-subtle px-4 py-3 pr-12 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/25 focus:shadow-[0_0_20px_oklch(0.72_0.22_160_/_0.12)] transition-all"
           />
           <button
             onClick={() => handleSend()}
             disabled={!message.trim() || chatLoading}
-            className="flex size-9 items-center justify-center rounded-lg bg-primary/15 border border-primary/25 text-primary hover:bg-primary/25 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground hover:shadow-[0_0_12px_oklch(0.72_0.22_160_/_0.3)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <Send className="size-3.5" />
+            <ArrowUp className="size-4" />
           </button>
         </div>
       </div>
