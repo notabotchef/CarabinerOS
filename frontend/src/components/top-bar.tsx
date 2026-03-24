@@ -14,11 +14,13 @@ interface TopBarProps {
   lastCardType?: string;
 }
 
+// Hex values for Framer Motion runtime animation — see DESIGN_TOKENS.md Type Accent Colors section.
+// urgent=amber-500 (#f59e0b), action=blue-500 (#3b82f6), update=emerald-400 (#34d399), info=violet-500 (#8b5cf6)
 const TYPE_COLORS: Record<string, { border: string; bg: string }> = {
-  urgent: { border: "#fbbf24", bg: "rgba(251,191,36,0.1)" },
-  action: { border: "#60a5fa", bg: "rgba(96,165,250,0.1)" },
+  urgent: { border: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
+  action: { border: "#3b82f6", bg: "rgba(59,130,246,0.1)" },
   update: { border: "#34d399", bg: "rgba(52,211,153,0.1)" },
-  info: { border: "#a78bfa", bg: "rgba(167,139,250,0.1)" },
+  info:   { border: "#8b5cf6", bg: "rgba(139,92,246,0.1)" },
 };
 
 const parentVariants = {

@@ -137,14 +137,14 @@ export function ActionCardExpanded({
         <div className="flex items-center gap-2">
           <button
             onClick={() => { onDismiss(card.id); onBack(); }}
-            className="flex size-7 items-center justify-center rounded-xl text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            className="flex size-7 items-center justify-center rounded-lg text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
             title="Dismiss"
           >
             <X className="size-4" />
           </button>
           <button
             onClick={() => { onCommit(card.id); onBack(); }}
-            className="flex items-center gap-1.5 h-7 px-2.5 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground hover:shadow-[0_0_12px_oklch(0.72_0.22_160_/_0.3)] transition-all text-[10px] font-bold uppercase tracking-wider"
+            className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-gradient-to-br from-primary to-primary/80 text-primary-foreground hover:shadow-md transition-all text-[10px] font-bold uppercase tracking-wider"
             title="Commit this card"
           >
             <Check className="size-3.5" />
@@ -266,12 +266,12 @@ export function ActionCardExpanded({
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={suggestion}
-            className="w-full rounded-2xl border border-border bg-card/80 glass-subtle px-4 py-3 pr-12 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/25 focus:shadow-[0_0_20px_oklch(0.72_0.22_160_/_0.12)] transition-all"
+            className="w-full rounded-xl border border-border bg-card/80 glass-subtle px-4 py-3 pr-12 text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/25 focus:shadow-[0_0_20px_oklch(0.72_0.22_160_/_0.12)] transition-all"
           />
           <button
             onClick={() => handleSend()}
             disabled={!message.trim() || chatLoading}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground hover:shadow-[0_0_12px_oklch(0.72_0.22_160_/_0.3)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80 text-primary-foreground hover:shadow-md transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ArrowUp className="size-4" />
           </button>

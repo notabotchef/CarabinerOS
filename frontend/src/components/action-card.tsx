@@ -23,17 +23,17 @@ export const TYPE_STYLES: Record<CardType, {
   urgent: {
     border: "border-l-amber-500",
     accent: "text-amber-400",
-    tag: "text-amber-300 bg-amber-500/15",
+    tag: "text-amber-300 bg-amber-500/10",
     dot: "bg-amber-400",
-    bg: "bg-amber-500/[0.03]",
+    bg: "bg-amber-500/5",
     pill: "bg-amber-500/20 text-amber-300",
   },
   action: {
     border: "border-l-blue-500",
     accent: "text-blue-400",
-    tag: "text-blue-300 bg-blue-500/15",
+    tag: "text-blue-300 bg-blue-500/10",
     dot: "bg-blue-400",
-    bg: "bg-blue-500/[0.03]",
+    bg: "bg-blue-500/5",
     pill: "bg-blue-500/20 text-blue-300",
   },
   update: {
@@ -99,8 +99,8 @@ export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardPr
       whileTap={{ scale: 0.97 }}
       onClick={() => onExpand(card.id)}
       className={[
-        "relative rounded-[13px] bg-card cursor-pointer",
-        "shadow-sm hover:shadow-lg transition-shadow duration-300",
+        "relative rounded-xl bg-card cursor-pointer",
+        "shadow-sm hover:shadow-md transition-shadow duration-300",
         "flex flex-col aspect-[4/5]",
         isCommitted ? "opacity-60" : "",
       ].join(" ")}
@@ -133,7 +133,7 @@ export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardPr
 
       {/* Footer */}
       <div
-        className="bg-muted/30 p-3 rounded-b-[13px] border-t border-border/40 mt-auto flex items-center justify-between"
+        className="bg-muted/30 p-3 rounded-b-xl border-t border-border/40 mt-auto flex items-center justify-between"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Action label */}

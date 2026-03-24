@@ -123,7 +123,7 @@ export function SolitaireCards() {
   };
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-8 w-full max-w-[680px] mx-auto">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-8 w-full max-w-[680px] mx-auto">
       {cards.map((card, i) => {
         const Icon = card.icon;
         const isOpen = expandedIndex === i;
@@ -137,7 +137,7 @@ export function SolitaireCards() {
             variants={cardVariants}
             whileHover={!isOpen ? { y: -3, transition: { type: "spring" as const, stiffness: 400, damping: 25 } } : {}}
             onClick={() => setExpandedIndex(isOpen ? null : i)}
-            className="relative overflow-hidden bg-card border border-border rounded-xl p-4 cursor-pointer min-h-[130px] flex flex-col transition-all duration-200 hover:border-primary/20 hover:shadow-[0_2px_12px_oklch(0_0_0_/_0.08)]"
+            className="relative overflow-hidden bg-card border border-border rounded-xl p-4 cursor-pointer min-h-[130px] flex flex-col transition-all duration-200 hover:border-primary/20 hover:shadow-md"
           >
             {/* Header row: icon + label */}
             <div className="flex items-center gap-2 mb-3">

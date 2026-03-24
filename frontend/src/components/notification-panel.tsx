@@ -167,15 +167,15 @@ export function NotificationPanel({
                           <div className="mt-5">
                             {/* Divider */}
                             <div className="flex items-center gap-3 mb-3">
-                              <div className="flex-1 h-px bg-emerald-500/15" />
+                              <div className="flex-1 h-px bg-emerald-500/20" />
                               <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-emerald-400/50 font-mono">
                                 Cleared
                               </span>
-                              <div className="flex-1 h-px bg-emerald-500/15" />
+                              <div className="flex-1 h-px bg-emerald-500/20" />
                             </div>
 
                             {/* Completed grid */}
-                            <div className="grid grid-cols-2 gap-4 rounded-lg bg-emerald-500/[0.03] p-2.5 border border-emerald-500/10">
+                            <div className="grid grid-cols-2 gap-4 rounded-lg bg-emerald-500/5 p-2.5 border border-emerald-500/10">
                               <AnimatePresence initial={false}>
                                 {committedCards.map((card) => (
                                   <motion.div

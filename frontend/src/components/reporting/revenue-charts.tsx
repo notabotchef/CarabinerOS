@@ -93,13 +93,7 @@ function useChartTheme() {
     refLabel:   isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.35)",
   };
 }
-// Keep backwards-compat defaults for non-hook contexts
-const GRID      = "rgba(255,255,255,0.04)";
-const AXIS_TEXT = "rgba(255,255,255,0.30)";
-const BUDGET_LINE = "rgba(255,255,255,0.15)";
-const TOOLTIP_BG = "#141b27";
-const TOOLTIP_BORDER = "rgba(255,255,255,0.06)";
-
+// Recharts SVG requires inline font — see DESIGN_TOKENS.md Charts section.
 const MONO = "var(--font-geist-mono, ui-monospace, monospace)";
 const SANS = "var(--font-geist, var(--font-sans), system-ui, sans-serif)";
 

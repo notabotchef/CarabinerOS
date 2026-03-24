@@ -158,7 +158,7 @@ function DailyBriefing() {
       />
 
       {/* Header */}
-      <div className="flex items-center gap-2 px-5 pt-[18px] pb-2.5">
+      <div className="flex items-center gap-2 px-4 py-3">
         <div className="flex size-6 items-center justify-center rounded-md bg-primary/10">
           <Sparkles className="size-3.5 text-primary" />
         </div>
@@ -170,7 +170,7 @@ function DailyBriefing() {
       {/* Body — never shrinks during transitions */}
       <div
         ref={bodyRef}
-        className="relative px-5 pb-[18px]"
+        className="relative p-4"
         style={{
           minHeight: minHeight !== undefined ? `${minHeight}px` : undefined,
           transition: "min-height 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -215,7 +215,7 @@ function DailyBriefing() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-              className="absolute top-0 left-0 right-0 px-5 pb-[18px]"
+              className="absolute top-0 left-0 right-0 p-4"
             >
               <div className="relative">
                 {/* Close button */}
@@ -232,7 +232,7 @@ function DailyBriefing() {
                 </span>
 
                 {/* Title */}
-                <h3 className="text-[15px] font-bold mb-1.5">
+                <h3 className="text-base font-bold mb-1.5">
                   {INSIGHTS[expandedIndex].title}
                 </h3>
 
