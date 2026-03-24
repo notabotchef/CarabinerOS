@@ -304,4 +304,61 @@ export interface RecipeComponentDraft {
   yield_unit?: string;
   ingredients: RecipeIngredientDraft[];
   steps: RecipeStepDraft[];
+// Invoices — Phase 1
+
+export type InvoiceStatus =
+  | "Uploaded"
+  | "Processing"
+  | "Extracted"
+  | "Matched"
+  | "Approved"
+  | "Paid"
+  | "Rejected";
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  gl_code?: string;
+  flagged?: boolean;
+  price_variance_pct?: number;
+}
+
+export interface InvoiceEvent {
+  id: string;
+  invoice_id: string;
+  event_type: string;
+  actor: string | null;
+  detail: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  location_id: string;
+  vendor_name: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null;
+  due_date: string | null;
+  status: InvoiceStatus;
+  file_path: string | null;
+  file_mime: string | null;
+  source: string | null;
+  subtotal: string | null;
+  tax: string | null;
+  total: string | null;
+  line_items: InvoiceLineItem[] | null;
+  gl_codes: Record<string, unknown> | null;
+  extracted_data: Record<string, unknown> | null;
+  summary: string | null;
+  detail_points: string[] | null;
+  purchase_order_id: string | null;
+  match_status: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  ocr_confidence: number | null;
+  created_at: string;
+  updated_at: string;
+  events?: InvoiceEvent[];
 }

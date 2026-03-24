@@ -1,18 +1,19 @@
-"""Flask blueprint providing read-only workspace API routes.
+"""Flask blueprint providing workspace API routes.
 
 Registered on the Agent Zero Flask app via the carabiner_workspace ApiHandler
 so we don't modify any core Agent Zero files.
 
-All routes are GET-only and return JSON arrays.
-Optional ``?location_id=UUID`` query parameter for filtering.
+GET routes return JSON arrays. Optional ``?location_id=UUID`` for filtering.
+POST routes for invoice upload, approve, and mark-paid.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from flask import Blueprint, Response, request
@@ -21,6 +22,7 @@ from carabiner.db.engine import get_session
 from carabiner.db.workspace_models import (
     EightySixLog,
     MenuItemHistory,
+    InvoiceEvent,
     WorkspaceCampaign,
     WorkspaceFoodCost,
     WorkspaceInventory,
@@ -34,6 +36,8 @@ from carabiner.db.models import BudgetPeriod, DailyFoodCost, DailyPL, Location, 
 from carabiner.db.models import BudgetPeriod, DailyFoodCost, DailyPL, Location
 
 from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
+from sqlalchemy.orm import selectinload
 
 # Pydantic schemas for serialization
 from carabiner.api.schemas import (
@@ -43,6 +47,8 @@ from carabiner.api.schemas import (
     EightySixLogOut,
     FoodCostOut,
     FoodCostSummaryOut,
+    InvoiceDetailOut,
+    InvoiceEventOut,
     InventoryOut,
     InvoiceOut,
     MenuItemHistoryOut,
@@ -836,6 +842,42 @@ async def get_order(order_id: str):
         logger.exception("Failed to fetch order %s", order_id)
         return Response(
             response=json.dumps({"ok": False, "error": "Internal server error"}),
+# Invoice Detail, Upload, Approve, Mark Paid
+# ---------------------------------------------------------------------------
+
+@blueprint.route("/api/invoices/<invoice_id>", methods=["GET"])
+async def get_invoice_detail(invoice_id: str):
+    """Full invoice detail with line items and audit events."""
+    try:
+        uid = uuid.UUID(invoice_id)
+    except (ValueError, AttributeError):
+        return Response(
+            json.dumps({"ok": False, "error": "Invalid invoice ID"}),
+            status=400, mimetype="application/json",
+        )
+    try:
+        async with get_session() as session:
+            stmt = (
+                select(WorkspaceInvoice)
+                .where(WorkspaceInvoice.id == uid)
+                .options(selectinload(WorkspaceInvoice.events))
+            )
+            result = await session.execute(stmt)
+            invoice = result.scalar_one_or_none()
+            if invoice is None:
+                return Response(
+                    json.dumps({"ok": False, "error": "Not found"}),
+                    status=404, mimetype="application/json",
+                )
+            data = InvoiceDetailOut.model_validate(invoice).model_dump(mode="json")
+            return Response(
+                json.dumps({"ok": True, "data": data}, default=str),
+                status=200, mimetype="application/json",
+            )
+    except Exception:
+        logger.exception("Failed to fetch invoice detail")
+        return Response(
+            json.dumps({"ok": False, "error": "Internal error"}),
             status=500, mimetype="application/json",
         )
 
@@ -876,6 +918,80 @@ async def submit_order(order_id: str):
         logger.exception("Failed to submit order %s", order_id)
         return Response(
             response=json.dumps({"ok": False, "error": "Internal server error"}),
+@blueprint.route("/api/invoices/upload", methods=["POST"])
+async def upload_invoice():
+    """Accept multipart file upload, store to /uploads/invoices/, create invoice record."""
+    try:
+        file = request.files.get("file")
+        if not file or not file.filename:
+            return Response(
+                json.dumps({"ok": False, "error": "No file provided"}),
+                status=400, mimetype="application/json",
+            )
+
+        # Determine upload directory
+        upload_dir = os.path.join(os.getcwd(), "uploads", "invoices")
+        os.makedirs(upload_dir, exist_ok=True)
+
+        # UUID filename preserving extension
+        ext = os.path.splitext(file.filename)[1].lower()
+        file_id = uuid.uuid4()
+        filename = f"{file_id}{ext}"
+        filepath = os.path.join(upload_dir, filename)
+        file.save(filepath)
+
+        # Detect MIME type
+        mime = file.content_type or "application/octet-stream"
+
+        # Resolve location_id
+        location_id_str = request.form.get("location_id")
+        if location_id_str:
+            loc_id = uuid.UUID(location_id_str)
+        else:
+            # Default to first location
+            async with get_session() as session:
+                from carabiner.db.workspace_models import WorkspaceLocation
+                result = await session.execute(select(WorkspaceLocation).limit(1))
+                loc = result.scalar_one_or_none()
+                if loc is None:
+                    return Response(
+                        json.dumps({"ok": False, "error": "No locations configured"}),
+                        status=400, mimetype="application/json",
+                    )
+                loc_id = loc.id
+
+        # Create invoice record
+        async with get_session() as session:
+            invoice = WorkspaceInvoice(
+                location_id=loc_id,
+                status="Uploaded",
+                source="upload",
+                file_path=f"/uploads/invoices/{filename}",
+                file_mime=mime,
+            )
+            session.add(invoice)
+            await session.flush()
+
+            # Audit event
+            event = InvoiceEvent(
+                invoice_id=invoice.id,
+                event_type="uploaded",
+                actor="user",
+                detail={"filename": file.filename, "mime": mime},
+            )
+            session.add(event)
+            await session.commit()
+            await session.refresh(invoice)
+
+            data = InvoiceOut.model_validate(invoice).model_dump(mode="json")
+            return Response(
+                json.dumps({"ok": True, "data": data}, default=str),
+                status=201, mimetype="application/json",
+            )
+    except Exception:
+        logger.exception("Failed to upload invoice")
+        return Response(
+            json.dumps({"ok": False, "error": "Upload failed"}),
             status=500, mimetype="application/json",
         )
 
@@ -912,6 +1028,55 @@ async def draft_order(order_id: str):
         logger.exception("Failed to draft order %s", order_id)
         return Response(
             response=json.dumps({"ok": False, "error": "Internal server error"}),
+@blueprint.route("/api/invoices/<invoice_id>/approve", methods=["POST"])
+async def approve_invoice(invoice_id: str):
+    """Advance invoice status to Approved."""
+    try:
+        uid = uuid.UUID(invoice_id)
+    except (ValueError, AttributeError):
+        return Response(
+            json.dumps({"ok": False, "error": "Invalid invoice ID"}),
+            status=400, mimetype="application/json",
+        )
+    try:
+        body = request.get_json(silent=True) or {}
+        approved_by = body.get("approved_by", "user")
+
+        async with get_session() as session:
+            result = await session.execute(
+                select(WorkspaceInvoice).where(WorkspaceInvoice.id == uid)
+            )
+            invoice = result.scalar_one_or_none()
+            if invoice is None:
+                return Response(
+                    json.dumps({"ok": False, "error": "Not found"}),
+                    status=404, mimetype="application/json",
+                )
+
+            now = datetime.now(timezone.utc)
+            invoice.status = "Approved"
+            invoice.approved_by = approved_by
+            invoice.approved_at = now
+
+            event = InvoiceEvent(
+                invoice_id=invoice.id,
+                event_type="approved",
+                actor=approved_by,
+                detail={"previous_status": invoice.status},
+            )
+            session.add(event)
+            await session.commit()
+            await session.refresh(invoice)
+
+            data = InvoiceOut.model_validate(invoice).model_dump(mode="json")
+            return Response(
+                json.dumps({"ok": True, "data": data}, default=str),
+                status=200, mimetype="application/json",
+            )
+    except Exception:
+        logger.exception("Failed to approve invoice")
+        return Response(
+            json.dumps({"ok": False, "error": "Approval failed"}),
             status=500, mimetype="application/json",
         )
 
@@ -933,3 +1098,53 @@ async def list_vendors():
     except Exception:
         logger.exception("Failed to fetch vendors")
         return _empty_response()
+@blueprint.route("/api/invoices/<invoice_id>/mark-paid", methods=["POST"])
+async def mark_invoice_paid(invoice_id: str):
+    """Record payment on an invoice."""
+    try:
+        uid = uuid.UUID(invoice_id)
+    except (ValueError, AttributeError):
+        return Response(
+            json.dumps({"ok": False, "error": "Invalid invoice ID"}),
+            status=400, mimetype="application/json",
+        )
+    try:
+        body = request.get_json(silent=True) or {}
+
+        async with get_session() as session:
+            result = await session.execute(
+                select(WorkspaceInvoice).where(WorkspaceInvoice.id == uid)
+            )
+            invoice = result.scalar_one_or_none()
+            if invoice is None:
+                return Response(
+                    json.dumps({"ok": False, "error": "Not found"}),
+                    status=404, mimetype="application/json",
+                )
+
+            invoice.status = "Paid"
+
+            event = InvoiceEvent(
+                invoice_id=invoice.id,
+                event_type="paid",
+                actor=body.get("actor", "user"),
+                detail={
+                    "payment_method": body.get("payment_method"),
+                    "payment_reference": body.get("payment_reference"),
+                },
+            )
+            session.add(event)
+            await session.commit()
+            await session.refresh(invoice)
+
+            data = InvoiceOut.model_validate(invoice).model_dump(mode="json")
+            return Response(
+                json.dumps({"ok": True, "data": data}, default=str),
+                status=200, mimetype="application/json",
+            )
+    except Exception:
+        logger.exception("Failed to mark invoice as paid")
+        return Response(
+            json.dumps({"ok": False, "error": "Payment recording failed"}),
+            status=500, mimetype="application/json",
+        )

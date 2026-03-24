@@ -1,13 +1,13 @@
 /*
- * INVOICES WORKSPACE — CarabinerOS
+ * INVOICES WORKSPACE -- CarabinerOS
  *
  * Design direction: PROCESSING CENTER
  *
- * Purpose: AP automation — invoices flow through a visible pipeline from
+ * Purpose: AP automation -- invoices flow through a visible pipeline from
  *   upload to approval. OCR extraction, PO matching, and approval all
  *   tracked in one view. P1 competitive gap closer (MarginEdge, xtraCHEF).
  * Audience: GM or bookkeeper processing vendor invoices daily. Speed matters.
- * Tone: Processing center — efficient, clear, every invoice accounted for.
+ * Tone: Processing center -- efficient, clear, every invoice accounted for.
  *   Pipeline stages use a color gradient that intensifies as invoices advance.
  * Differentiation: Visual pipeline bar shows flow + counts per stage.
  *   Source icons distinguish upload/email/scan. Staggered row animations.
@@ -15,7 +15,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
@@ -36,6 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { InvoiceDetailPanel } from "./components/invoice-detail-panel";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -54,7 +55,7 @@ interface Invoice {
   [key: string]: unknown;
   id: string;
   location_id: string;
-  vendor: string | null;
+  vendor_name: string | null;
   invoice_number: string | null;
   invoice_date: string | null;
   due_date: string | null;
@@ -92,19 +93,19 @@ const FILTER_TABS: { key: InvoiceStatus | "all"; label: string }[] = [
 
 const STATUS_STYLES: Record<InvoiceStatus, string> = {
   Uploaded: "bg-muted text-muted-foreground",
-  Processing: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
-  Extracted: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
-  Matched: "bg-green-500/15 text-green-700 dark:text-green-400",
-  Approved: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
-  Paid: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 opacity-70",
-  Rejected: "bg-red-500/15 text-red-700 dark:text-red-400",
+  Processing: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  Extracted: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  Matched: "bg-green-500/10 text-green-700 dark:text-green-400",
+  Approved: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  Paid: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  Rejected: "bg-red-500/10 text-red-700 dark:text-red-400",
 };
 
 const STAGE_ACCENT: Record<string, string> = {
   Uploaded: "border-muted-foreground/20",
-  Processing: "border-amber-500/30",
-  Matched: "border-green-500/30",
-  Approved: "border-emerald-500/30",
+  Processing: "border-amber-500/20",
+  Matched: "border-green-500/20",
+  Approved: "border-emerald-500/20",
   Paid: "border-emerald-500/20",
 };
 
@@ -208,7 +209,7 @@ function PipelineBar({
                   <p className="text-xs font-medium text-muted-foreground">
                     {stage.label}
                   </p>
-                  <p className="text-2xl font-extrabold tabular-nums text-foreground">
+                  <p className="text-2xl font-extrabold tabular-nums text-foreground font-mono">
                     {count}
                   </p>
                 </>
@@ -229,11 +230,13 @@ function PipelineBar({
 /* ------------------------------------------------------------------ */
 
 export default function InvoicesPage() {
-  const { data, loading, error } = useWorkspace<Invoice>("/api/invoices");
+  const { data, loading, error, refresh } = useWorkspace<Invoice>("/api/invoices");
   const [activeFilter, setActiveFilter] = useState<InvoiceStatus | "all">(
     "all",
   );
   const [search, setSearch] = useState("");
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* Compute pipeline counts */
   const counts = useMemo(() => {
@@ -262,15 +265,63 @@ export default function InvoicesPage() {
       const q = search.toLowerCase();
       list = list.filter(
         (inv) =>
-          inv.vendor?.toLowerCase().includes(q) ||
+          inv.vendor_name?.toLowerCase().includes(q) ||
           inv.invoice_number?.toLowerCase().includes(q),
       );
     }
     return list;
   }, [data, activeFilter, search]);
 
+  /* Upload handler */
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/invoices/upload", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      if (res.ok) {
+        const json = await res.json();
+        refresh();
+        if (json.ok && json.data?.id) {
+          setSelectedInvoiceId(json.data.id);
+        }
+      }
+    } catch {
+      // Upload failed silently
+    }
+
+    // Reset file input
+    e.target.value = "";
+  }, [refresh]);
+
+  /* Close detail panel and refresh list */
+  const handleCloseDetail = useCallback(() => {
+    setSelectedInvoiceId(null);
+    refresh();
+  }, [refresh]);
+
   return (
     <div className="flex flex-col h-dvh bg-background">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*,.pdf,.heic"
+        onChange={handleFileSelected}
+      />
+
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
         <MenuButton />
@@ -288,7 +339,7 @@ export default function InvoicesPage() {
             </p>
           </div>
         </div>
-        <Button size="default" className="gap-1.5">
+        <Button size="default" className="gap-1.5" onClick={handleUploadClick}>
           <Plus className="size-4" />
           Upload Invoice
         </Button>
@@ -329,7 +380,7 @@ export default function InvoicesPage() {
                 >
                   {tab.label}
                   {data.length > 0 && (
-                    <span className="ml-1.5 text-xs tabular-nums font-normal text-muted-foreground">
+                    <span className="ml-1.5 text-xs tabular-nums font-normal text-muted-foreground font-mono">
                       {count}
                     </span>
                   )}
@@ -348,8 +399,8 @@ export default function InvoicesPage() {
 
         {/* Error banner */}
         {error && (
-          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-            Unable to reach the invoices API — data will appear once the backend
+          <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+            Unable to reach the invoices API -- data will appear once the backend
             is connected.
           </div>
         )}
@@ -388,24 +439,25 @@ export default function InvoicesPage() {
                     initial="hidden"
                     animate="visible"
                     exit={{ opacity: 0, y: -4 }}
-                    className="border-b border-border transition-colors hover:bg-accent/50"
+                    onClick={() => setSelectedInvoiceId(inv.id)}
+                    className="border-b border-border transition-colors hover:bg-accent/50 cursor-pointer"
                   >
                     <TableCell className="font-semibold text-foreground">
-                      {inv.vendor ?? "\u2014"}
+                      {inv.vendor_name ?? "\u2014"}
                     </TableCell>
                     <TableCell className="text-muted-foreground font-mono text-sm tabular-nums">
                       {inv.invoice_number ?? "\u2014"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground font-mono">
                       {formatDate(inv.invoice_date)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums font-extrabold text-foreground">
+                    <TableCell className="text-right tabular-nums font-extrabold text-foreground font-mono">
                       {formatCurrency(inv.total)}
                     </TableCell>
                     <TableCell>
                       <StatusBadge status={inv.status} />
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground font-mono">
                       {formatDate(inv.due_date)}
                     </TableCell>
                   </motion.tr>
@@ -415,14 +467,14 @@ export default function InvoicesPage() {
           </Table>
         )}
 
-        {/* Empty state — filtered */}
+        {/* Empty state -- filtered */}
         {!loading && !error && data.length > 0 && filtered.length === 0 && (
           <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
             No invoices match your search or filter.
           </div>
         )}
 
-        {/* Empty state — no data at all */}
+        {/* Empty state -- no data at all */}
         {!loading && !error && data.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
             <div className="flex items-center justify-center size-14 rounded-2xl bg-secondary shadow-sm">
@@ -437,13 +489,19 @@ export default function InvoicesPage() {
                 invoice to start processing.
               </p>
             </div>
-            <Button variant="secondary" size="sm" className="mt-2 gap-1.5">
+            <Button variant="secondary" size="sm" className="mt-2 gap-1.5" onClick={handleUploadClick}>
               <Plus className="size-3.5" />
               Upload your first invoice
             </Button>
           </div>
         )}
       </div>
+
+      {/* Invoice Detail Slide-Over */}
+      <InvoiceDetailPanel
+        invoiceId={selectedInvoiceId}
+        onClose={handleCloseDetail}
+      />
     </div>
   );
 }

@@ -1759,6 +1759,175 @@ async def prep_check_shortages(
         "shortages": shortages,
         "shortage_count": len(shortages),
     }, default=str)
+# ===== INVOICES PHASE 1 TOOLS =====
+
+
+@mcp.tool()
+async def invoices_upload(file_path: str, location_id: Optional[str] = None) -> str:
+    """Upload an invoice file (PDF, JPEG, PNG, HEIC) and create an invoice record.
+
+Args:
+    file_path: Absolute path to the invoice file on disk.
+    location_id: Optional location UUID. Defaults to first available location.
+
+Returns the created invoice record as JSON.
+"""
+    await _ensure_db()
+    import os
+    import shutil
+
+    if not os.path.isfile(file_path):
+        return json.dumps({"error": "file_not_found", "file_path": file_path})
+
+    upload_dir = os.path.join(os.getcwd(), "uploads", "invoices")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    ext = os.path.splitext(file_path)[1].lower()
+    file_id = uuid.uuid4()
+    filename = f"{file_id}{ext}"
+    dest = os.path.join(upload_dir, filename)
+    shutil.copy2(file_path, dest)
+
+    # Detect mime
+    mime_map = {".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                ".png": "image/png", ".heic": "image/heic"}
+    mime = mime_map.get(ext, "application/octet-stream")
+
+    loc = _parse_uuid(location_id) if location_id else await _default_location_id()
+
+    from carabiner.db.engine import get_session
+    from carabiner.db.workspace_models import WorkspaceInvoice, InvoiceEvent
+
+    async with get_session() as session:
+        invoice = WorkspaceInvoice(
+            location_id=loc,
+            status="Uploaded",
+            source="upload",
+            file_path=f"/uploads/invoices/{filename}",
+            file_mime=mime,
+        )
+        session.add(invoice)
+        await session.flush()
+
+        event = InvoiceEvent(
+            invoice_id=invoice.id,
+            event_type="uploaded",
+            actor="agent",
+            detail={"original_path": file_path, "mime": mime},
+        )
+        session.add(event)
+        await session.commit()
+        await session.refresh(invoice)
+
+    return json.dumps(_serialise(invoice), default=str)
+
+
+@mcp.tool()
+async def invoices_approve(id: str, approved_by: str = "agent") -> str:
+    """Approve an invoice by UUID.
+
+Args:
+    id: UUID of the invoice to approve.
+    approved_by: Who is approving (default: "agent").
+
+Returns the updated invoice record.
+"""
+    await _ensure_db()
+    from carabiner.db.engine import get_session
+    from carabiner.db.workspace_models import WorkspaceInvoice, InvoiceEvent
+    from sqlalchemy import select
+
+    uid = _parse_uuid(id)
+    async with get_session() as session:
+        result = await session.execute(
+            select(WorkspaceInvoice).where(WorkspaceInvoice.id == uid)
+        )
+        invoice = result.scalar_one_or_none()
+        if invoice is None:
+            return json.dumps({"error": "not_found", "id": id})
+
+        invoice.status = "Approved"
+        invoice.approved_by = approved_by
+        invoice.approved_at = datetime.utcnow()
+
+        event = InvoiceEvent(
+            invoice_id=invoice.id,
+            event_type="approved",
+            actor=approved_by,
+        )
+        session.add(event)
+        await session.commit()
+        await session.refresh(invoice)
+
+    return json.dumps(_serialise(invoice), default=str)
+
+
+@mcp.tool()
+async def invoices_price_check(id: str) -> str:
+    """Check line-item prices against last known prices for an invoice.
+
+Args:
+    id: UUID of the invoice to check.
+
+Returns a JSON array of line items with price variance information.
+"""
+    await _ensure_db()
+    from carabiner.db.engine import get_session
+    from carabiner.db.workspace_models import WorkspaceInvoice
+    from sqlalchemy import select
+
+    uid = _parse_uuid(id)
+    async with get_session() as session:
+        result = await session.execute(
+            select(WorkspaceInvoice).where(WorkspaceInvoice.id == uid)
+        )
+        invoice = result.scalar_one_or_none()
+        if invoice is None:
+            return json.dumps({"error": "not_found", "id": id})
+
+        line_items = invoice.line_items or []
+        if not isinstance(line_items, list):
+            return json.dumps({"error": "no_line_items", "id": id})
+
+        # Compare each line item against Item.last_known_price
+        from carabiner.db.models import Item
+        variances = []
+        for li in line_items:
+            desc = li.get("description", "")
+            unit_price = li.get("unit_price")
+            if unit_price is None:
+                continue
+            try:
+                current = float(unit_price)
+            except (TypeError, ValueError):
+                continue
+
+            # Fuzzy match: search items by name containing the description
+            stmt = select(Item).where(Item.name.ilike(f"%{desc[:50]}%"))
+            item_result = await session.execute(stmt)
+            item = item_result.scalar_one_or_none()
+            if item and item.last_known_price:
+                last = float(item.last_known_price)
+                variance_pct = ((current - last) / last * 100) if last != 0 else 0
+                variances.append({
+                    "description": desc,
+                    "current_price": current,
+                    "last_known_price": last,
+                    "variance_pct": round(variance_pct, 2),
+                    "flagged": abs(variance_pct) > 5,
+                    "item_id": str(item.id),
+                })
+            else:
+                variances.append({
+                    "description": desc,
+                    "current_price": current,
+                    "last_known_price": None,
+                    "variance_pct": None,
+                    "flagged": False,
+                    "item_id": None,
+                })
+
+    return json.dumps(variances, default=str)
 
 
 # ---------------------------------------------------------------------------

@@ -254,6 +254,34 @@ class WorkspaceInvoice(TimestampMixin, Base):
     detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
     prompt: Mapped[Optional[str]] = mapped_column(Text)
 
+    # Phase 1 fields
+    purchase_order_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    match_status: Mapped[Optional[str]] = mapped_column(String(20))  # unmatched/partial/full/exception
+    approved_by: Mapped[Optional[str]] = mapped_column(String(200))
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    ocr_confidence: Mapped[Optional[int]] = mapped_column(sa.Integer)
+
+    events: Mapped[list["InvoiceEvent"]] = relationship(
+        back_populates="invoice", cascade="all, delete-orphan",
+        order_by="InvoiceEvent.created_at",
+    )
+
+
+class InvoiceEvent(TimestampMixin, Base):
+    """Audit trail for invoice lifecycle events."""
+    __tablename__ = "invoice_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    invoice_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_invoices.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    event_type: Mapped[str] = mapped_column(String(50), nullable=False)  # uploaded/extracted/matched/approved/rejected/paid/commented
+    actor: Mapped[Optional[str]] = mapped_column(String(200))
+    detail: Mapped[Optional[dict]] = mapped_column(JSONB, default=dict)
+
+    invoice: Mapped[WorkspaceInvoice] = relationship(back_populates="events")
+
 
 # ---------------------------------------------------------------------------
 # Workspace Recipes (Modernist Cuisine format)

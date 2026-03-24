@@ -503,6 +503,24 @@ class InvoiceOut(TimestampSchema):
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
+    purchase_order_id: Optional[uuid.UUID] = None
+    match_status: Optional[str] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    ocr_confidence: Optional[int] = None
+
+
+class InvoiceEventOut(TimestampSchema):
+    id: uuid.UUID
+    invoice_id: uuid.UUID
+    event_type: str
+    actor: Optional[str] = None
+    detail: Optional[Dict[str, Any]] = None
+
+
+class InvoiceDetailOut(InvoiceOut):
+    """Full invoice detail including audit trail events."""
+    events: List[InvoiceEventOut] = []
 
 
 class InvoiceCreate(BaseModel):
