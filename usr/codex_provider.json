@@ -1,0 +1,38 @@
+{
+  "auth_mode": "oauth",
+  "auto_configure": true,
+  "browser_model": "gpt-5.1-codex-mini",
+  "chat_model": "gpt-5.3-codex",
+  "chatgpt_account_id": "0c49d77d-6322-48ce-a2d1-78afe60b0633",
+  "oauth_access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IjE5MzQ0ZTY1LWJiYzktNDRkMS1hOWQwLWY5NTdiMDc5YmQwZSIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiaHR0cHM6Ly9hcGkub3BlbmFpLmNvbS92MSJdLCJjbGllbnRfaWQiOiJhcHBfRU1vYW1FRVo3M2YwQ2tYYVhwN2hyYW5uIiwiZXhwIjoxNzc1MDA2NTgzLCJodHRwczovL2FwaS5vcGVuYWkuY29tL2F1dGgiOnsiY2hhdGdwdF9hY2NvdW50X2lkIjoiMGM0OWQ3N2QtNjMyMi00OGNlLWEyZDEtNzhhZmU2MGIwNjMzIiwiY2hhdGdwdF9hY2NvdW50X3VzZXJfaWQiOiJ1c2VyLXVveHVzaG1ZWnUxUDVUejZrQkJkZUNmVV9fMGM0OWQ3N2QtNjMyMi00OGNlLWEyZDEtNzhhZmU2MGIwNjMzIiwiY2hhdGdwdF9jb21wdXRlX3Jlc2lkZW5jeSI6Im5vX2NvbnN0cmFpbnQiLCJjaGF0Z3B0X3BsYW5fdHlwZSI6InBsdXMiLCJjaGF0Z3B0X3VzZXJfaWQiOiJ1c2VyLXVveHVzaG1ZWnUxUDVUejZrQkJkZUNmVSIsInVzZXJfaWQiOiJ1c2VyLXVveHVzaG1ZWnUxUDVUejZrQkJkZUNmVSJ9LCJodHRwczovL2FwaS5vcGVuYWkuY29tL3Byb2ZpbGUiOnsiZW1haWwiOiI1OXJ6Nm05OXdoQHByaXZhdGVyZWxheS5hcHBsZWlkLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlfSwiaWF0IjoxNzc0MTQyNTgzLCJpc3MiOiJodHRwczovL2F1dGgub3BlbmFpLmNvbSIsImp0aSI6ImQ2Y2EwMGRlLWNiNjYtNDc0Ny04ZjFiLTIzOTc2OTQ2NGU4YyIsIm5iZiI6MTc3NDE0MjU4MywicHdkX2F1dGhfdGltZSI6MTc3MzM3OTEwNzM1Miwic2NwIjpbIm9wZW5pZCIsInByb2ZpbGUiLCJlbWFpbCIsIm9mZmxpbmVfYWNjZXNzIiwiYXBpLmNvbm5lY3RvcnMucmVhZCIsImFwaS5jb25uZWN0b3JzLmludm9rZSJdLCJzZXNzaW9uX2lkIjoiYXV0aHNlc3NfcTlLQTZpMGZ1M3JLc3dyNGZUMVlJQ29pIiwic2wiOnRydWUsInN1YiI6ImFwcGxlfDAwMDI0MS45MjlhZjhmZmE4NzM0NTA4YjExODkyOThmZTgyYTUyOC4wMTU2In0.kEXip95g1GgnNWZIpo4Aj-g7nLxgXAKBS7DO5_o2MuM1CN-5IQtSKqYS7nFmbx9sywBNo4xfJhOCyTp3qUjK09iQQVKWC0QICim5D3NFRcR_q5-GYvw5ePHnzDJEA3mFwhs-hXlO6O1YWZJs3rwkHR2doCIY8408d0OpUDOl7_MmxyCvuZ85tSlbzPNziaAHfRXC7A35dxzfI7QpFsD_g-GT0Q0WIFzj_qppiHCNkGEwawYYfprjAm6Ob_p4z7hRXYfHvp8oqpjq2zH58jja_9m84QKBkuQGmq0dlk9wlwjLF3qH0fguEaPtPFIftOJ99h8n81BKOurbwjfFqvVX_6YaY3jhbGRN8RB0F15YkV0JS6IYt4-VtHBp2yH8XWuJoBtBTE4o_J6YA52ZJPRPlgaOQo22t31d7jPSLiG8QHHHkRDoy6DtzRISOJHXetKJey6x25fXjYETn_EvbQPJx--WUqOecflnHlPuRYg_3R9tXCfxrCjGaF9VPCcNFBTTM5pWuHCID9lVvF1bmL-aVpYAdS-mZUEj7cgFiboj0bW7Mu6EJ6IV_MKAd1UTi0FmO84qUbBEhRgJguqn8IhH_u2g3FTf06_GaM3BbcwAQN6kL3PtpyHMrUJbpkoxpE7nElvrRcJfBgHKW-waGawDbZ9B5AR_RNytobjYzJ4lJjY",
+  "oauth_refresh_token": "rt_kZQDSMcmYJajjNj2ujC6MQE2Qz8f3g7Ik7lwvMGwElE.sQBOSLMJ6KyG991kCskDhGJBZgwfSzQVmIja0obSI_E",
+  "proxy_port": 8400,
+  "saved_previous_settings": {
+    "browser": {
+      "api_base": "http://host.docker.internal:11434",
+      "kwargs": {
+        "keep_alive": "30m"
+      },
+      "name": "qwen3.5:9b",
+      "provider": "ollama_chat"
+    },
+    "chat": {
+      "api_base": "http://host.docker.internal:11434",
+      "kwargs": {
+        "keep_alive": "30m"
+      },
+      "name": "qwen3.5:9b",
+      "provider": "ollama_chat"
+    },
+    "utility": {
+      "api_base": "http://host.docker.internal:11434",
+      "kwargs": {
+        "keep_alive": "30m"
+      },
+      "name": "qwen3.5:9b",
+      "provider": "ollama_chat"
+    }
+  },
+  "token_expires_at": 1775006582,
+  "util_model": "gpt-5.1-codex-mini"
+}

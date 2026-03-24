@@ -30,7 +30,7 @@ from carabiner.db.workspace_models import (
     WorkspacePrep,
     WorkspaceRecipe,
 )
-from carabiner.db.models import BudgetPeriod, DailyFoodCost, DailyPL, Location
+from carabiner.db.models import BudgetPeriod, DailyFoodCost, DailyPL, Location, Vendor
 
 from sqlalchemy import select, and_, func
 
@@ -49,6 +49,7 @@ from carabiner.api.schemas import (
     OrderOut,
     PrepOut,
     RecipeOut,
+    VendorOut,
 )
 
 logger = logging.getLogger(__name__)
@@ -604,3 +605,136 @@ async def food_cost_budget():
     except Exception:
         logger.exception("Failed to fetch food cost budget")
         return _error_response("Failed to fetch food cost budget", 500)
+
+
+# ---------------------------------------------------------------------------
+# Orders — single order detail
+# ---------------------------------------------------------------------------
+
+@blueprint.route("/api/orders/<order_id>", methods=["GET"])
+async def get_order(order_id: str):
+    """Return a single workspace order by ID with its line items."""
+    try:
+        uid = uuid.UUID(order_id)
+    except (ValueError, AttributeError):
+        return Response(
+            response=json.dumps({"ok": False, "error": "Invalid order ID"}),
+            status=400, mimetype="application/json",
+        )
+
+    try:
+        async with get_session() as session:
+            stmt = select(WorkspaceOrder).where(WorkspaceOrder.id == uid)
+            result = await session.execute(stmt)
+            row = result.scalar_one_or_none()
+            if row is None:
+                return Response(
+                    response=json.dumps({"ok": False, "error": "Order not found"}),
+                    status=404, mimetype="application/json",
+                )
+            data = OrderOut.model_validate(row).model_dump(mode="json")
+            return Response(
+                response=json.dumps({"ok": True, "data": data}, default=str),
+                status=200, mimetype="application/json",
+            )
+    except Exception:
+        logger.exception("Failed to fetch order %s", order_id)
+        return Response(
+            response=json.dumps({"ok": False, "error": "Internal server error"}),
+            status=500, mimetype="application/json",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Orders — status transitions
+# ---------------------------------------------------------------------------
+
+@blueprint.route("/api/orders/<order_id>/submit", methods=["POST"])
+async def submit_order(order_id: str):
+    """Advance an order's status to 'Submitted'."""
+    try:
+        uid = uuid.UUID(order_id)
+    except (ValueError, AttributeError):
+        return Response(
+            response=json.dumps({"ok": False, "error": "Invalid order ID"}),
+            status=400, mimetype="application/json",
+        )
+
+    try:
+        async with get_session() as session:
+            stmt = select(WorkspaceOrder).where(WorkspaceOrder.id == uid)
+            result = await session.execute(stmt)
+            row = result.scalar_one_or_none()
+            if row is None:
+                return Response(
+                    response=json.dumps({"ok": False, "error": "Order not found"}),
+                    status=404, mimetype="application/json",
+                )
+            row.status = "Submitted"
+            await session.commit()
+            data = OrderOut.model_validate(row).model_dump(mode="json")
+            return Response(
+                response=json.dumps({"ok": True, "data": data}, default=str),
+                status=200, mimetype="application/json",
+            )
+    except Exception:
+        logger.exception("Failed to submit order %s", order_id)
+        return Response(
+            response=json.dumps({"ok": False, "error": "Internal server error"}),
+            status=500, mimetype="application/json",
+        )
+
+
+@blueprint.route("/api/orders/<order_id>/draft", methods=["POST"])
+async def draft_order(order_id: str):
+    """Save an order as 'Drafting' status."""
+    try:
+        uid = uuid.UUID(order_id)
+    except (ValueError, AttributeError):
+        return Response(
+            response=json.dumps({"ok": False, "error": "Invalid order ID"}),
+            status=400, mimetype="application/json",
+        )
+
+    try:
+        async with get_session() as session:
+            stmt = select(WorkspaceOrder).where(WorkspaceOrder.id == uid)
+            result = await session.execute(stmt)
+            row = result.scalar_one_or_none()
+            if row is None:
+                return Response(
+                    response=json.dumps({"ok": False, "error": "Order not found"}),
+                    status=404, mimetype="application/json",
+                )
+            row.status = "Drafting"
+            await session.commit()
+            data = OrderOut.model_validate(row).model_dump(mode="json")
+            return Response(
+                response=json.dumps({"ok": True, "data": data}, default=str),
+                status=200, mimetype="application/json",
+            )
+    except Exception:
+        logger.exception("Failed to draft order %s", order_id)
+        return Response(
+            response=json.dumps({"ok": False, "error": "Internal server error"}),
+            status=500, mimetype="application/json",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Vendors — list for dropdown
+# ---------------------------------------------------------------------------
+
+@blueprint.route("/api/vendors", methods=["GET"])
+async def list_vendors():
+    """Return all vendors for the vendor select dropdown."""
+    try:
+        async with get_session() as session:
+            stmt = select(Vendor).order_by(Vendor.name)
+            result = await session.execute(stmt)
+            rows = result.scalars().all()
+            data = [VendorOut.model_validate(r).model_dump(mode="json") for r in rows]
+            return _json_response(data)
+    except Exception:
+        logger.exception("Failed to fetch vendors")
+        return _empty_response()

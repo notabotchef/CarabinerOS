@@ -122,7 +122,15 @@ class ActionCard(Tool):
         }
 
         # --- Get Socket.IO server ---
-        sio = self.agent.config.additional.get("sio")
+        # Walk up agent hierarchy to find sio (subordinates may not have it injected)
+        from agent import Agent as _Agent
+        sio = None
+        agent = self.agent
+        while agent:
+            sio = agent.config.additional.get("sio")
+            if sio:
+                break
+            agent = agent.get_data(_Agent.DATA_NAME_SUPERIOR)
         if not sio:
             sio = _get_sio_fallback()
             if sio:

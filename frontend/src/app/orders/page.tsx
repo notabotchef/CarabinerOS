@@ -15,7 +15,7 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, ShoppingCart, ChevronRight } from "lucide-react";
 import { MenuButton } from "@/components/menu-button";
@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { OrderDetailPanel } from "./components/order-detail-panel";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -159,6 +160,23 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState<StatusFilter>("All");
   const [search, setSearch] = useState("");
 
+  // Detail panel state
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isNewOrder, setIsNewOrder] = useState(false);
+
+  const handleRowClick = useCallback((orderId: string) => {
+    setSelectedOrderId(orderId);
+    setIsNewOrder(false);
+    setPanelOpen(true);
+  }, []);
+
+  const handleNewOrder = useCallback(() => {
+    setSelectedOrderId(null);
+    setIsNewOrder(true);
+    setPanelOpen(true);
+  }, []);
+
   const counts = useMemo(() => {
     const c: Record<OrderStatus, number> = { Drafting: 0, "Ready to send": 0, "Awaiting approval": 0, Submitted: 0, Confirmed: 0, Delivered: 0 };
     for (const o of data) if (o.status in c) c[o.status as OrderStatus]++;
@@ -184,7 +202,7 @@ export default function OrdersPage() {
           <h1 className="text-xl font-extrabold tracking-tight text-foreground">Orders</h1>
           <p className="text-sm text-muted-foreground">Purchase orders across all vendors</p>
         </div>
-        <Button size="default" className="gap-1.5">
+        <Button size="default" className="gap-1.5" onClick={handleNewOrder}>
           <Plus className="size-4" />
           New Order
         </Button>
@@ -276,7 +294,8 @@ export default function OrdersPage() {
                     initial="hidden"
                     animate="visible"
                     exit={{ opacity: 0, y: -4 }}
-                    className="border-b border-border transition-colors hover:bg-accent/50"
+                    className="border-b border-border transition-colors hover:bg-accent/50 cursor-pointer"
+                    onClick={() => handleRowClick(order.id)}
                   >
                     <TableCell className="font-semibold text-foreground">{order.vendor}</TableCell>
                     <TableCell className="text-muted-foreground">{order.channel}</TableCell>
@@ -315,13 +334,21 @@ export default function OrdersPage() {
                 Chef&rsquo;s Warehouse&rdquo; &mdash; and it will build the PO for you.
               </p>
             </div>
-            <Button variant="secondary" size="sm" className="mt-2 gap-1.5">
+            <Button variant="secondary" size="sm" className="mt-2 gap-1.5" onClick={handleNewOrder}>
               <Plus className="size-3.5" />
               Create your first order
             </Button>
           </div>
         )}
       </div>
+
+      {/* Order detail slide-over panel */}
+      <OrderDetailPanel
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        orderId={selectedOrderId}
+        isNew={isNewOrder}
+      />
     </div>
   );
 }

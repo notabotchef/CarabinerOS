@@ -24,6 +24,15 @@ RUN mkdir -p .venv/bin && ln -sf /usr/local/bin/python .venv/bin/python
 # ipython is required by Agent Zero's code_execution_tool for Python runtime
 RUN pip install --no-cache-dir ipython
 
+# Entrypoint script installs codex-proxy plugin at startup (usr/ is volume-mounted,
+# not available at build time). Then launches the app.
 EXPOSE 5000
 
-CMD ["python", "run_ui.py", "--dockerized=true"]
+CMD ["sh", "-c", "\
+  if [ -f usr/plugins/codex-proxy/initialize.py ]; then \
+    python usr/plugins/codex-proxy/initialize.py --a0-root /app --plugin-root /app/usr/plugins/codex-proxy \
+    && mkdir -p plugins \
+    && ln -sfn /app/usr/plugins/codex-proxy plugins/codex-proxy \
+    && echo '[entrypoint] codex-proxy plugin installed'; \
+  fi \
+  && python run_ui.py --dockerized=true"]

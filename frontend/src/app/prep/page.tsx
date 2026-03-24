@@ -1,18 +1,48 @@
+/*
+ * PREP WORKSPACE -- CarabinerOS
+ *
+ * Design direction: KITCHEN TICKET / CHECKLIST
+ *
+ * Purpose: Sous chef arriving at 6am sees everything that needs prepping,
+ *   grouped by station, with checkboxes to mark items done while walking
+ *   the line. Chat at the bottom for generating lists, assigning cooks,
+ *   and adjusting quantities.
+ * Audience: Line cooks and sous chefs who need glanceable status and one-tap
+ *   completion. Checkboxes are THE physical interaction. Everything else
+ *   goes through chat.
+ * Tone: Dense but scannable. Kama West Loop prep list format -- station
+ *   groups, par levels, status tracking.
+ */
+
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertTriangle, ChefHat, ClipboardList } from "lucide-react";
+import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import {
+  AlertTriangle,
+  Check,
+  ChefHat,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  ExternalLink,
+  Clock,
+} from "lucide-react";
 import { MenuButton } from "@/components/menu-button";
+import { ChatComposer } from "@/components/chat-composer";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { useSocketContext } from "@/components/socket-provider";
+import { useChat } from "@/hooks/use-chat";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-interface PrepItem {
+/** Legacy workspace prep item (from /api/prep) */
+interface WorkspacePrepItem {
   [key: string]: unknown;
   id: string;
   location_id: string;
@@ -25,6 +55,39 @@ interface PrepItem {
   detail_points: string[] | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Operational prep item (from /api/prep/today) */
+interface PrepItem {
+  id: string;
+  prep_list_id: string;
+  recipe_id: string;
+  name: string | null;
+  qty_needed: number;
+  unit: string;
+  on_hand: number;
+  to_prep: number;
+  is_complete: boolean;
+  completed_qty: number | null;
+  completed_at: string | null;
+  station: string | null;
+  assigned_to: string | null;
+  est_minutes: number | null;
+  sort_order: number;
+  service_lane: string | null;
+  notes: string | null;
+}
+
+interface PrepListData {
+  id: string;
+  location_id: string;
+  prep_date: string;
+  status: string;
+  expected_covers: number | null;
+  generated_by: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  items: PrepItem[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -102,23 +165,34 @@ function todayFormatted(): string {
   });
 }
 
-function groupByStation(items: PrepItem[]): Record<string, PrepItem[]> {
-  const groups: Record<string, PrepItem[]> = {};
+function groupByStation<T extends { station?: string | null }>(
+  items: T[],
+): Record<string, T[]> {
+  const groups: Record<string, T[]> = {};
   for (const item of items) {
     const station = item.station || "Unassigned";
     if (!groups[station]) groups[station] = [];
     groups[station].push(item);
   }
-  const sorted: Record<string, PrepItem[]> = {};
+  const sorted: Record<string, T[]> = {};
   for (const key of Object.keys(groups).sort()) sorted[key] = groups[key];
   return sorted;
 }
 
+function timeAgo(isoString: string): string {
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ago`;
+}
+
 /* ------------------------------------------------------------------ */
-/*  Sub-components                                                     */
+/*  Sub-components: Shared                                             */
 /* ------------------------------------------------------------------ */
 
-function ReadinessRing({ items }: { items: PrepItem[] }) {
+function ReadinessRing({ items }: { items: WorkspacePrepItem[] }) {
   const total = items.length;
   if (total === 0) return null;
 
@@ -193,6 +267,54 @@ function ReadinessRing({ items }: { items: PrepItem[] }) {
   );
 }
 
+/** Completion progress ring for operational data */
+function CompletionRing({ completed, total }: { completed: number; total: number }) {
+  if (total === 0) return null;
+  const pct = Math.round((completed / total) * 100);
+  const r = 28;
+  const circ = 2 * Math.PI * r;
+  const completedLen = (completed / total) * circ;
+  const remainingLen = circ - completedLen;
+
+  return (
+    <motion.div
+      className="flex items-center gap-4"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+    >
+      <div className="relative size-16 shrink-0">
+        <svg viewBox="0 0 64 64" className="size-full -rotate-90">
+          <circle cx="32" cy="32" r={r} fill="none" stroke="currentColor" strokeWidth="5" className="text-muted/30" />
+          {completed > 0 && (
+            <motion.circle
+              cx="32" cy="32" r={r} fill="none"
+              stroke="#10b981" strokeWidth="5" strokeLinecap="round"
+              strokeDasharray={`${completedLen} ${remainingLen}`}
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.6 }}
+            />
+          )}
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-foreground tabular-nums font-mono">
+          {pct}%
+        </span>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className="text-sm font-semibold text-foreground font-mono tabular-nums">
+          {completed}/{total} done
+        </span>
+        {total - completed > 0 && (
+          <span className="text-xs text-muted-foreground">
+            {total - completed} remaining
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 function ReadinessBadge({ readiness }: { readiness: string }) {
   const config = READINESS_CONFIG[readiness] ?? READINESS_CONFIG["Not Started"];
   return (
@@ -219,50 +341,261 @@ function ShortageIndicator({ shortage }: { shortage: string }) {
   );
 }
 
-function StationGroup({ station, items }: { station: string; items: PrepItem[] }) {
+/* ------------------------------------------------------------------ */
+/*  Sub-components: Operational Prep (Phase 2)                         */
+/* ------------------------------------------------------------------ */
+
+function PrepCheckbox({
+  checked,
+  onToggle,
+  loading,
+}: {
+  checked: boolean;
+  onToggle: () => void;
+  loading?: boolean;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      disabled={loading}
+      className={cn(
+        "flex size-6 shrink-0 items-center justify-center rounded-md border-2 transition-all duration-200",
+        checked
+          ? "border-emerald-500 bg-emerald-500 text-white"
+          : "border-border hover:border-primary/50 bg-transparent",
+        loading && "opacity-50",
+      )}
+    >
+      {checked && <Check className="size-3.5" strokeWidth={3} />}
+    </button>
+  );
+}
+
+function OperationalStationGroup({
+  station,
+  items,
+  onToggleItem,
+  loadingItems,
+}: {
+  station: string;
+  items: PrepItem[];
+  onToggleItem: (itemId: string) => void;
+  loadingItems: Set<string>;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const completedCount = items.filter((i) => i.is_complete).length;
+  const totalCount = items.length;
+  const allDone = completedCount === totalCount;
+  const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  // Separate incomplete from complete: incomplete first, completed at bottom
+  const incomplete = items.filter((i) => !i.is_complete).sort((a, b) => a.sort_order - b.sort_order);
+  const completed = items.filter((i) => i.is_complete).sort((a, b) => a.sort_order - b.sort_order);
+  const ordered = [...incomplete, ...completed];
+
+  return (
+    <motion.div variants={fadeSlideUp} className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* Station header */}
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className={cn(
+          "flex items-center w-full gap-3 px-4 py-3 border-b border-border transition-colors",
+          allDone ? "bg-emerald-500/5" : "bg-muted/40",
+        )}
+      >
+        {collapsed ? (
+          <ChevronRight className="size-4 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+        )}
+        <h3 className="text-sm font-bold text-foreground tracking-tight flex-1 text-left">{station}</h3>
+
+        {/* Progress bar */}
+        <div className="flex items-center gap-2">
+          <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
+            <motion.div
+              className={cn("h-full rounded-full", allDone ? "bg-emerald-500" : "bg-primary")}
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPct}%` }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            />
+          </div>
+          <span className={cn(
+            "text-xs font-medium tabular-nums font-mono",
+            allDone ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+          )}>
+            {completedCount}/{totalCount}
+          </span>
+        </div>
+      </button>
+
+      {/* Task rows */}
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="divide-y divide-border overflow-hidden"
+          >
+            {ordered.map((item) => (
+              <motion.div
+                key={item.id}
+                layout
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 transition-colors",
+                  item.is_complete
+                    ? "bg-muted/20"
+                    : "hover:bg-muted/30",
+                )}
+              >
+                {/* Checkbox */}
+                <PrepCheckbox
+                  checked={item.is_complete}
+                  onToggle={() => onToggleItem(item.id)}
+                  loading={loadingItems.has(item.id)}
+                />
+
+                {/* Item content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className={cn(
+                      "text-sm font-medium truncate",
+                      item.is_complete
+                        ? "text-muted-foreground line-through"
+                        : "text-foreground",
+                    )}>
+                      {item.name || `Recipe ${item.recipe_id.slice(0, 8)}`}
+                    </p>
+                    {item.recipe_id && (
+                      <Link
+                        href={`/recipes?id=${item.recipe_id}`}
+                        className="text-muted-foreground/40 hover:text-primary transition-colors shrink-0"
+                        title="View recipe"
+                      >
+                        <ExternalLink className="size-3" />
+                      </Link>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {/* Quantity display */}
+                    <span className={cn(
+                      "text-xs font-mono tabular-nums",
+                      item.is_complete ? "text-muted-foreground/60" : "text-foreground",
+                    )}>
+                      Prep {item.to_prep} {item.unit}
+                    </span>
+                    {item.on_hand > 0 && (
+                      <span className="text-xs text-muted-foreground font-mono tabular-nums">
+                        (on hand: {item.on_hand} {item.unit})
+                      </span>
+                    )}
+                    {item.est_minutes && !item.is_complete && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                        <Clock className="size-2.5" />
+                        ~{item.est_minutes}m
+                      </span>
+                    )}
+                    {item.assigned_to && (
+                      <span className="text-[10px] text-muted-foreground/60">
+                        {item.assigned_to}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Completion timestamp */}
+                {item.is_complete && item.completed_at && (
+                  <span className="text-[10px] text-muted-foreground/60 font-mono tabular-nums shrink-0">
+                    {timeAgo(item.completed_at)}
+                  </span>
+                )}
+
+                {/* Service lane badge */}
+                {item.service_lane && item.service_lane !== "All Day" && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground shrink-0">
+                    {item.service_lane}
+                  </span>
+                )}
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sub-components: Legacy Workspace (fallback)                        */
+/* ------------------------------------------------------------------ */
+
+function LegacyStationGroup({ station, items }: { station: string; items: WorkspacePrepItem[] }) {
+  const [collapsed, setCollapsed] = useState(false);
   const readyCount = items.filter((i) => i.readiness === "Ready").length;
   const allReady = readyCount === items.length;
 
   return (
     <motion.div variants={fadeSlideUp} className="rounded-xl border border-border bg-card overflow-hidden">
-      {/* Station header */}
-      <div className={cn(
-        "flex items-center justify-between px-4 py-3 border-b border-border",
-        allReady ? "bg-emerald-500/5" : "bg-muted/40",
-      )}>
-        <h3 className="text-sm font-bold text-foreground tracking-tight">{station}</h3>
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className={cn(
+          "flex items-center w-full gap-3 px-4 py-3 border-b border-border transition-colors",
+          allReady ? "bg-emerald-500/5" : "bg-muted/40",
+        )}
+      >
+        {collapsed ? (
+          <ChevronRight className="size-4 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+        )}
+        <h3 className="text-sm font-bold text-foreground tracking-tight flex-1 text-left">{station}</h3>
         <span className={cn(
-          "text-xs font-medium tabular-nums",
+          "text-xs font-medium tabular-nums font-mono",
           allReady ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
         )}>
           {readyCount}/{items.length}
         </span>
-      </div>
+      </button>
 
-      {/* Task rows */}
-      <div className="divide-y divide-border">
-        {items.map((item) => (
+      <AnimatePresence>
+        {!collapsed && (
           <motion.div
-            key={item.id}
-            className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
-            whileHover={{ x: 2 }}
-            transition={{ duration: 0.15 }}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="divide-y divide-border overflow-hidden"
           >
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{item.task}</p>
-              <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                {item.service_lane}
-                {item.summary && <> &middot; {item.summary}</>}
-              </p>
-            </div>
-            {item.shortage && <ShortageIndicator shortage={item.shortage} />}
-            <ReadinessBadge readiness={item.readiness} />
+            {items.map((item) => (
+              <motion.div
+                key={item.id}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
+                whileHover={{ x: 2 }}
+                transition={{ duration: 0.15 }}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{item.task}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {item.service_lane}
+                    {item.summary && <> &middot; {item.summary}</>}
+                  </p>
+                </div>
+                {item.shortage && <ShortageIndicator shortage={item.shortage} />}
+                <ReadinessBadge readiness={item.readiness} />
+              </motion.div>
+            ))}
           </motion.div>
-        ))}
-      </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*  Loading / Empty                                                    */
+/* ------------------------------------------------------------------ */
 
 function LoadingSkeleton() {
   return (
@@ -284,6 +617,7 @@ function LoadingSkeleton() {
           <Skeleton className="h-11 w-full" />
           {Array.from({ length: 3 }).map((_, j) => (
             <div key={j} className="flex items-center gap-3 px-4 py-3 border-t border-border">
+              <Skeleton className="size-6 rounded-md" />
               <Skeleton className="h-4 flex-1 rounded-md" />
               <Skeleton className="h-5 w-20 rounded-full" />
             </div>
@@ -305,9 +639,9 @@ function EmptyState() {
       <div className="rounded-full bg-muted p-4 mb-4">
         <ClipboardList className="size-8 text-muted-foreground" />
       </div>
-      <h3 className="text-sm font-semibold text-foreground mb-1">No prep tasks</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-1">No prep tasks yet</h3>
       <p className="text-sm text-muted-foreground max-w-sm">
-        Prep lists will appear here once tasks are created for the day.
+        Use the chat below to generate today&#39;s prep list. Try: &quot;Generate prep for tonight, 140 covers&quot;
       </p>
     </motion.div>
   );
@@ -318,21 +652,179 @@ function EmptyState() {
 /* ------------------------------------------------------------------ */
 
 export default function PrepPage() {
-  const { data, loading, error } = useWorkspace<PrepItem>("/api/prep");
+  // Legacy workspace data (fallback)
+  const { data: workspaceData, loading: wsLoading, error: wsError } = useWorkspace<WorkspacePrepItem>("/api/prep");
+
+  // Operational prep data
+  const [prepList, setPrepList] = useState<PrepListData | null>(null);
+  const [opLoading, setOpLoading] = useState(true);
+  const [opError, setOpError] = useState<string | null>(null);
+  const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [activeLane, setActiveLane] = useState<ServiceLane>("All");
 
-  const filtered = useMemo(() => {
-    if (activeLane === "All") return data;
-    return data.filter((item) => item.service_lane === activeLane);
-  }, [data, activeLane]);
+  // Chat
+  const { snapshot, subscribe } = useSocketContext();
+  const { sendMessage, loading: chatLoading, queuedMessages, createNewChat } = useChat(snapshot);
+  const sendingRef = useRef(false);
 
-  const grouped = useMemo(() => groupByStation(filtered), [filtered]);
+  // Fetch operational prep data
+  const fetchPrepToday = useCallback(async () => {
+    try {
+      setOpLoading(true);
+      const res = await fetch("/api/prep/today", { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const json = await res.json();
+      if (json.ok && json.data) {
+        setPrepList(json.data);
+      } else {
+        setPrepList(null);
+      }
+      setOpError(null);
+    } catch (err: unknown) {
+      setOpError(err instanceof Error ? err.message : "Unknown error");
+      setPrepList(null);
+    } finally {
+      setOpLoading(false);
+    }
+  }, []);
 
+  useEffect(() => {
+    fetchPrepToday();
+  }, [fetchPrepToday]);
+
+  // Determine which data source to use
+  const hasOperationalData = prepList !== null && prepList.items.length > 0;
+  const hasWorkspaceData = workspaceData.length > 0;
+  const loading = opLoading && wsLoading;
+
+  // Operational item completion toggle (optimistic UI)
+  const handleToggleItem = useCallback(async (itemId: string) => {
+    if (!prepList) return;
+
+    // Optimistic update
+    setPrepList((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                is_complete: !item.is_complete,
+                completed_at: !item.is_complete ? new Date().toISOString() : null,
+                completed_qty: !item.is_complete ? item.to_prep : null,
+              }
+            : item,
+        ),
+      };
+    });
+
+    setLoadingItems((prev) => new Set(prev).add(itemId));
+
+    try {
+      const res = await fetch(`/api/prep/items/${itemId}/complete`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error("Failed to toggle");
+      const json = await res.json();
+      if (json.ok && json.data) {
+        // Update with server response
+        setPrepList((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            items: prev.items.map((item) =>
+              item.id === itemId ? { ...item, ...json.data } : item,
+            ),
+          };
+        });
+      }
+    } catch {
+      // Revert optimistic update
+      setPrepList((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((item) =>
+            item.id === itemId
+              ? {
+                  ...item,
+                  is_complete: !item.is_complete,
+                  completed_at: item.is_complete ? null : item.completed_at,
+                  completed_qty: item.is_complete ? null : item.completed_qty,
+                }
+              : item,
+          ),
+        };
+      });
+    } finally {
+      setLoadingItems((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  }, [prepList]);
+
+  // Chat handler
+  const handleChatSend = useCallback(async (text: string) => {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    try {
+      const ctxId = await createNewChat();
+      if (ctxId) subscribe(ctxId);
+      await sendMessage(text);
+      // Refresh prep data after sending a message (AI may have modified it)
+      setTimeout(() => fetchPrepToday(), 2000);
+    } finally {
+      sendingRef.current = false;
+    }
+  }, [createNewChat, subscribe, sendMessage, fetchPrepToday]);
+
+  // Filter operational items by service lane
+  const filteredOpItems = useMemo(() => {
+    if (!prepList) return [];
+    if (activeLane === "All") return prepList.items;
+    return prepList.items.filter((item) => item.service_lane === activeLane);
+  }, [prepList, activeLane]);
+
+  const groupedOpItems = useMemo(() => groupByStation(filteredOpItems), [filteredOpItems]);
+
+  // Filter legacy workspace items by service lane
+  const filteredWsItems = useMemo(() => {
+    if (activeLane === "All") return workspaceData;
+    return workspaceData.filter((item) => item.service_lane === activeLane);
+  }, [workspaceData, activeLane]);
+
+  const groupedWsItems = useMemo(() => groupByStation(filteredWsItems), [filteredWsItems]);
+
+  // Lane counts
   const laneCounts = useMemo(() => {
-    const map: Record<string, number> = { All: data.length };
-    for (const item of data) map[item.service_lane] = (map[item.service_lane] ?? 0) + 1;
+    if (hasOperationalData && prepList) {
+      const map: Record<string, number> = { All: prepList.items.length };
+      for (const item of prepList.items) {
+        const lane = item.service_lane || "All Day";
+        map[lane] = (map[lane] ?? 0) + 1;
+      }
+      return map;
+    }
+    const map: Record<string, number> = { All: workspaceData.length };
+    for (const item of workspaceData) map[item.service_lane] = (map[item.service_lane] ?? 0) + 1;
     return map;
-  }, [data]);
+  }, [hasOperationalData, prepList, workspaceData]);
+
+  // Completion stats for operational data
+  const completionStats = useMemo(() => {
+    if (!prepList) return { completed: 0, total: 0 };
+    const items = activeLane === "All" ? prepList.items : filteredOpItems;
+    return {
+      completed: items.filter((i) => i.is_complete).length,
+      total: items.length,
+    };
+  }, [prepList, activeLane, filteredOpItems]);
 
   return (
     <div className="flex flex-col h-dvh bg-background">
@@ -340,14 +832,40 @@ export default function PrepPage() {
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
         <MenuButton />
         <div className="flex-1 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <ChefHat className="size-5 text-muted-foreground" />
-          <div>
-            <h1 className="text-lg font-bold text-foreground tracking-tight">Prep Lists</h1>
-            <p className="text-xs text-muted-foreground">{todayFormatted()}</p>
+          <div className="flex items-center gap-3">
+            <ChefHat className="size-5 text-muted-foreground" />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold text-foreground tracking-tight">Prep Lists</h1>
+                {hasOperationalData && prepList && (
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded-md font-medium",
+                    prepList.status === "completed"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : prepList.status === "in_progress"
+                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        : "bg-muted text-muted-foreground",
+                  )}>
+                    {prepList.status === "completed" ? "Complete" : prepList.status === "in_progress" ? "In Progress" : "Generated"}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">{todayFormatted()}</p>
+                {hasOperationalData && prepList?.expected_covers && (
+                  <span className="text-xs text-muted-foreground font-mono tabular-nums">
+                    {prepList.expected_covers} covers
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-        {!loading && data.length > 0 && <ReadinessRing items={filtered} />}
+          {/* Ring visualization */}
+          {!loading && hasOperationalData ? (
+            <CompletionRing completed={completionStats.completed} total={completionStats.total} />
+          ) : !loading && hasWorkspaceData ? (
+            <ReadinessRing items={filteredWsItems} />
+          ) : null}
         </div>
       </header>
 
@@ -368,9 +886,9 @@ export default function PrepPage() {
               )}
             >
               {lane}
-              {data.length > 0 && (
+              {(hasOperationalData ? (prepList?.items.length ?? 0) : workspaceData.length) > 0 && (
                 <span className={cn(
-                  "ml-1.5 text-xs tabular-nums",
+                  "ml-1.5 text-xs tabular-nums font-mono",
                   active ? "text-primary-foreground/70" : "text-muted-foreground",
                 )}>
                   {count}
@@ -392,29 +910,69 @@ export default function PrepPage() {
       <div className="flex-1 overflow-auto">
         {loading ? (
           <LoadingSkeleton />
-        ) : error && data.length === 0 ? (
+        ) : hasOperationalData ? (
+          /* Operational view with checkboxes */
+          filteredOpItems.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`op-${activeLane}`}
+                className="flex flex-col gap-4 p-6"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="show"
+              >
+                {Object.entries(groupedOpItems).map(([station, items]) => (
+                  <OperationalStationGroup
+                    key={station}
+                    station={station}
+                    items={items}
+                    onToggleItem={handleToggleItem}
+                    loadingItems={loadingItems}
+                  />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          )
+        ) : hasWorkspaceData ? (
+          /* Legacy workspace view */
+          filteredWsItems.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`ws-${activeLane}`}
+                className="flex flex-col gap-4 p-6"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="show"
+              >
+                {Object.entries(groupedWsItems).map(([station, items]) => (
+                  <LegacyStationGroup key={station} station={station} items={items} />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          )
+        ) : (wsError || opError) ? (
           <div className="p-6">
             <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-              No data available — API endpoint not connected yet
+              No data available -- use the chat below to generate a prep list
             </div>
           </div>
-        ) : filtered.length === 0 ? (
-          <EmptyState />
         ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeLane}
-              className="flex flex-col gap-4 p-6"
-              variants={staggerContainer}
-              initial="hidden"
-              animate="show"
-            >
-              {Object.entries(grouped).map(([station, items]) => (
-                <StationGroup key={station} station={station} items={items} />
-              ))}
-            </motion.div>
-          </AnimatePresence>
+          <EmptyState />
         )}
+      </div>
+
+      {/* Chat composer at bottom */}
+      <div className="shrink-0 border-t border-border bg-card">
+        <ChatComposer
+          onSend={handleChatSend}
+          loading={chatLoading}
+          placeholder="Generate prep for tonight, 140 covers..."
+          queueCount={queuedMessages.length}
+        />
       </div>
     </div>
   );

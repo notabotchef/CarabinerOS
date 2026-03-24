@@ -20,6 +20,8 @@ class CarabinerWorkspace(ApiHandler):
             try:
                 from carabiner.api.flask_blueprint import blueprint
                 app.register_blueprint(blueprint)
+                from carabiner.api.prep_routes import prep_blueprint
+                app.register_blueprint(prep_blueprint)
                 _blueprint_registered = True
             except Exception as e:
                 # Don't crash Agent Zero if carabiner DB isn't available
@@ -46,6 +48,16 @@ class CarabinerWorkspace(ApiHandler):
                 {"method": "GET", "path": "/api/orders"},
                 {"method": "GET", "path": "/api/inventory"},
                 {"method": "GET", "path": "/api/prep"},
+                {"method": "GET", "path": "/api/prep/today"},
+                {"method": "GET", "path": "/api/prep/lists"},
+                {"method": "GET", "path": "/api/prep/lists/:id"},
+                {"method": "PATCH", "path": "/api/prep/lists/:id"},
+                {"method": "POST", "path": "/api/prep/items"},
+                {"method": "PATCH", "path": "/api/prep/items/:id"},
+                {"method": "PATCH", "path": "/api/prep/items/:id/complete"},
+                {"method": "DELETE", "path": "/api/prep/items/:id"},
+                {"method": "GET", "path": "/api/prep/stations"},
+                {"method": "POST", "path": "/api/prep/stations"},
                 {"method": "GET", "path": "/api/food-cost"},
                 {"method": "GET", "path": "/api/menu"},
                 {"method": "GET", "path": "/api/campaigns"},

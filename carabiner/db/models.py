@@ -261,6 +261,13 @@ class MenuItem(TimestampMixin, LocationScopedMixin, Base):
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     is_active: Mapped[bool] = mapped_column(default=True)
 
+    # --- Menu Engineering Phase 1 ---
+    food_cost_per_serving: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    contribution_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    is_86: Mapped[bool] = mapped_column(default=False)
+    eighty_six_reason: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    eighty_six_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
 
 # ---------------------------------------------------------------------------
 # Prep Lists
@@ -272,8 +279,12 @@ class PrepList(TimestampMixin, LocationScopedMixin, Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     prep_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="generated")  # generated/in_progress/completed
+    expected_covers: Mapped[Optional[int]] = mapped_column(Integer)
+    generated_by: Mapped[str] = mapped_column(String(50), default="manual")  # "ai" or "manual"
+    approved_by: Mapped[Optional[str]] = mapped_column(String(100))
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
-    items: Mapped[list[PrepListItem]] = relationship(
+    items: Mapped[list["PrepListItem"]] = relationship(
         back_populates="prep_list", cascade="all, delete-orphan"
     )
 
@@ -292,14 +303,31 @@ class PrepListItem(TimestampMixin, Base):
     recipe_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("recipes.id"), nullable=False
     )
+    name: Mapped[Optional[str]] = mapped_column(String(200))
     qty_needed: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    unit: Mapped[str] = mapped_column(String(50), default="ea")
     on_hand: Mapped[Decimal] = mapped_column(Numeric(12, 4), default=0)
     to_prep: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     is_complete: Mapped[bool] = mapped_column(default=False)
     completed_qty: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4))
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    station: Mapped[Optional[str]] = mapped_column(String(100))
+    assigned_to: Mapped[Optional[str]] = mapped_column(String(100))
+    est_minutes: Mapped[Optional[int]] = mapped_column(Integer)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    service_lane: Mapped[Optional[str]] = mapped_column(String(50))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
 
     prep_list: Mapped[PrepList] = relationship(back_populates="items")
+
+
+class PrepStation(TimestampMixin, LocationScopedMixin, Base):
+    __tablename__ = "prep_stations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    default_cook: Mapped[Optional[str]] = mapped_column(String(100))
 
 
 # ---------------------------------------------------------------------------

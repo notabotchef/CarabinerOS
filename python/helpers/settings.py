@@ -771,7 +771,7 @@ def set_root_password(password: str):
         ["chpasswd"],
         input=f"root:{password}".encode(),
         capture_output=True,
-        check=True,
+        check=False,
     )
     dotenv.save_dotenv_value(dotenv.KEY_ROOT_PASSWORD, password)
 

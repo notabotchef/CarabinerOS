@@ -1,0 +1,13 @@
+name: codex-proxy
+title: Agent0 Codex Proxy
+description: Installs the Codex proxy integration into Agent0 with OAuth login, local proxy routing, and an External Services settings panel.
+version: 0.3.0
+github: https://github.com/Nunezchef/agent0-codex-patch
+tags:
+  - agent-zero
+  - codex
+  - openai
+  - proxy
+settings_sections: []
+per_project_config: true
+per_agent_config: false

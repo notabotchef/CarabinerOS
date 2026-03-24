@@ -11,7 +11,8 @@ from datetime import datetime
 from typing import Optional, List
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
+import sqlalchemy as sa
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -185,6 +186,17 @@ class WorkspaceMenu(TimestampMixin, Base):
     detail_points: Mapped[Optional[list]] = mapped_column(ARRAY(Text), default=list)
     prompt: Mapped[Optional[str]] = mapped_column(Text)
 
+    # --- Menu Engineering Phase 1 ---
+    price: Mapped[Optional[float]] = mapped_column(sa.Numeric(10, 2), nullable=True)
+    food_cost: Mapped[Optional[float]] = mapped_column(sa.Numeric(10, 2), nullable=True)
+    contribution_margin: Mapped[Optional[float]] = mapped_column(sa.Numeric(10, 2), nullable=True)
+    food_cost_pct: Mapped[Optional[float]] = mapped_column(sa.Numeric(6, 2), nullable=True)
+    quantity_sold: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    menu_mix_pct: Mapped[Optional[float]] = mapped_column(sa.Numeric(6, 2), nullable=True)
+    is_86: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
+    eighty_six_reason: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    eighty_six_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
 
 # ---------------------------------------------------------------------------
 # Workspace Campaigns (Marketing)
@@ -350,3 +362,48 @@ class ActionLog(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
     agent_context_id: Mapped[Optional[str]] = mapped_column(String(200))
     extra: Mapped[Optional[dict]] = mapped_column("metadata", JSONB, default=dict)
+
+
+# ---------------------------------------------------------------------------
+# Menu Item History (audit trail for price/cost/performance changes)
+# ---------------------------------------------------------------------------
+
+class MenuItemHistory(Base):
+    __tablename__ = "menu_item_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    menu_item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_menu.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    field_changed: Mapped[str] = mapped_column(String(50), nullable=False)
+    old_value: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    new_value: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+    changed_by: Mapped[str] = mapped_column(String(100), nullable=False, server_default="system")
+
+
+# ---------------------------------------------------------------------------
+# Eighty-Six Log (86/68 event tracking for pattern analysis)
+# ---------------------------------------------------------------------------
+
+class EightySixLog(Base):
+    __tablename__ = "eighty_six_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    menu_item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_menu.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    location_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspace_locations.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    action: Mapped[str] = mapped_column(String(10), nullable=False)  # '86' or '68'
+    reason: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    logged_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
+    )
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -1,5 +1,43 @@
 # Progress
 
+## [2026-03-24] Session 8 Summary — UI Polish + Integration Architecture
+
+**Completed:**
+- [x] Polaroid tactile card redesign — `rounded-[13px]`, shadow depth, module pill badges, no left-border KDS style
+- [x] Card bottom spacing fix — removed `aspect-[4/5]` causing empty space below content
+- [x] Send button consistency — gradient `ArrowUp` matching chatbot composer on collapsed cards
+- [x] Expanded card redesign — matched CarabinerOS design language: glass input, gradient buttons, ChevronLeft back, no monospace
+- [x] Sidebar unified scroll — moved `overflow-y-auto` to single wrapper around modules + conversations
+- [x] Menu page runtime fix — guarded `PERF_CFG[performance]` with `?? PERF_CFG.Dog` fallback
+- [x] Integration research — 15 restaurant platforms evaluated (Toast, OpenTable, Square, Google, 7shifts, Clover, DoorDash, Uber Eats, etc.)
+- [x] Integration architecture doc — `docs/plans/integration-architecture.md`: OAuth flow, encrypted token storage, MCP server pattern, build order, legal considerations
+- [x] Google Stitch explored — used for Polaroid Tactile action card design mockup, fetched via MCP
+- [x] Roadmap refresh — `docs/plans/open-work.md` updated with all session 8 work + integration roadmap
+
+**Key Architecture Decision:**
+- Third-party integrations use OAuth-based MCP servers (one per platform)
+- `restaurant_integrations` table stores AES-256 encrypted tokens per location per platform
+- Build order: Google Suite → Square → 7shifts → Toast (after partner approval) → OpenTable
+- Browser automation viable for dev/demos; official APIs for production
+- Settings/integrations page needed for "Connect your Toast" onboarding flow
+
+**Open Bug (carried from session 6):**
+- [ ] Action cards not reaching frontend from A0 — auto-emit extension fires server-side but cards don't appear
+- [ ] A0 still calls `call_subordinate` for card formatting — system prompt should tell it the extension handles this
+
+**Still Open:**
+- [ ] Migration 009 not yet run
+- [ ] Expo filtering not started
+- [ ] Docker image bloat (15GB) — needs .dockerignore additions
+
+**Next Session Should:**
+1. Fix Docker image bloat — add `frontend/`, `rune-business/`, `rune-pro/`, `docs/`, `.claude/` to `.dockerignore`
+2. Debug action card frontend delivery — the original open bug from session 6
+3. Start `restaurant_integrations` DB migration
+4. Build settings/integrations page skeleton
+5. Start Google Suite MCP (first integration — zero approval gate)
+6. Run migration 009
+
 ## [2026-03-22 03:45] Session 6 Summary — Action Cards Infrastructure + Critical Fixes
 
 **Completed:**

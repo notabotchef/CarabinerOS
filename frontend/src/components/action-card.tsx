@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { X, Send, Check } from "lucide-react";
+import { X, ArrowUp, Check } from "lucide-react";
 import type { ActionCard as ActionCardType, ActionCardType as CardType } from "@/lib/types";
 
 interface ActionCardProps {
@@ -161,10 +161,10 @@ export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardPr
             {onCommit && (
               <button
                 onClick={() => onCommit(card.id)}
-                className="w-7 h-7 flex items-center justify-center rounded-full text-primary hover:bg-primary/10 transition-colors"
+                className="size-7 rounded-xl flex items-center justify-center bg-gradient-to-br from-primary to-primary/80 text-primary-foreground hover:shadow-[0_0_12px_oklch(0.72_0.22_160_/_0.3)] transition-all duration-200"
                 title="Send"
               >
-                <Send className="size-4" />
+                <ArrowUp className="size-3.5" />
               </button>
             )}
           </div>

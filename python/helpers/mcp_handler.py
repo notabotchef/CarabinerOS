@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import os
 import re
 from typing import (
     List,
@@ -1026,10 +1027,15 @@ class MCPClientLocal(MCPClientBase):
         if not which(server.command):
             raise ValueError(f"Command '{server.command}' not found")
 
+        # Merge parent env so subprocess inherits DATABASE_URL, etc.
+        merged_env = dict(os.environ)
+        if server.env:
+            merged_env.update(server.env)
+
         server_params = StdioServerParameters(
             command=server.command,
             args=server.args,
-            env=server.env,
+            env=merged_env,
             encoding=server.encoding,
             encoding_error_handler=server.encoding_error_handler,
         )

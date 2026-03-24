@@ -683,3 +683,14 @@ class BudgetOut(BaseModel):
     over_under: Optional[float] = None
     days_elapsed: int = 0
     days_total: int = 0
+
+
+# --- Vendors ---
+
+class VendorOut(TimestampSchema):
+    id: uuid.UUID
+    name: str
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    payment_terms: Optional[str] = None
+    connector_id: Optional[str] = None

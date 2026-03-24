@@ -1,0 +1,70 @@
+Fake Action-cards audit:
+/Users/estebannunez/Library/Application Support/CleanShot/media/media_QnETPesciq/CleanShot 2026-03-22 at 00.53.42@2x.png
+
+1. Notification hide behind the action-cards, i think the front card should have the number of notification in the same color.
+2. I can't scroll the menu to see the bottom cards (same happens with the hamburger menu)
+3. The cards should be vertical just like the home page (maybe a bit bigger)
+4. Action button inside car for imidiate acction depending of type of the card.
+5. The animation of the cards is not smooth, it it should expand directly inside pushing everything else away
+6. this two button overlap /Users/estebannunez/Library/Application Support/CleanShot/media/media_y6itl40Fre/CleanShot 2026-03-22 at 00.58.35@2x.png
+7. The chatbox should be pre-field with an action (ao can do this with llm while fills the card up) Example: Your halibut par is bellow, chat pre-prompt (Want me to add it to the order?)
+8. This funtion is goated, definetly a keeper. /Users/estebannunez/Library/Application Support/CleanShot/media/media_532mKflhCh/CleanShot 2026-03-22 at 01.02.35@2x.png
+9. Great one, the chatbox should sugges something like "Notify everyone"
+10. Completed task sit right below the important ones with a green background (that matches the current color palette) Hover over it will bring a check to mark to dismiss it. (future feature, they are swipable just like phone notifications)
+
+// Seed 6 fake action cards into sessionStorage                                                                                                                                                                                           
+  const now = Date.now() / 1000;                                                                                                                                                                                                            
+  const cards = [                                                                                                                                                                                                                           
+    {                                                                                                                                                                                                                                       
+      id: "fake-1", type: "urgent", module: "orders", action: "create",                                                                                                                                                                     
+      summary: "Rush order #847 — 12-top, allergies flagged (tree nuts, shellfish)",                                                                                                                                                        
+      detail: "VIP table requesting modified tasting menu. Kitchen needs confirmation on substitutions for courses 3 and 5.",                                                                                                               
+      changes: [{ op: "+", text: "12-top tasting menu (modified)" }, { op: "!", text: "Tree nut & shellfish allergy protocol" }],                                                                                                           
+      stats: [{ label: "Covers", value: "12" }, { label: "Est. Revenue", value: "$2,160" }],                                                                                                                                                
+      priority: 2, deadline: new Date(Date.now() + 2 * 3600000).toISOString(),                                                                                                                                                              
+      status: "new", timestamp: now - 120, source: "reactive"                                                                                                                                                                               
+    },                                                                                                                                                                                                                                      
+    {                                                                                                                                                                                                                                       
+      id: "fake-2", type: "action", module: "inventory", action: "update",
+      summary: "Halibut stock below par — 3 portions left, 18 on tonight's pre-orders",                                                                                                                                                     
+      detail: "Current: 2.1 lb remaining. Tonight's reservations include 18 covers with halibut entree selected. Suggest 86 or emergency order from Pacific Catch (45 min delivery).",                                                      
+      changes: [{ op: "!", text: "Halibut: 2.1 lb → need 9.0 lb" }, { op: "→", text: "Pacific Catch can deliver by 5:30 PM" }],                                                                                                             
+      stats: [{ label: "On Hand", value: "2.1 lb" }, { label: "Needed", value: "9.0 lb" }, { label: "Short", value: "6.9 lb" }],                                                                                                            
+      priority: 1, deadline: new Date(Date.now() + 3 * 3600000).toISOString(),                                                                                                                                                              
+      status: "new", timestamp: now - 300, source: "reactive"                                                                                                                                                                               
+    },                                                                                                                                                                                                                                      
+    {                                                                                                                                                                                                                                       
+      id: "fake-3", type: "update", module: "prep", action: "update",                                                                                                                                                                       
+      summary: "Prep list 90% complete — miso glaze and pickled shallots still pending",                                                                                                                                                    
+      detail: "Line cooks finished proteins, sauces, and garnishes. Two items remain for tonight's service.",                                                                                                                               
+      changes: [{ op: "+", text: "Proteins: done" }, { op: "+", text: "Mother sauces: done" }, { op: "!", text: "Miso glaze: not started" }, { op: "!", text: "Pickled shallots: fermenting (needs 2h)" }],                                 
+      stats: [{ label: "Complete", value: "90%" }, { label: "Remaining", value: "2 items" }],                                                                                                                                               
+      priority: 0, status: "new", timestamp: now - 600, source: "reactive"                                                                                                                                                                  
+    },                                                                                                                                                                                                                                      
+    {                                                                                                                                                                                                                                       
+      id: "fake-4", type: "info", module: "food-cost", action: "update",                                                                                                                                                                    
+      summary: "Weekly food cost landed at 28.3% — down 1.2pp from last week",
+      detail: "Protein costs down thanks to lamb shoulder swap. Produce up slightly due to micro-greens pricing.",                                                                                                                          
+      changes: [{ op: "→", text: "Food cost: 29.5% → 28.3%" }, { op: "+", text: "Lamb shoulder saved $340 vs rack" }, { op: "!", text: "Micro-greens up 18% — consider local supplier" }],                                                  
+      stats: [{ label: "Food Cost", value: "28.3%" }, { label: "Target", value: "30%" }, { label: "Savings", value: "$340" }],                                                                                                              
+      priority: 0, status: "new", timestamp: now - 1800, source: "reactive"                                                                                                                                                                 
+    },                                                                                                                                                                                                                                      
+    {                                                                                                                                                                                                                                       
+      id: "fake-5", type: "action", module: "menu", action: "create",                                                                                                                                                                       
+      summary: "New dish suggestion: Charred Broccolini with tahini & pomegranate",
+      detail: "Based on current inventory surplus (12 lb broccolini, expiring in 2 days) and trending flavor profiles. Estimated plate cost: $3.20, suggested price: $16.",                                                                 
+      changes: [{ op: "+", text: "New vegetable course option" }, { op: "+", text: "Uses surplus broccolini (12 lb expiring)" }],                                                                                                           
+      stats: [{ label: "Plate Cost", value: "$3.20" }, { label: "Menu Price", value: "$16" }, { label: "Margin", value: "80%" }],                                                                                                           
+      priority: 1, status: "new", timestamp: now - 900, source: "proactive"                                                                                                                                                                 
+    },                                                                                                                                                                                                                                      
+    {                                                                                                                                                                                                                                       
+      id: "fake-6", type: "update", module: "invoices", action: "create",
+      summary: "3 invoices received today — Sysco, Pacific Catch, La Colombe",                                                                                                                                                              
+      detail: "All matched against POs. Sysco invoice $2,847 is $112 over PO due to fuel surcharge. Flagged for review.",                                                                                                                   
+      changes: [{ op: "+", text: "Sysco: $2,847 (⚠️  $112 over PO)" }, { op: "+", text: "Pacific Catch: $891 ✓" }, { op: "+", text: "La Colombe: $234 ✓" }],                                                                                 
+      stats: [{ label: "Total", value: "$3,972" }, { label: "Matched", value: "2/3" }, { label: "Flagged", value: "1" }],                                                                                                                   
+      priority: 0, status: "new", timestamp: now - 2400, source: "reactive"                                                                                                                                                                 
+    }                                                                                                                                                                                                                                       
+  ];                                                                                                                                                                                                                                        
+  sessionStorage.setItem("cos_action_cards", JSON.stringify(cards));                                                                                                                                                                        
+  location.reload();    
