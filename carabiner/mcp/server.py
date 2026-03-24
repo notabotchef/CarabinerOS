@@ -848,6 +848,237 @@ async def menu_delete(id: str) -> str:
     return json.dumps({"deleted": deleted, "id": id})
 
 
+# ===== MENU ENGINEERING ===== (Phase 1)
+
+
+@mcp.tool()
+async def menu_86(id: str, reason: str = "") -> str:
+    """Mark a menu item as 86'd (unavailable). Logs the event for pattern analysis.
+
+Args:
+    id: UUID of the menu item to 86.
+    reason: Why the item is being 86'd (e.g. "ran out of lobster", "supplier issue").
+
+Example:
+    menu_86(id="item-uuid", reason="ran out of lobster")
+"""
+    await _ensure_db()
+    from carabiner.db.engine import get_session
+    from carabiner.db.workspace_models import WorkspaceMenu, EightySixLog
+    from sqlalchemy import select
+
+    item_id = _parse_uuid(id)
+    async with get_session() as session:
+        result = await session.execute(
+            select(WorkspaceMenu).where(WorkspaceMenu.id == item_id)
+        )
+        item = result.scalar_one_or_none()
+        if item is None:
+            return json.dumps({"error": "not_found", "id": id})
+
+        if item.is_86:
+            return json.dumps({"error": "already_86", "id": id, "item_name": item.item_name})
+
+        item.is_86 = True
+        item.eighty_six_reason = reason or None
+        item.eighty_six_at = datetime.utcnow()
+
+        log = EightySixLog(
+            menu_item_id=item_id,
+            location_id=item.location_id,
+            action="86",
+            reason=reason or None,
+        )
+        session.add(log)
+        await session.commit()
+        await session.refresh(item)
+
+        return json.dumps({
+            "ok": True,
+            "action": "86",
+            "id": str(item.id),
+            "item_name": item.item_name,
+            "reason": reason,
+        })
+
+
+@mcp.tool()
+async def menu_un86(id: str) -> str:
+    """Restore a menu item from 86 status (un-86 / 68). Resolves the open 86 log entry.
+
+Args:
+    id: UUID of the menu item to restore.
+
+Example:
+    menu_un86(id="item-uuid")
+"""
+    await _ensure_db()
+    from carabiner.db.engine import get_session
+    from carabiner.db.workspace_models import WorkspaceMenu, EightySixLog
+    from sqlalchemy import select, and_
+
+    item_id = _parse_uuid(id)
+    async with get_session() as session:
+        result = await session.execute(
+            select(WorkspaceMenu).where(WorkspaceMenu.id == item_id)
+        )
+        item = result.scalar_one_or_none()
+        if item is None:
+            return json.dumps({"error": "not_found", "id": id})
+
+        if not item.is_86:
+            return json.dumps({"error": "not_86", "id": id, "item_name": item.item_name})
+
+        item.is_86 = False
+        item.eighty_six_reason = None
+        item.eighty_six_at = None
+
+        # Resolve the most recent open 86 log
+        log_result = await session.execute(
+            select(EightySixLog)
+            .where(
+                and_(
+                    EightySixLog.menu_item_id == item_id,
+                    EightySixLog.action == "86",
+                    EightySixLog.resolved_at.is_(None),
+                )
+            )
+            .order_by(EightySixLog.logged_at.desc())
+            .limit(1)
+        )
+        open_log = log_result.scalar_one_or_none()
+        if open_log:
+            open_log.resolved_at = datetime.utcnow()
+
+        # Also create a 68 (back on) log entry
+        back_log = EightySixLog(
+            menu_item_id=item_id,
+            location_id=item.location_id,
+            action="68",
+        )
+        session.add(back_log)
+        await session.commit()
+
+        return json.dumps({
+            "ok": True,
+            "action": "68",
+            "id": str(item.id),
+            "item_name": item.item_name,
+        })
+
+
+@mcp.tool()
+async def menu_recalculate_matrix(location_id: Optional[str] = None) -> str:
+    """Recalculate the menu engineering matrix (Star/Puzzle/Plowhorse/Dog) for all items.
+
+    Uses contribution margin (price - food_cost) and menu mix % to classify items
+    into the BCG-derived quadrants. Items without price/food_cost are skipped.
+
+Args:
+    location_id: Optional UUID to scope to one location. Omit to recalculate all.
+
+Returns:
+    Summary of reclassified items and any quadrant changes.
+"""
+    await _ensure_db()
+    from carabiner.db.engine import get_session
+    from carabiner.db.workspace_models import WorkspaceMenu, MenuItemHistory
+    from sqlalchemy import select
+    from decimal import Decimal
+
+    async with get_session() as session:
+        stmt = select(WorkspaceMenu).where(
+            WorkspaceMenu.price.isnot(None),
+            WorkspaceMenu.food_cost.isnot(None),
+        )
+        if location_id:
+            stmt = stmt.where(WorkspaceMenu.location_id == _parse_uuid(location_id))
+
+        result = await session.execute(stmt)
+        items = list(result.scalars().all())
+
+        if not items:
+            return json.dumps({"ok": True, "message": "No items with price/food_cost to classify", "changes": []})
+
+        # Calculate CM for each item
+        for item in items:
+            price = float(item.price) if item.price else 0
+            cost = float(item.food_cost) if item.food_cost else 0
+            cm = price - cost
+            item.contribution_margin = Decimal(str(round(cm, 2)))
+            item.food_cost_pct = Decimal(str(round((cost / price * 100) if price > 0 else 0, 2)))
+
+        # Calculate total qty sold and weighted avg CM
+        total_qty = sum(item.quantity_sold or 0 for item in items)
+        if total_qty > 0:
+            weighted_cm = sum(
+                float(item.contribution_margin) * (item.quantity_sold or 0)
+                for item in items
+            ) / total_qty
+        else:
+            weighted_cm = sum(float(item.contribution_margin) for item in items) / len(items)
+
+        # Calculate menu mix % and popularity threshold (70% rule)
+        n_items = len(items)
+        popularity_threshold = (1 / n_items) * 0.7 * 100 if n_items > 0 else 0
+
+        for item in items:
+            if total_qty > 0:
+                mix_pct = ((item.quantity_sold or 0) / total_qty) * 100
+            else:
+                mix_pct = 100 / n_items if n_items > 0 else 0
+            item.menu_mix_pct = Decimal(str(round(mix_pct, 2)))
+
+        # Classify into quadrants
+        changes = []
+        for item in items:
+            cm = float(item.contribution_margin)
+            mix = float(item.menu_mix_pct)
+            is_profitable = cm >= weighted_cm
+            is_popular = mix >= popularity_threshold
+
+            if is_profitable and is_popular:
+                new_perf = "Star"
+            elif is_profitable and not is_popular:
+                new_perf = "Puzzle"
+            elif not is_profitable and is_popular:
+                new_perf = "Plowhorse"
+            else:
+                new_perf = "Dog"
+
+            old_perf = item.performance
+            if old_perf != new_perf:
+                # Log the change
+                history = MenuItemHistory(
+                    menu_item_id=item.id,
+                    field_changed="performance",
+                    old_value=old_perf,
+                    new_value=new_perf,
+                    changed_by="agent",
+                )
+                session.add(history)
+                changes.append({
+                    "id": str(item.id),
+                    "item_name": item.item_name,
+                    "old": old_perf,
+                    "new": new_perf,
+                })
+
+            item.performance = new_perf
+            # Update margin_pct for backward compat
+            item.margin_pct = f"{float(item.food_cost_pct):.1f}%"
+
+        await session.commit()
+
+        return json.dumps({
+            "ok": True,
+            "items_evaluated": len(items),
+            "weighted_avg_cm": round(weighted_cm, 2),
+            "popularity_threshold_pct": round(popularity_threshold, 2),
+            "changes": changes,
+        })
+
+
 # ===== FOOD COST ===== (legacy)
 
 
@@ -909,6 +1140,209 @@ async def food_cost_delete(id: str) -> str:
 
     deleted = await delete_food_cost(_parse_uuid(id))
     return json.dumps({"deleted": deleted, "id": id})
+
+
+# ===== DAILY FOOD COST (Operational) =====
+
+
+@mcp.tool()
+async def daily_food_cost_list(
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+    location_id: Optional[str] = None,
+) -> str:
+    """Query daily food cost rows for a date range.
+
+    Returns actual vs theoretical food cost data per day. Defaults to last 30 days.
+
+    Args:
+        start: Start date (YYYY-MM-DD). Defaults to 30 days ago.
+        end: End date (YYYY-MM-DD). Defaults to today.
+        location_id: Optional location UUID to filter by.
+
+    Examples:
+        daily_food_cost_list()
+        daily_food_cost_list(start="2026-03-01", end="2026-03-24")
+    """
+    await _ensure_db()
+    from datetime import date as _date, timedelta
+    from carabiner.db.engine import get_session
+    from carabiner.db.models import DailyFoodCost
+    from sqlalchemy import select, and_
+
+    today = _date.today()
+    end_date = _date.fromisoformat(end) if end else today
+    start_date = _date.fromisoformat(start) if start else end_date - timedelta(days=30)
+    loc = _parse_uuid(location_id) if location_id else None
+
+    async with get_session() as session:
+        stmt = (
+            select(DailyFoodCost)
+            .where(and_(DailyFoodCost.cost_date >= start_date, DailyFoodCost.cost_date <= end_date))
+            .order_by(DailyFoodCost.cost_date.asc())
+        )
+        if loc:
+            stmt = stmt.where(DailyFoodCost.location_id == loc)
+        result = await session.execute(stmt)
+        rows = result.scalars().all()
+
+    return json.dumps(_serialise(rows), default=str)
+
+
+@mcp.tool()
+async def food_cost_summary_kpis(location_id: Optional[str] = None) -> str:
+    """Compute food cost KPIs: today's %, period %, budget vs actual, prime cost.
+
+    Returns a summary object with today_food_cost_pct, period_food_cost_pct,
+    budget_target_pct, budget_over_under, prime_cost_pct, and period totals.
+
+    Args:
+        location_id: Optional location UUID to scope the summary.
+
+    Examples:
+        food_cost_summary_kpis()
+        food_cost_summary_kpis(location_id="abc-123")
+    """
+    await _ensure_db()
+    from datetime import date as _date, timedelta
+    from carabiner.db.engine import get_session
+    from carabiner.db.models import BudgetPeriod, DailyFoodCost, DailyPL
+    from sqlalchemy import select, and_, func
+
+    today = _date.today()
+    loc = _parse_uuid(location_id) if location_id else None
+    out: dict = {}
+
+    async with get_session() as session:
+        today_stmt = select(DailyFoodCost).where(DailyFoodCost.cost_date == today)
+        if loc:
+            today_stmt = today_stmt.where(DailyFoodCost.location_id == loc)
+        today_row = (await session.execute(today_stmt)).scalars().first()
+
+        if today_row:
+            out["today_food_cost_pct"] = float(today_row.food_cost_pct) if today_row.food_cost_pct else None
+            out["today_sales"] = float(today_row.sales)
+            out["today_purchases"] = float(today_row.purchases)
+
+        bp_stmt = select(BudgetPeriod).where(
+            and_(BudgetPeriod.period_start <= today, BudgetPeriod.period_end >= today)
+        )
+        if loc:
+            bp_stmt = bp_stmt.where(BudgetPeriod.location_id == loc)
+        budget = (await session.execute(bp_stmt)).scalars().first()
+
+        period_start = budget.period_start if budget else today - timedelta(days=30)
+        out["period_start"] = str(period_start)
+        out["period_end"] = str(budget.period_end if budget else today)
+        if budget:
+            out["budget_target_pct"] = float(budget.target_food_cost_pct) if budget.target_food_cost_pct else None
+            out["target_revenue"] = float(budget.target_revenue) if budget.target_revenue else None
+
+        agg_stmt = select(
+            func.sum(DailyFoodCost.purchases).label("total_purchases"),
+            func.sum(DailyFoodCost.sales).label("total_sales"),
+            func.sum(DailyFoodCost.actual_food_cost).label("total_food_cost"),
+        ).where(and_(DailyFoodCost.cost_date >= period_start, DailyFoodCost.cost_date <= today))
+        if loc:
+            agg_stmt = agg_stmt.where(DailyFoodCost.location_id == loc)
+        agg = (await session.execute(agg_stmt)).one()
+
+        total_sales = float(agg.total_sales or 0)
+        total_food_cost = float(agg.total_food_cost or 0)
+        out["period_total_purchases"] = float(agg.total_purchases or 0)
+        out["period_total_sales"] = total_sales
+        if total_sales > 0:
+            out["period_food_cost_pct"] = round(total_food_cost / total_sales * 100, 2)
+        if budget and budget.target_food_cost_pct and total_sales > 0:
+            expected = total_sales * (float(budget.target_food_cost_pct) / 100)
+            out["budget_over_under"] = round(total_food_cost - expected, 2)
+
+        pl_stmt = select(DailyPL).where(DailyPL.pl_date == today)
+        if loc:
+            pl_stmt = pl_stmt.where(DailyPL.location_id == loc)
+        pl_row = (await session.execute(pl_stmt)).scalars().first()
+        if pl_row:
+            food = float(pl_row.food_cost_pct) if pl_row.food_cost_pct else 0
+            labor = float(pl_row.labor_pct) if pl_row.labor_pct else 0
+            out["prime_cost_pct"] = round(food + labor, 2)
+
+    return json.dumps(out, default=str)
+
+
+@mcp.tool()
+async def food_cost_create_daily(data: str) -> str:
+    """Create or update a DailyFoodCost row for manual entry via chat.
+
+    Use when the user reports daily spend, e.g. "Today's spend: Sysco $2100, revenue $8200."
+    If a row already exists for the same date + location, it is updated (upserted).
+
+    Args:
+        data: JSON string with fields:
+            - location_id (optional, defaults to first location)
+            - cost_date (YYYY-MM-DD, defaults to today)
+            - purchases (total spend for the day)
+            - sales (revenue for the day)
+            - beginning_inventory (optional)
+            - ending_inventory (optional)
+
+    The actual_food_cost and food_cost_pct are computed automatically.
+
+    Examples:
+        food_cost_create_daily(data='{"purchases": 2950, "sales": 8200}')
+        food_cost_create_daily(data='{"cost_date": "2026-03-24", "purchases": 3100, "sales": 9500}')
+    """
+    await _ensure_db()
+    from datetime import date as _date
+    from decimal import Decimal
+    from carabiner.db.engine import get_session
+    from carabiner.db.models import DailyFoodCost
+    from sqlalchemy import select, and_
+
+    parsed = json.loads(data)
+    parsed = await _resolve_location_id(parsed)
+
+    cost_date = _date.fromisoformat(parsed.get("cost_date", str(_date.today())))
+    loc_id = parsed["location_id"]
+
+    purchases = Decimal(str(parsed.get("purchases", 0)))
+    sales = Decimal(str(parsed.get("sales", 0)))
+    beg_inv = Decimal(str(parsed.get("beginning_inventory", 0)))
+    end_inv = Decimal(str(parsed.get("ending_inventory", 0)))
+
+    actual_food_cost = beg_inv + purchases - end_inv
+    food_cost_pct = round(actual_food_cost / sales * 100, 2) if sales > 0 else None
+
+    async with get_session() as session:
+        stmt = select(DailyFoodCost).where(
+            and_(DailyFoodCost.location_id == loc_id, DailyFoodCost.cost_date == cost_date)
+        )
+        existing = (await session.execute(stmt)).scalars().first()
+
+        if existing:
+            existing.purchases = purchases
+            existing.sales = sales
+            existing.beginning_inventory = beg_inv
+            existing.ending_inventory = end_inv
+            existing.actual_food_cost = actual_food_cost
+            existing.food_cost_pct = food_cost_pct
+            await session.commit()
+            await session.refresh(existing)
+            return json.dumps({"ok": True, "action": "updated", **_serialise(existing)}, default=str)
+        else:
+            row = DailyFoodCost(
+                location_id=loc_id,
+                cost_date=cost_date,
+                purchases=purchases,
+                sales=sales,
+                beginning_inventory=beg_inv,
+                ending_inventory=end_inv,
+                actual_food_cost=actual_food_cost,
+                food_cost_pct=food_cost_pct,
+            )
+            session.add(row)
+            await session.commit()
+            await session.refresh(row)
+            return json.dumps({"ok": True, "action": "created", **_serialise(row)}, default=str)
 
 
 # ===== CAMPAIGNS (Marketing) ===== (legacy)
@@ -974,8 +1408,160 @@ async def campaigns_delete(id: str) -> str:
     return json.dumps({"deleted": deleted, "id": id})
 
 
+# ===================================================================
+# PREP OPERATIONAL TOOLS -- work with PrepList/PrepListItem/PrepStation
+# (the real prep system, not the legacy workspace_prep layer)
+# ===================================================================
+
+
+@mcp.tool()
+async def prep_generate_list(
+    expected_covers: int = 100,
+    prep_date: Optional[str] = None,
+    location_id: Optional[str] = None,
+    service_lane: str = "All Day",
+) -> str:
+    """Generate a prep list for a date based on expected covers.
+
+    Creates a new PrepList with items derived from active recipes.
+    Quantities are scaled by the cover count. If a list already exists
+    for the date, returns it instead of creating a duplicate.
+
+    Args:
+        expected_covers: Forecasted guest count (default 100).
+        prep_date: Date string YYYY-MM-DD (default today).
+        location_id: Location UUID (default first location).
+        service_lane: "Lunch", "Dinner", or "All Day" (default "All Day").
+    """
+    await _ensure_db()
+    from datetime import date as date_type
+    from decimal import Decimal as D
+    from carabiner.db.prep_repositories import (
+        create_prep_list,
+        get_prep_list_by_date,
+    )
+    from carabiner.db.repositories import list_recipes
+
+    loc = _parse_uuid(location_id) if location_id else await _default_location_id()
+    target_date = date_type.fromisoformat(prep_date) if prep_date else date_type.today()
+
+    existing = await get_prep_list_by_date(loc, target_date)
+    if existing:
+        return json.dumps({
+            "message": f"Prep list already exists for {target_date}",
+            "prep_list_id": str(existing.id),
+            "item_count": len(existing.items),
+        }, default=str)
+
+    recipes = await list_recipes(location_id=loc)
+    items_data = []
+    for i, recipe in enumerate(recipes):
+        base_qty = D(str(max(1, expected_covers // 25)))
+        items_data.append({
+            "recipe_id": recipe.id,
+            "name": recipe.name,
+            "qty_needed": base_qty,
+            "unit": str(recipe.yield_unit or "ea") if hasattr(recipe, "yield_unit") else "ea",
+            "on_hand": D("0"),
+            "to_prep": base_qty,
+            "station": str(recipe.category) if hasattr(recipe, "category") else "Unassigned",
+            "service_lane": service_lane,
+            "sort_order": i,
+            "is_complete": False,
+        })
+
+    if not items_data:
+        return json.dumps({
+            "error": "no_recipes",
+            "message": "No recipes found to generate prep list from.",
+        })
+
+    prep_list = await create_prep_list({
+        "location_id": loc,
+        "prep_date": target_date,
+        "status": "generated",
+        "expected_covers": expected_covers,
+        "generated_by": "ai",
+        "items": items_data,
+    })
+
+    return json.dumps({
+        "message": f"Generated prep list for {target_date} -- {len(items_data)} items, {expected_covers} covers",
+        "prep_list_id": str(prep_list.id),
+        "item_count": len(items_data),
+    }, default=str)
+
+
+@mcp.tool()
+async def prep_mark_complete(
+    item_id: str,
+    completed_qty: Optional[str] = None,
+) -> str:
+    """Mark a prep item as complete (or toggle back to incomplete).
+
+    Args:
+        item_id: UUID of the prep list item.
+        completed_qty: Actual quantity prepped (defaults to the to_prep amount).
+    """
+    await _ensure_db()
+    from decimal import Decimal as D
+    from carabiner.db.prep_repositories import complete_prep_item
+
+    qty = D(completed_qty) if completed_qty else None
+    item = await complete_prep_item(_parse_uuid(item_id), qty)
+    if item is None:
+        return json.dumps({"error": "not_found", "id": item_id})
+    return json.dumps(_serialise(item), default=str)
+
+
+@mcp.tool()
+async def prep_check_shortages(
+    location_id: Optional[str] = None,
+    prep_date: Optional[str] = None,
+) -> str:
+    """Check today's prep list for shortages against on-hand inventory.
+
+    Args:
+        location_id: Location UUID (default first location).
+        prep_date: Date string YYYY-MM-DD (default today).
+    """
+    await _ensure_db()
+    from datetime import date as date_type
+    from carabiner.db.prep_repositories import get_prep_list_by_date, get_prep_list_today
+
+    loc = _parse_uuid(location_id) if location_id else await _default_location_id()
+
+    if prep_date:
+        pl = await get_prep_list_by_date(loc, date_type.fromisoformat(prep_date))
+    else:
+        pl = await get_prep_list_today(loc)
+
+    if pl is None:
+        return json.dumps({"message": "No prep list found", "shortages": []})
+
+    shortages = []
+    for item in pl.items:
+        if item.on_hand < item.qty_needed and not item.is_complete:
+            shortages.append({
+                "item_id": str(item.id),
+                "name": item.name or f"Recipe {item.recipe_id}",
+                "station": item.station or "Unassigned",
+                "qty_needed": float(item.qty_needed),
+                "on_hand": float(item.on_hand),
+                "deficit": float(item.qty_needed - item.on_hand),
+                "unit": item.unit,
+            })
+
+    return json.dumps({
+        "prep_date": str(pl.prep_date),
+        "total_items": len(pl.items),
+        "shortages": shortages,
+        "shortage_count": len(shortages),
+    }, default=str)
+
+
 # ---------------------------------------------------------------------------
-# Entry point — stdio transport for Agent Zero subprocess
+# Entry point -- stdio transport for Agent Zero subprocess
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":

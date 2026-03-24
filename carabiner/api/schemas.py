@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -180,6 +180,59 @@ class PrepUpdate(BaseModel):
     detail_points: Optional[List[str]] = None
 
 
+# --- Prep Operational (PrepList / PrepListItem / PrepStation) ---
+
+class PrepListItemOut(TimestampSchema):
+    id: uuid.UUID
+    prep_list_id: uuid.UUID
+    recipe_id: uuid.UUID
+    name: Optional[str] = None
+    qty_needed: float
+    unit: str = "ea"
+    on_hand: float = 0
+    to_prep: float
+    is_complete: bool = False
+    completed_qty: Optional[float] = None
+    completed_at: Optional[datetime] = None
+    station: Optional[str] = None
+    assigned_to: Optional[str] = None
+    est_minutes: Optional[int] = None
+    sort_order: int = 0
+    service_lane: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class PrepListOut(TimestampSchema):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    prep_date: str
+    status: str
+    expected_covers: Optional[int] = None
+    generated_by: str = "manual"
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    items: List[PrepListItemOut] = []
+
+
+class PrepListItemComplete(BaseModel):
+    completed_qty: Optional[float] = None
+
+
+class PrepStationOut(TimestampSchema):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    name: str
+    sort_order: int = 0
+    default_cook: Optional[str] = None
+
+
+class PrepStationCreate(BaseModel):
+    location_id: uuid.UUID
+    name: str
+    sort_order: int = 0
+    default_cook: Optional[str] = None
+
+
 # --- Food Cost ---
 
 class FoodCostOut(TimestampSchema):
@@ -229,6 +282,16 @@ class MenuOut(TimestampSchema):
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
+    # Menu Engineering Phase 1
+    price: Optional[float] = None
+    food_cost: Optional[float] = None
+    contribution_margin: Optional[float] = None
+    food_cost_pct: Optional[float] = None
+    quantity_sold: Optional[int] = None
+    menu_mix_pct: Optional[float] = None
+    is_86: bool = False
+    eighty_six_reason: Optional[str] = None
+    eighty_six_at: Optional[datetime] = None
 
 
 class MenuCreate(BaseModel):
@@ -242,6 +305,15 @@ class MenuCreate(BaseModel):
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
+    # Menu Engineering Phase 1
+    price: Optional[float] = None
+    food_cost: Optional[float] = None
+    contribution_margin: Optional[float] = None
+    food_cost_pct: Optional[float] = None
+    quantity_sold: Optional[int] = None
+    menu_mix_pct: Optional[float] = None
+    is_86: bool = False
+    eighty_six_reason: Optional[str] = None
 
 
 class MenuUpdate(BaseModel):
@@ -254,6 +326,37 @@ class MenuUpdate(BaseModel):
     recipe_id: Optional[uuid.UUID] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
+    # Menu Engineering Phase 1
+    price: Optional[float] = None
+    food_cost: Optional[float] = None
+    contribution_margin: Optional[float] = None
+    food_cost_pct: Optional[float] = None
+    quantity_sold: Optional[int] = None
+    menu_mix_pct: Optional[float] = None
+    is_86: Optional[bool] = None
+    eighty_six_reason: Optional[str] = None
+
+
+class EightySixLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    menu_item_id: uuid.UUID
+    location_id: uuid.UUID
+    action: str
+    reason: Optional[str] = None
+    logged_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+
+
+class MenuItemHistoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    menu_item_id: uuid.UUID
+    field_changed: str
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    changed_at: Optional[datetime] = None
+    changed_by: str = "system"
 
 
 # --- Marketing / Campaigns ---
@@ -528,3 +631,55 @@ class RecipeParseRequest(BaseModel):
 class RecipeParseResponse(BaseModel):
     """Mock parsed recipe from OCR/LLM."""
     draft: RecipeCreate
+
+
+# --- Daily Food Cost (Operational) ---
+
+class DailyFoodCostOut(BaseModel):
+    """Response schema for DailyFoodCost rows."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    location_id: uuid.UUID
+    cost_date: date
+    beginning_inventory: float
+    purchases: float
+    ending_inventory: float
+    actual_food_cost: float
+    theoretical_food_cost: Optional[float] = None
+    sales: float
+    food_cost_pct: Optional[float] = None
+
+
+class FoodCostSummaryOut(BaseModel):
+    """Computed KPIs for the food cost summary endpoint."""
+    today_food_cost_pct: Optional[float] = None
+    today_sales: Optional[float] = None
+    today_purchases: Optional[float] = None
+    period_food_cost_pct: Optional[float] = None
+    period_total_purchases: float = 0
+    period_total_sales: float = 0
+    budget_target_pct: Optional[float] = None
+    budget_amount: Optional[float] = None
+    budget_over_under: Optional[float] = None
+    prime_cost_pct: Optional[float] = None
+    period_start: Optional[date] = None
+    period_end: Optional[date] = None
+
+
+class BudgetOut(BaseModel):
+    """Response schema for the budget endpoint."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: Optional[uuid.UUID] = None
+    period_start: Optional[date] = None
+    period_end: Optional[date] = None
+    target_food_cost_pct: Optional[float] = None
+    target_labor_pct: Optional[float] = None
+    target_revenue: Optional[float] = None
+    actual_purchases: float = 0
+    actual_sales: float = 0
+    actual_food_cost_pct: Optional[float] = None
+    over_under: Optional[float] = None
+    days_elapsed: int = 0
+    days_total: int = 0
