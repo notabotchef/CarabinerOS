@@ -81,6 +81,8 @@ class Item(TimestampMixin, Base):
         UUID(as_uuid=True), ForeignKey("gl_accounts.id")
     )
     last_known_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4))
+    storage_area: Mapped[Optional[str]] = mapped_column(String(100))
+    is_active: Mapped[bool] = mapped_column(default=True)
 
 
 # ---------------------------------------------------------------------------
@@ -143,6 +145,8 @@ class InventoryCount(TimestampMixin, LocationScopedMixin, Base):
     count_date: Mapped[date] = mapped_column(Date, nullable=False)
     count_type: Mapped[str] = mapped_column(String(20), nullable=False)  # full/spot/walk_in
     status: Mapped[str] = mapped_column(String(20), default="in_progress")  # in_progress/completed
+    counted_by: Mapped[Optional[str]] = mapped_column(String(100))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
 
     lines: Mapped[list[InventoryCountLine]] = relationship(
         back_populates="count", cascade="all, delete-orphan"
@@ -197,6 +201,7 @@ class WasteLog(TimestampMixin, LocationScopedMixin, Base):
     reason: Mapped[str] = mapped_column(String(50), nullable=False)  # spoilage/overproduction/expired
     notes: Mapped[Optional[str]] = mapped_column(Text)
     waste_date: Mapped[date] = mapped_column(Date, nullable=False)
+    estimated_cost: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2))
 
     __table_args__ = (
         Index("ix_waste_logs_location_date", "location_id", "waste_date"),

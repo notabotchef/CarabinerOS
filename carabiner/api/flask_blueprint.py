@@ -177,6 +177,78 @@ async def list_inventory():
         return _empty_response()
 
 
+@blueprint.route("/api/inventory/counts", methods=["GET"])
+async def list_inventory_counts():
+    try:
+        from carabiner.db.repositories import list_inventory_counts as _list_counts
+        location_id = _parse_location_id()
+        data = await _list_counts(location_id)
+        return _json_response(data)
+    except Exception:
+        logger.exception("Failed to fetch inventory counts")
+        return _empty_response()
+
+
+@blueprint.route("/api/inventory/par-levels", methods=["GET"])
+async def list_par_levels():
+    try:
+        from carabiner.db.repositories import list_par_levels as _list_pars
+        location_id = _parse_location_id()
+        data = await _list_pars(location_id)
+        return _json_response(data)
+    except Exception:
+        logger.exception("Failed to fetch par levels")
+        return _empty_response()
+
+
+@blueprint.route("/api/inventory/waste", methods=["GET"])
+async def list_waste_logs():
+    try:
+        from carabiner.db.repositories import list_waste_logs as _list_waste
+        from datetime import date, timedelta
+        location_id = _parse_location_id()
+        # Parse optional date range
+        date_from_str = request.args.get("date_from")
+        date_to_str = request.args.get("date_to")
+        date_from = date.fromisoformat(date_from_str) if date_from_str else None
+        date_to = date.fromisoformat(date_to_str) if date_to_str else None
+        data = await _list_waste(location_id, date_from=date_from, date_to=date_to)
+        return _json_response(data)
+    except Exception:
+        logger.exception("Failed to fetch waste logs")
+        return _empty_response()
+
+
+@blueprint.route("/api/inventory/valuation", methods=["GET"])
+async def get_valuation():
+    try:
+        from carabiner.db.repositories import get_inventory_valuation
+        location_id = _parse_location_id()
+        data = await get_inventory_valuation(location_id)
+        body = json.dumps(data, default=str)
+        return Response(response=body, status=200, mimetype="application/json")
+    except Exception:
+        logger.exception("Failed to fetch inventory valuation")
+        return Response(
+            response=json.dumps({"total_value": 0, "item_count": 0}),
+            status=200,
+            mimetype="application/json",
+        )
+
+
+@blueprint.route("/api/items", methods=["GET"])
+async def list_items():
+    try:
+        from carabiner.db.repositories import list_items as _list_items
+        from carabiner.api.schemas import ItemOut
+        rows = await _list_items()
+        data = [ItemOut.model_validate(r).model_dump(mode="json") for r in rows]
+        return _json_response(data)
+    except Exception:
+        logger.exception("Failed to fetch items")
+        return _empty_response()
+
+
 @blueprint.route("/api/prep", methods=["GET"])
 async def list_prep():
     try:

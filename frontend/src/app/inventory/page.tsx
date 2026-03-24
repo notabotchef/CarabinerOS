@@ -1,14 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Package, AlertTriangle, TrendingUp, Search } from "lucide-react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { Package, AlertTriangle, TrendingUp, DollarSign, Search } from "lucide-react";
 import { MenuButton } from "@/components/menu-button";
 import { motion } from "framer-motion";
 import { useWorkspace } from "@/hooks/use-workspace";
+import { useSocket } from "@/hooks/use-socket";
+import { useChat } from "@/hooks/use-chat";
 import { WorkspaceTable } from "@/components/workspace-table";
+import { ChatComposer } from "@/components/chat-composer";
+import { MessageList } from "@/components/message-list";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { CountHistory } from "./components/count-history";
+import { ParLevelTable } from "./components/par-level-table";
+import { WasteLogTable } from "./components/waste-log-table";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -22,11 +29,22 @@ interface InventoryItem {
   on_hand: string;
   par: string;
   variance: string;
+  unit: string | null;
+  category: string | null;
+  storage_area: string | null;
+  unit_cost: string | null;
   summary: string | null;
   detail_points: string[] | null;
   created_at: string;
   updated_at: string;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Tabs                                                               */
+/* ------------------------------------------------------------------ */
+
+const TABS = ["Overview", "Counts", "Par Levels", "Waste"] as const;
+type Tab = (typeof TABS)[number];
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -73,6 +91,8 @@ const cardVariants = {
   }),
 };
 
+const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
+
 /* ------------------------------------------------------------------ */
 /*  KPI Card                                                           */
 /* ------------------------------------------------------------------ */
@@ -83,33 +103,32 @@ function KpiCard({
   icon: Icon,
   tint,
   index,
+  isMoney,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   icon: React.ComponentType<{ className?: string }>;
-  tint?: "destructive" | "positive";
+  tint?: "destructive" | "positive" | "info";
   index: number;
+  isMoney?: boolean;
 }) {
   const tintBg =
     tint === "destructive"
       ? "bg-destructive/10"
       : tint === "positive"
-        ? "bg-emerald-500/10 dark:bg-emerald-500/15"
-        : "bg-muted";
+        ? "bg-emerald-500/10 dark:bg-emerald-500/10"
+        : tint === "info"
+          ? "bg-blue-500/10"
+          : "bg-muted";
 
   const tintIcon =
     tint === "destructive"
       ? "text-destructive"
       : tint === "positive"
         ? "text-emerald-600 dark:text-emerald-400"
-        : "text-muted-foreground";
-
-  const valueTint =
-    tint === "destructive" && value > 0
-      ? "text-destructive"
-      : tint === "positive" && value > 0
-        ? "text-emerald-600 dark:text-emerald-400"
-        : "text-foreground";
+        : tint === "info"
+          ? "text-blue-600 dark:text-blue-400"
+          : "text-muted-foreground";
 
   return (
     <motion.div
@@ -117,16 +136,16 @@ function KpiCard({
       variants={cardVariants}
       initial="hidden"
       animate="visible"
-      className="rounded-lg border border-border bg-card p-5 flex items-center gap-4"
+      className="rounded-xl border border-border bg-card p-4 flex items-center gap-4"
     >
-      <div className={`rounded-md p-2.5 ${tintBg}`}>
+      <div className={`rounded-lg p-2.5 ${tintBg}`}>
         <Icon className={`h-5 w-5 ${tintIcon}`} />
       </div>
       <div className="flex flex-col">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {label}
         </span>
-        <span className={`text-3xl font-bold tabular-nums leading-tight ${valueTint}`}>
+        <span className={`text-3xl font-bold leading-tight text-foreground ${isMoney ? "font-mono" : "tabular-nums"}`}>
           {value}
         </span>
       </div>
@@ -136,8 +155,8 @@ function KpiCard({
 
 function KpiSkeleton() {
   return (
-    <div className="rounded-lg border border-border bg-card p-5 flex items-center gap-4">
-      <Skeleton className="h-10 w-10 rounded-md" />
+    <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-4">
+      <Skeleton className="h-10 w-10 rounded-lg" />
       <div className="flex flex-col gap-1.5">
         <Skeleton className="h-3 w-20" />
         <Skeleton className="h-8 w-12" />
@@ -147,7 +166,7 @@ function KpiSkeleton() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Variance bar — visual distribution indicator                       */
+/*  Variance bar                                                       */
 /* ------------------------------------------------------------------ */
 
 function VarianceBar({
@@ -173,13 +192,13 @@ function VarianceBar({
     >
       {pctBelow > 0 && (
         <div
-          className="bg-destructive/70"
+          className="bg-destructive/60"
           style={{ width: `${pctBelow}%` }}
         />
       )}
       {pctAt > 0 && (
         <div
-          className="bg-muted-foreground/30"
+          className="bg-muted-foreground/20"
           style={{ width: `${pctAt}%` }}
         />
       )}
@@ -194,7 +213,7 @@ function VarianceBar({
 }
 
 /* ------------------------------------------------------------------ */
-/*  Columns                                                            */
+/*  Overview columns                                                   */
 /* ------------------------------------------------------------------ */
 
 const COLUMNS = [
@@ -206,17 +225,33 @@ const COLUMNS = [
     ),
   },
   {
+    key: "category" as const,
+    label: "Category",
+    render: (v: unknown) => (
+      <span className="text-muted-foreground text-sm">{v ? String(v) : "\u2014"}</span>
+    ),
+  },
+  {
+    key: "storage_area" as const,
+    label: "Storage",
+    render: (v: unknown) => (
+      <span className="text-muted-foreground text-sm">{v ? String(v) : "\u2014"}</span>
+    ),
+  },
+  {
     key: "on_hand" as const,
     label: "On Hand",
-    render: (v: unknown) => (
-      <span className="tabular-nums">{parseDisplay(v)}</span>
+    render: (v: unknown, row: InventoryItem) => (
+      <span className="font-mono text-[13px]">
+        {parseDisplay(v)}{row.unit ? ` ${row.unit}` : ""}
+      </span>
     ),
   },
   {
     key: "par" as const,
     label: "Par",
     render: (v: unknown) => (
-      <span className="tabular-nums text-muted-foreground">{parseDisplay(v)}</span>
+      <span className="font-mono text-[13px] text-muted-foreground">{parseDisplay(v)}</span>
     ),
   },
   {
@@ -228,7 +263,7 @@ const COLUMNS = [
         return (
           <Badge
             variant="destructive"
-            className="tabular-nums font-semibold text-xs px-2"
+            className="font-mono font-semibold text-xs px-2"
           >
             {n}
           </Badge>
@@ -236,13 +271,22 @@ const COLUMNS = [
       }
       if (n > 0) {
         return (
-          <span className="tabular-nums font-medium text-emerald-600 dark:text-emerald-400">
+          <span className="font-mono font-medium text-emerald-600 dark:text-emerald-400">
             +{n}
           </span>
         );
       }
-      return <span className="tabular-nums text-muted-foreground">0</span>;
+      return <span className="font-mono text-muted-foreground">0</span>;
     },
+  },
+  {
+    key: "unit_cost" as const,
+    label: "Unit Cost",
+    render: (v: unknown) => (
+      <span className="font-mono text-[13px] text-muted-foreground">
+        {v ? `$${Number(v).toFixed(2)}` : "\u2014"}
+      </span>
+    ),
   },
   {
     key: "updated_at" as const,
@@ -258,13 +302,55 @@ const COLUMNS = [
 /* ------------------------------------------------------------------ */
 
 export default function InventoryPage() {
-  const { data, loading, error } = useWorkspace<InventoryItem>("/api/inventory");
+  const { data, loading, error, refresh } = useWorkspace<InventoryItem>("/api/inventory");
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<Tab>("Overview");
+
+  // Chat integration
+  const { snapshot, subscribe } = useSocket();
+  const { messages, sendMessage, contextId, loading: chatLoading, queuedMessages } = useChat(snapshot);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Subscribe to socket context changes
+  useEffect(() => {
+    subscribe(contextId);
+  }, [contextId, subscribe]);
+
+  // Auto-scroll chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Refresh inventory data when chat messages change (user may have modified data)
+  const prevMsgCount = useRef(messages.length);
+  useEffect(() => {
+    if (messages.length > prevMsgCount.current && !chatLoading) {
+      const timer = setTimeout(() => refresh(), 1500);
+      prevMsgCount.current = messages.length;
+      return () => clearTimeout(timer);
+    }
+    prevMsgCount.current = messages.length;
+  }, [messages.length, chatLoading, refresh]);
+
+  // Valuation
+  const [valuation, setValuation] = useState<{ total_value: number; item_count: number } | null>(null);
+  useEffect(() => {
+    fetch("/api/inventory/valuation", { credentials: "include" })
+      .then(async (res) => {
+        if (res.ok) setValuation(await res.json());
+      })
+      .catch(() => {});
+  }, [data]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return data;
     const q = search.toLowerCase();
-    return data.filter((item) => item.item_name?.toLowerCase().includes(q));
+    return data.filter(
+      (item) =>
+        item.item_name?.toLowerCase().includes(q) ||
+        item.category?.toLowerCase().includes(q) ||
+        item.storage_area?.toLowerCase().includes(q)
+    );
   }, [data, search]);
 
   const totalItems = data.length;
@@ -272,120 +358,211 @@ export default function InventoryPage() {
   const abovePar = data.filter((d) => parseNum(d.variance) > 0).length;
   const atPar = totalItems - belowPar - abovePar;
 
+  const handleSend = (text: string) => {
+    sendMessage(text);
+  };
+
   return (
     <div className="flex flex-col h-dvh bg-background">
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
         <MenuButton />
         <div className="flex-1 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center size-8 rounded-lg bg-secondary">
-            <Package className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-secondary">
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-foreground">Inventory</h1>
+              <p className="text-sm text-muted-foreground">
+                Stock levels &amp; par management
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-foreground">Inventory</h1>
-            <p className="text-sm text-muted-foreground">
-              Stock levels &amp; par management
-            </p>
+          <div className="relative w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search items..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
           </div>
-        </div>
-        <div className="relative w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search items..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto p-6 space-y-5">
-        {/* KPI Cards */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <KpiSkeleton />
-            <KpiSkeleton />
-            <KpiSkeleton />
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <KpiCard
-                label="Total Items"
-                value={totalItems}
-                icon={Package}
-                index={0}
-              />
-              <KpiCard
-                label="Below Par"
-                value={belowPar}
-                icon={AlertTriangle}
-                tint="destructive"
-                index={1}
-              />
-              <KpiCard
-                label="Above Par"
-                value={abovePar}
-                icon={TrendingUp}
-                tint="positive"
-                index={2}
-              />
-            </div>
+      {/* Tabs */}
+      <div className="flex items-center gap-1 px-4 border-b border-border bg-card shrink-0">
+        {TABS.map((tab) => {
+          const active = activeTab === tab;
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`relative px-3 py-2.5 text-sm font-semibold transition-colors ${
+                active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab}
+              {active && (
+                <motion.span
+                  layoutId="inventory-tab-underline"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground rounded-full"
+                  transition={spring}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
 
-            {/* Variance distribution bar */}
-            {totalItems > 0 && (
-              <div className="space-y-1.5">
-                <VarianceBar below={belowPar} at={atPar} above={abovePar} />
-                <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block size-2 rounded-full bg-destructive/70" />
-                    Below par
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block size-2 rounded-full bg-muted-foreground/30" />
-                    At par
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="inline-block size-2 rounded-full bg-emerald-500/60" />
-                    Above par
-                  </span>
+      {/* Content area -- split between tab content and chat */}
+      <div className="flex-1 flex min-h-0">
+        {/* Tab content -- left/main area */}
+        <div className="flex-1 overflow-auto p-6 space-y-6">
+          {activeTab === "Overview" && (
+            <>
+              {/* KPI Cards */}
+              {loading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <KpiSkeleton />
+                  <KpiSkeleton />
+                  <KpiSkeleton />
+                  <KpiSkeleton />
                 </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <KpiCard
+                      label="Total Items"
+                      value={totalItems}
+                      icon={Package}
+                      index={0}
+                    />
+                    <KpiCard
+                      label="Below Par"
+                      value={belowPar}
+                      icon={AlertTriangle}
+                      tint="destructive"
+                      index={1}
+                    />
+                    <KpiCard
+                      label="Above Par"
+                      value={abovePar}
+                      icon={TrendingUp}
+                      tint="positive"
+                      index={2}
+                    />
+                    <KpiCard
+                      label="Inventory Value"
+                      value={
+                        valuation && valuation.total_value > 0
+                          ? `$${valuation.total_value.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                          : "\u2014"
+                      }
+                      icon={DollarSign}
+                      tint="info"
+                      index={3}
+                      isMoney
+                    />
+                  </div>
+
+                  {/* Variance distribution bar */}
+                  {totalItems > 0 && (
+                    <div className="space-y-1.5">
+                      <VarianceBar below={belowPar} at={atPar} above={abovePar} />
+                      <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block size-2 rounded-full bg-destructive/60" />
+                          Below par
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block size-2 rounded-full bg-muted-foreground/20" />
+                          At par
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="inline-block size-2 rounded-full bg-emerald-500/60" />
+                          Above par
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Error banner */}
+              {error && (
+                <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+                  Unable to reach inventory API -- data will appear once the backend is connected.
+                </div>
+              )}
+
+              {/* Data Table */}
+              <WorkspaceTable
+                columns={COLUMNS}
+                data={filtered}
+                loading={loading}
+                emptyMessage="No inventory items yet"
+              />
+
+              {/* Empty state */}
+              {!loading && !error && data.length === 0 && (
+                <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                  <div className="flex items-center justify-center size-12 rounded-xl bg-secondary">
+                    <Package className="size-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">
+                    No inventory counts
+                  </p>
+                  <p className="text-sm text-muted-foreground max-w-xs">
+                    Use the chat to run an inventory count, set par levels, or log waste.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === "Counts" && <CountHistory />}
+          {activeTab === "Par Levels" && <ParLevelTable />}
+          {activeTab === "Waste" && <WasteLogTable />}
+        </div>
+
+        {/* Chat panel -- right side */}
+        <div className="w-[380px] border-l border-border flex flex-col bg-card/50 shrink-0">
+          <div className="px-4 py-3 border-b border-border">
+            <p className="text-sm font-semibold text-foreground">Inventory Chat</p>
+            <p className="text-xs text-muted-foreground">
+              Count items, set pars, log waste
+            </p>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-auto min-h-0">
+            {messages.length > 0 ? (
+              <MessageList messages={messages} />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center">
+                <div className="flex items-center justify-center size-10 rounded-xl bg-secondary">
+                  <Package className="size-5 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground max-w-[240px] leading-relaxed">
+                  Try: &quot;Walk-in count: 3 cases tomatoes, 2 cases avocados&quot; or &quot;Set avocado par to 4 cases&quot;
+                </p>
               </div>
             )}
-          </>
-        )}
-
-        {/* Error banner */}
-        {error && (
-          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-            Unable to reach inventory API — data will appear once the backend is connected.
+            <div ref={chatEndRef} />
           </div>
-        )}
 
-        {/* Data Table */}
-        <WorkspaceTable
-          columns={COLUMNS}
-          data={filtered}
-          loading={loading}
-          emptyMessage="No inventory items yet"
-        />
-
-        {/* Empty state */}
-        {!loading && !error && data.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-            <div className="flex items-center justify-center size-12 rounded-xl bg-secondary">
-              <Package className="size-6 text-muted-foreground" />
-            </div>
-            <p className="text-sm font-medium text-foreground">
-              No inventory counts
-            </p>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Ask CarabinerOS to run an inventory count, or add items manually.
-            </p>
+          {/* Composer */}
+          <div className="border-t border-border/50">
+            <ChatComposer
+              onSend={handleSend}
+              loading={chatLoading}
+              queueCount={queuedMessages.length}
+              placeholder="Count items, set pars, log waste..."
+            />
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

@@ -118,6 +118,12 @@ class InventoryOut(TimestampSchema):
     on_hand: str
     par: str
     variance: str
+    unit: Optional[str] = None
+    item_id: Optional[uuid.UUID] = None
+    category: Optional[str] = None
+    storage_area: Optional[str] = None
+    unit_cost: Optional[str] = None
+    last_count_id: Optional[uuid.UUID] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
@@ -129,6 +135,11 @@ class InventoryCreate(BaseModel):
     on_hand: str
     par: str
     variance: str
+    unit: Optional[str] = None
+    item_id: Optional[uuid.UUID] = None
+    category: Optional[str] = None
+    storage_area: Optional[str] = None
+    unit_cost: Optional[str] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
@@ -139,8 +150,85 @@ class InventoryUpdate(BaseModel):
     on_hand: Optional[str] = None
     par: Optional[str] = None
     variance: Optional[str] = None
+    unit: Optional[str] = None
+    category: Optional[str] = None
+    storage_area: Optional[str] = None
+    unit_cost: Optional[str] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
+
+
+# --- Inventory Counts ---
+
+class CountLineOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    count_id: uuid.UUID
+    item_id: uuid.UUID
+    item_name: Optional[str] = None
+    quantity: float
+    unit_cost: float
+    storage_area: Optional[str] = None
+
+
+class CountOut(TimestampSchema):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    count_date: str
+    count_type: str
+    status: str
+    counted_by: Optional[str] = None
+    notes: Optional[str] = None
+    line_count: int = 0
+    total_value: Optional[float] = None
+    lines: Optional[List[CountLineOut]] = None
+
+
+# --- Par Levels ---
+
+class ParLevelOut(TimestampSchema):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    item_id: uuid.UUID
+    item_name: Optional[str] = None
+    min_quantity: float
+    on_hand: Optional[str] = None
+    shortfall: Optional[float] = None
+    day_of_week: Optional[int] = None
+
+
+# --- Waste Log ---
+
+class WasteLogOut(TimestampSchema):
+    id: uuid.UUID
+    location_id: uuid.UUID
+    item_id: uuid.UUID
+    item_name: Optional[str] = None
+    quantity: float
+    unit: str
+    reason: str
+    notes: Optional[str] = None
+    waste_date: str
+    estimated_cost: Optional[float] = None
+
+
+# --- Items ---
+
+class ItemOut(TimestampSchema):
+    id: uuid.UUID
+    name: str
+    category: str
+    storage_area: Optional[str] = None
+    is_active: bool = True
+    last_known_price: Optional[float] = None
+
+
+# --- Inventory Valuation ---
+
+class ValuationOut(BaseModel):
+    total_value: float
+    item_count: int
+    location_id: Optional[uuid.UUID] = None
 
 
 # --- Prep ---

@@ -524,6 +524,207 @@ async def inventory_delete(id: str) -> str:
     return json.dumps({"deleted": deleted, "id": id})
 
 
+# ===== INVENTORY OPERATIONS (counts, par levels, waste) =====
+
+
+@mcp.tool()
+async def inventory_count_start(
+    count_type: str,
+    location_id: Optional[str] = None,
+    counted_by: Optional[str] = None,
+    notes: Optional[str] = None,
+) -> str:
+    """Start a new inventory count. Returns the count header with ID.
+
+Args:
+    count_type: One of: full, spot, walk_in.
+    location_id: UUID of location (defaults to first location).
+    counted_by: Name of person performing the count.
+    notes: Optional notes about this count.
+"""
+    await _ensure_db()
+    from carabiner.db.repositories import create_inventory_count
+    from datetime import date as date_cls
+
+    data: dict = {
+        "count_type": count_type,
+        "count_date": date_cls.today(),
+        "status": "in_progress",
+    }
+    if counted_by:
+        data["counted_by"] = counted_by
+    if notes:
+        data["notes"] = notes
+
+    if location_id:
+        data["location_id"] = _parse_uuid(location_id)
+    else:
+        data["location_id"] = await _default_location_id()
+
+    row = await create_inventory_count(data)
+    return json.dumps(_serialise(row), default=str)
+
+
+@mcp.tool()
+async def inventory_count_submit(
+    count_id: str,
+    lines: str,
+    status: str = "completed",
+) -> str:
+    """Submit line items for an inventory count and optionally complete it.
+
+Args:
+    count_id: UUID of the inventory count to update.
+    lines: JSON array of line items. Each: {"item_id": "uuid", "quantity": number, "unit_cost": number, "storage_area": "optional"}.
+    status: New status — "in_progress" or "completed" (default: completed).
+"""
+    await _ensure_db()
+    from carabiner.db.repositories import submit_inventory_count
+
+    parsed_lines = json.loads(lines) if isinstance(lines, str) else lines
+    result = await submit_inventory_count(
+        _parse_uuid(count_id),
+        parsed_lines,
+        status=status,
+    )
+    if result is None:
+        return json.dumps({"error": "not_found", "id": count_id})
+    return json.dumps(_serialise(result), default=str)
+
+
+@mcp.tool()
+async def inventory_count_list(location_id: Optional[str] = None) -> str:
+    """List past inventory counts with summary stats (line count, total value)."""
+    await _ensure_db()
+    from carabiner.db.repositories import list_inventory_counts
+
+    loc = _parse_uuid(location_id) if location_id else None
+    rows = await list_inventory_counts(location_id=loc)
+    return json.dumps(_serialise(rows), default=str)
+
+
+@mcp.tool()
+async def par_level_set(
+    item_id: str,
+    min_quantity: str,
+    location_id: Optional[str] = None,
+    day_of_week: Optional[int] = None,
+) -> str:
+    """Set a par level for an item. Creates or updates the par level.
+
+Args:
+    item_id: UUID of the item.
+    min_quantity: Minimum quantity (par level).
+    location_id: UUID of location (defaults to first location).
+    day_of_week: Optional 0-6 (Mon-Sun). Null = all days.
+"""
+    await _ensure_db()
+    from carabiner.db.repositories import set_par_level
+    from decimal import Decimal
+
+    data: dict = {
+        "item_id": _parse_uuid(item_id),
+        "min_quantity": Decimal(min_quantity),
+    }
+    if location_id:
+        data["location_id"] = _parse_uuid(location_id)
+    else:
+        data["location_id"] = await _default_location_id()
+    if day_of_week is not None:
+        data["day_of_week"] = day_of_week
+
+    row = await set_par_level(data)
+    return json.dumps(_serialise(row), default=str)
+
+
+@mcp.tool()
+async def par_level_list(location_id: Optional[str] = None) -> str:
+    """List par levels for a location, showing current on-hand vs par and shortfall."""
+    await _ensure_db()
+    from carabiner.db.repositories import list_par_levels
+
+    loc = _parse_uuid(location_id) if location_id else None
+    rows = await list_par_levels(location_id=loc)
+    return json.dumps(_serialise(rows), default=str)
+
+
+@mcp.tool()
+async def waste_log_create(
+    item_id: str,
+    quantity: str,
+    unit: str,
+    reason: str,
+    location_id: Optional[str] = None,
+    notes: Optional[str] = None,
+    waste_date: Optional[str] = None,
+    estimated_cost: Optional[str] = None,
+) -> str:
+    """Log a waste entry.
+
+Args:
+    item_id: UUID of the item wasted.
+    quantity: Amount wasted.
+    unit: Unit of measure (lbs, cases, each, etc.).
+    reason: One of: spoilage, overproduction, expired.
+    location_id: UUID of location (defaults to first location).
+    notes: Optional notes about the waste.
+    waste_date: Date of waste (YYYY-MM-DD). Defaults to today.
+    estimated_cost: Dollar cost of waste.
+"""
+    await _ensure_db()
+    from carabiner.db.repositories import create_waste_log
+    from datetime import date as date_cls
+    from decimal import Decimal
+
+    data: dict = {
+        "item_id": _parse_uuid(item_id),
+        "quantity": Decimal(quantity),
+        "unit": unit,
+        "reason": reason,
+        "waste_date": date_cls.fromisoformat(waste_date) if waste_date else date_cls.today(),
+    }
+    if location_id:
+        data["location_id"] = _parse_uuid(location_id)
+    else:
+        data["location_id"] = await _default_location_id()
+    if notes:
+        data["notes"] = notes
+    if estimated_cost:
+        data["estimated_cost"] = Decimal(estimated_cost)
+
+    row = await create_waste_log(data)
+    return json.dumps(_serialise(row), default=str)
+
+
+@mcp.tool()
+async def waste_log_list(
+    location_id: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+) -> str:
+    """List waste logs with item names. Optional date range filter (YYYY-MM-DD)."""
+    await _ensure_db()
+    from carabiner.db.repositories import list_waste_logs
+    from datetime import date as date_cls
+
+    loc = _parse_uuid(location_id) if location_id else None
+    df = date_cls.fromisoformat(date_from) if date_from else None
+    dt = date_cls.fromisoformat(date_to) if date_to else None
+    rows = await list_waste_logs(location_id=loc, date_from=df, date_to=dt)
+    return json.dumps(_serialise(rows), default=str)
+
+
+@mcp.tool()
+async def inventory_valuation(location_id: Optional[str] = None) -> str:
+    """Get total inventory dollar value for a location. Returns {total_value, item_count}."""
+    await _ensure_db()
+    from carabiner.db.repositories import get_inventory_valuation
+
+    loc = _parse_uuid(location_id) if location_id else None
+    result = await get_inventory_valuation(location_id=loc)
+    return json.dumps(_serialise(result), default=str)
+
+
 # ===== ORDERS ===== (legacy)
 
 

@@ -171,3 +171,51 @@ export interface VendorSummary {
   contact_phone: string | null;
   payment_terms: string | null;
 }
+
+// Inventory module types
+
+export interface InventoryCount {
+  id: string;
+  location_id: string;
+  count_date: string;
+  count_type: "full" | "spot" | "walk_in";
+  status: "in_progress" | "completed";
+  counted_by: string | null;
+  notes: string | null;
+  line_count: number;
+  total_value: number | null;
+}
+
+export interface CountLine {
+  id: string;
+  count_id: string;
+  item_id: string;
+  item_name: string | null;
+  quantity: number;
+  unit_cost: number;
+  storage_area: string | null;
+}
+
+export interface ParLevel {
+  id: string;
+  location_id: string;
+  item_id: string;
+  item_name: string | null;
+  min_quantity: number;
+  on_hand: string | null;
+  shortfall: number | null;
+  day_of_week: number | null;
+}
+
+export interface WasteLogEntry {
+  id: string;
+  location_id: string;
+  item_id: string;
+  item_name: string | null;
+  quantity: number;
+  unit: string;
+  reason: "spoilage" | "overproduction" | "expired";
+  notes: string | null;
+  waste_date: string;
+  estimated_cost: number | null;
+}
