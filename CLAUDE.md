@@ -15,6 +15,20 @@ Carabiner OS is a restaurant management dashboard built on top of Agent Zero, an
 - **Linting**: ESLint flat config (frontend), no Python linter configured
 - **Python Environment**: venv (`.venv/` at project root)
 
+## Design Tokens (MANDATORY)
+
+**You MUST read `DESIGN_TOKENS.md` before writing or modifying any frontend component.** This is non-negotiable — it prevents the "5 different designers" problem where each agent invents its own micro-design-system.
+
+Key rules (full spec in `DESIGN_TOKENS.md`):
+- **Fonts**: DM Sans for text (no class needed), Geist Mono (`font-mono`) for ALL numbers/dates/prices
+- **Colors**: Use Tailwind keywords (`amber-500`, `emerald-400`), never hardcoded hex in classNames
+- **Radius**: ALL cards = `rounded-xl`. No `rounded-[13px]`, no `rounded-2xl`
+- **Shadows**: `shadow-sm` at rest, `shadow-md` on hover. No `shadow-lg`, no custom shadows on cards
+- **Padding**: Card body = `p-4`. Grid gap = `gap-4`. No exceptions
+- **Opacity**: Only 6 levels: `/5`, `/10`, `/20`, `/40`, `/60`, `/85`
+- **Charts**: Use `useChartTheme()` hook for dark/light colors. Hex values only in Recharts SVG context
+- **No JS color objects**: Don't define `const COLORS = { urgent: "#hex" }`. Use Tailwind classes
+
 ## Delegation Rule: Reach-In vs Walk-In
 
 **If a task requires more than ~30 lines of changes, delegate it to an agent.** Do not implement it inline.
