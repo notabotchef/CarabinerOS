@@ -218,4 +218,90 @@ export interface WasteLogEntry {
   notes: string | null;
   waste_date: string;
   estimated_cost: number | null;
+// Recipe types (Modernist Cuisine format)
+
+export type UnitSystem = "metric" | "us";
+
+export interface RecipeStep {
+  id: string;
+  component_id: string;
+  step_number: number;
+  instruction: string;
+  temperature?: string;
+  duration?: string;
+  technique?: string;
+}
+
+export interface RecipeIngredient {
+  id: string;
+  component_id: string;
+  item_id?: string;
+  name: string;
+  weight_g: number;
+  percentage?: number;
+  unit_display: string;
+  sort_order: number;
+  notes?: string;
+}
+
+export interface RecipeComponent {
+  id: string;
+  recipe_id: string;
+  name: string;
+  sort_order: number;
+  yield_quantity?: number;
+  yield_unit?: string;
+  ingredients: RecipeIngredient[];
+  steps: RecipeStep[];
+}
+
+export interface RecipeDetail {
+  id: string;
+  location_id: string;
+  name: string;
+  category: string;
+  description?: string;
+  status: string;
+  yield_quantity?: number;
+  yield_unit?: string;
+  total_weight_g?: number;
+  total_cost?: number;
+  cost_per_serving?: number;
+  image_url?: string;
+  source?: string;
+  equipment?: string[];
+  notes?: string;
+  tags?: string[];
+  components: RecipeComponent[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface RecipeIngredientDraft {
+  id: string;
+  name: string;
+  weight_g: number;
+  unit_display: string;
+  sort_order: number;
+  notes?: string;
+  percentage?: number;
+}
+
+export interface RecipeStepDraft {
+  id: string;
+  step_number: number;
+  instruction: string;
+  temperature?: string;
+  duration?: string;
+  technique?: string;
+}
+
+export interface RecipeComponentDraft {
+  id: string;
+  name: string;
+  sort_order: number;
+  yield_quantity?: number;
+  yield_unit?: string;
+  ingredients: RecipeIngredientDraft[];
+  steps: RecipeStepDraft[];
 }

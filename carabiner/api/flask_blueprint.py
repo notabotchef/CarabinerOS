@@ -48,9 +48,16 @@ from carabiner.api.schemas import (
     MenuOut,
     OrderOut,
     PrepOut,
+    RecipeCreate,
+    RecipeDetailOut,
     RecipeOut,
+<<<<<<< HEAD
     VendorOut,
+=======
+    RecipeUpdate,
+>>>>>>> 47840c9e (feat(recipes): Phase 1 — detail/editor page with CRUD, Smart Add, scaling)
 )
+from carabiner.db import repositories as repo
 
 logger = logging.getLogger(__name__)
 
@@ -403,6 +410,124 @@ async def list_recipes():
     except Exception:
         logger.exception("Failed to fetch recipes")
         return _empty_response()
+
+
+@blueprint.route("/api/recipes/<recipe_id>", methods=["GET"])
+async def get_recipe(recipe_id: str):
+    try:
+        uid = uuid.UUID(recipe_id)
+        recipe = await repo.get_recipe(uid)
+        if recipe is None:
+            return Response(
+                response=json.dumps({"ok": False, "error": "Recipe not found"}),
+                status=404,
+                mimetype="application/json",
+            )
+        data = RecipeDetailOut.model_validate(recipe).model_dump(mode="json")
+        return Response(
+            response=json.dumps({"ok": True, "data": data}, default=str),
+            status=200,
+            mimetype="application/json",
+        )
+    except (ValueError, AttributeError):
+        return Response(
+            response=json.dumps({"ok": False, "error": "Invalid recipe ID"}),
+            status=400,
+            mimetype="application/json",
+        )
+    except Exception:
+        logger.exception("Failed to fetch recipe %s", recipe_id)
+        return Response(
+            response=json.dumps({"ok": False, "error": "Internal server error"}),
+            status=500,
+            mimetype="application/json",
+        )
+
+
+@blueprint.route("/api/recipes", methods=["POST"])
+async def create_recipe():
+    try:
+        body = request.get_json(force=True)
+        schema = RecipeCreate.model_validate(body)
+        recipe = await repo.create_recipe(schema.model_dump())
+        data = RecipeDetailOut.model_validate(recipe).model_dump(mode="json")
+        return Response(
+            response=json.dumps({"ok": True, "data": data}, default=str),
+            status=201,
+            mimetype="application/json",
+        )
+    except Exception:
+        logger.exception("Failed to create recipe")
+        return Response(
+            response=json.dumps({"ok": False, "error": "Failed to create recipe"}),
+            status=500,
+            mimetype="application/json",
+        )
+
+
+@blueprint.route("/api/recipes/<recipe_id>", methods=["PUT"])
+async def update_recipe(recipe_id: str):
+    try:
+        uid = uuid.UUID(recipe_id)
+        body = request.get_json(force=True)
+        schema = RecipeUpdate.model_validate(body)
+        recipe = await repo.update_recipe(uid, schema.model_dump(exclude_unset=True))
+        if recipe is None:
+            return Response(
+                response=json.dumps({"ok": False, "error": "Recipe not found"}),
+                status=404,
+                mimetype="application/json",
+            )
+        data = RecipeDetailOut.model_validate(recipe).model_dump(mode="json")
+        return Response(
+            response=json.dumps({"ok": True, "data": data}, default=str),
+            status=200,
+            mimetype="application/json",
+        )
+    except (ValueError, AttributeError):
+        return Response(
+            response=json.dumps({"ok": False, "error": "Invalid recipe ID"}),
+            status=400,
+            mimetype="application/json",
+        )
+    except Exception:
+        logger.exception("Failed to update recipe %s", recipe_id)
+        return Response(
+            response=json.dumps({"ok": False, "error": "Failed to update recipe"}),
+            status=500,
+            mimetype="application/json",
+        )
+
+
+@blueprint.route("/api/recipes/<recipe_id>", methods=["DELETE"])
+async def delete_recipe(recipe_id: str):
+    try:
+        uid = uuid.UUID(recipe_id)
+        deleted = await repo.delete_recipe(uid)
+        if not deleted:
+            return Response(
+                response=json.dumps({"ok": False, "error": "Recipe not found"}),
+                status=404,
+                mimetype="application/json",
+            )
+        return Response(
+            response=json.dumps({"ok": True}),
+            status=200,
+            mimetype="application/json",
+        )
+    except (ValueError, AttributeError):
+        return Response(
+            response=json.dumps({"ok": False, "error": "Invalid recipe ID"}),
+            status=400,
+            mimetype="application/json",
+        )
+    except Exception:
+        logger.exception("Failed to delete recipe %s", recipe_id)
+        return Response(
+            response=json.dumps({"ok": False, "error": "Failed to delete recipe"}),
+            status=500,
+            mimetype="application/json",
+        )
 
 
 @blueprint.route("/api/invoices", methods=["GET"])

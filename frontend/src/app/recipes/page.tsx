@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { BookOpen, Plus, ScanLine, Search } from "lucide-react";
 import { MenuButton } from "@/components/menu-button";
 import { motion } from "framer-motion";
@@ -57,7 +58,7 @@ const cardVariants = {
 /*  RecipeCard                                                         */
 /* ------------------------------------------------------------------ */
 
-function RecipeCard({ recipe, index }: { recipe: Recipe; index: number }) {
+function RecipeCard({ recipe, index, onClick }: { recipe: Recipe; index: number; onClick: () => void }) {
   const tags = recipe.tags ?? [];
   const hasCost = recipe.estimated_cost != null;
   const hasYield = recipe.yield_qty && recipe.yield_unit;
@@ -69,8 +70,9 @@ function RecipeCard({ recipe, index }: { recipe: Recipe; index: number }) {
       initial="hidden"
       animate="visible"
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      onClick={onClick}
       className="group relative bg-card border border-border rounded-xl p-5 cursor-pointer
-                 transition-shadow duration-200 hover:shadow-lg hover:shadow-primary/5"
+                 transition-shadow duration-200 hover:shadow-md hover:shadow-primary/5"
     >
       {/* Category + Status */}
       <div className="flex items-center justify-between mb-3">
@@ -166,9 +168,32 @@ function SkeletonCard() {
 /* ------------------------------------------------------------------ */
 
 export default function RecipesPage() {
+  const router = useRouter();
   const { data, loading, error } = useWorkspace<Recipe>("/api/recipes");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleScanRecipe = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileSelected = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      fetch("/message", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: `[Recipes] Parse this recipe image and create a new recipe: [Attached: ${file.name}]`,
+        }),
+      }).catch(() => {});
+      e.target.value = "";
+    },
+    [],
+  );
 
   /* Counts per status */
   const counts = useMemo(() => {
@@ -215,14 +240,21 @@ export default function RecipesPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleScanRecipe}>
             <ScanLine className="h-3.5 w-3.5 mr-1.5" />
             Scan Recipe
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={() => router.push("/recipes/new")}>
             <Plus className="h-3.5 w-3.5 mr-1.5" />
             New Recipe
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept="image/*,.pdf"
+            onChange={handleFileSelected}
+          />
         </div>
         </div>
       </header>
@@ -298,7 +330,7 @@ export default function RecipesPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((recipe, i) => (
-              <RecipeCard key={recipe.id} recipe={recipe} index={i} />
+              <RecipeCard key={recipe.id} recipe={recipe} index={i} onClick={() => router.push(`/recipes/${recipe.id}`)} />
             ))}
           </div>
         )}
