@@ -10,10 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  ChartCard,
-  RevenueTrendChart,
-  FoodCostTrendChart,
-  RevenueByDowChart,
+  HeroChartSection,
   type DailyPLRow,
 } from "@/components/reporting/revenue-charts";
 
@@ -566,35 +563,9 @@ export default function ReportingPage() {
             </motion.div>
           )}
 
-          {/* Revenue Charts — only shown with live data */}
+          {/* Hero Chart — single full-width chart with tab switcher */}
           {!loading && hasLiveData && chartRows.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-              <div className="xl:col-span-2">
-                <ChartCard
-                  title="Daily Revenue Trend"
-                  subtitle="Revenue vs $5k/day target — last 90 days"
-                  index={0}
-                >
-                  <RevenueTrendChart rows={chartRows} />
-                </ChartCard>
-              </div>
-              <ChartCard
-                title="Food Cost % Trend"
-                subtitle="Target zone 28–32%"
-                index={1}
-              >
-                <FoodCostTrendChart rows={chartRows} />
-              </ChartCard>
-              <div className="lg:col-span-2 xl:col-span-1">
-                <ChartCard
-                  title="Revenue by Day of Week"
-                  subtitle="Aggregate across period"
-                  index={2}
-                >
-                  <RevenueByDowChart rows={chartRows} />
-                </ChartCard>
-              </div>
-            </div>
+            <HeroChartSection rows={chartRows} />
           )}
 
           {/* P&L Breakdown Table */}

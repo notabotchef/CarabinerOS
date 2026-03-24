@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart,
   Area,
@@ -17,6 +17,7 @@ import {
   ReferenceLine,
   ReferenceArea,
   Cell,
+  type TooltipContentProps,
 } from "recharts";
 
 /* ------------------------------------------------------------------ */
@@ -41,13 +42,16 @@ export interface DailyPLRow {
 
 interface RevenueChartDatum {
   date: string;
+  displayDate: string;
   revenue: number;
   cogs: number;
   netProfit: number;
+  foodCostPct: number;
 }
 
 interface FoodCostChartDatum {
   date: string;
+  displayDate: string;
   foodCostPct: number;
 }
 
@@ -56,131 +60,265 @@ interface DowChartDatum {
   revenue: number;
 }
 
+type ChartTab = "revenue" | "foodcost" | "byday";
+
 /* ------------------------------------------------------------------ */
-/*  Constants                                                          */
+/*  Constants — hex for Recharts SVG                                  */
 /* ------------------------------------------------------------------ */
 
 const DAILY_BUDGET = 5000;
 const FOOD_COST_TARGET_LOW = 28;
 const FOOD_COST_TARGET_HIGH = 32;
 
-// Midnight Kitchen palette — hex equivalents of the oklch vars for Recharts
-const TEAL   = "#3dd68c"; // roughly oklch(0.72 0.22 160)
-const AMBER  = "#f59e0b";
-const EMERALD = "#10b981";
-const GRID_COLOR = "rgba(255,255,255,0.05)";
-const AXIS_COLOR = "rgba(255,255,255,0.35)";
-const TOOLTIP_BG = "#1e2535"; // oklch(0.20 0.025 250) approximate
-const TOOLTIP_BORDER = "rgba(255,255,255,0.08)";
+const EMERALD   = "#34d399";
+const TEAL_300  = "#5eead4";
+const AMBER     = "#f59e0b";
+const RED       = "#ef4444";
+const BLUE      = "#3b82f6";
+const GRID      = "rgba(255,255,255,0.04)";
+const AXIS_TEXT = "rgba(255,255,255,0.30)";
+const BUDGET_LINE = "rgba(255,255,255,0.15)";
+const TOOLTIP_BG = "#141b27";
+const TOOLTIP_BORDER = "rgba(255,255,255,0.06)";
+
+const MONO = "var(--font-geist-mono, ui-monospace, monospace)";
+const SANS = "var(--font-geist, var(--font-sans), system-ui, sans-serif)";
 
 const DOW_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 /* ------------------------------------------------------------------ */
-/*  Shared tooltip style                                               */
+/*  Date formatting                                                    */
 /* ------------------------------------------------------------------ */
 
-const tooltipStyle: React.CSSProperties = {
-  backgroundColor: TOOLTIP_BG,
-  border: `1px solid ${TOOLTIP_BORDER}`,
-  borderRadius: "8px",
-  fontSize: "11px",
-  fontFamily: "var(--font-geist-mono, monospace)",
-  color: "rgba(255,255,255,0.85)",
-  padding: "8px 12px",
+const MONTH_SHORT = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+function formatTooltipDate(mmdd: string): string {
+  // mmdd is "MM-DD"
+  const parts = mmdd.split("-");
+  if (parts.length !== 2) return mmdd;
+  const month = parseInt(parts[0], 10) - 1;
+  const day   = parseInt(parts[1], 10);
+  return `${MONTH_SHORT[month] ?? "???"} ${day}`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Custom Tooltip — Revenue / Food Cost                               */
+/* ------------------------------------------------------------------ */
+
+function RevenueCustomTooltip({ active, payload, label }: TooltipContentProps<number, string>) {
+  if (!active || !payload || payload.length === 0) return null;
+  // payload entries have an `any` .payload property (the original datum)
+  const datum = (payload[0]?.payload ?? {}) as RevenueChartDatum;
+  const displayDate = datum?.displayDate ?? (typeof label === "string" ? formatTooltipDate(label) : String(label ?? ""));
+
+  const rows: { label: string; value: string }[] = [];
+  for (const item of payload) {
+    const name = item.name as string;
+    const value = (item.value as number) ?? 0;
+    if (name === "revenue") {
+      rows.push({ label: "Revenue", value: `$${value.toLocaleString()}` });
+    } else if (name === "cogs") {
+      rows.push({ label: "COGS", value: `$${value.toLocaleString()}` });
+    } else if (name === "netProfit") {
+      rows.push({ label: "Net Profit", value: `$${value.toLocaleString()}` });
+    }
+  }
+
+  const foodCostPct = datum?.foodCostPct ?? 0;
+  const dotColor = foodCostPct >= FOOD_COST_TARGET_LOW && foodCostPct <= FOOD_COST_TARGET_HIGH
+    ? EMERALD
+    : foodCostPct > FOOD_COST_TARGET_HIGH
+    ? RED
+    : BLUE;
+
+  return (
+    <div
+      style={{
+        background: TOOLTIP_BG,
+        border: `1px solid ${TOOLTIP_BORDER}`,
+        borderRadius: 10,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        padding: "12px 16px",
+        maxWidth: 200,
+        fontFamily: MONO,
+      }}
+    >
+      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 500, marginBottom: 8 }}>
+        {displayDate}
+      </div>
+      {rows.map((row) => (
+        <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 3 }}>
+          <span style={{ fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.50)", fontWeight: 400 }}>
+            {row.label}
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.90)", fontVariantNumeric: "tabular-nums" }}>
+            {row.value}
+          </span>
+        </div>
+      ))}
+      {foodCostPct > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6 }}>
+          <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+          <span style={{ fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.50)" }}>
+            {foodCostPct.toFixed(1)}% food cost
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Custom Tooltip — Food Cost %                                       */
+/* ------------------------------------------------------------------ */
+
+function FoodCostCustomTooltip({ active, payload, label }: TooltipContentProps<number, string>) {
+  if (!active || !payload || payload.length === 0) return null;
+  const datum = (payload[0]?.payload ?? {}) as FoodCostChartDatum;
+  const displayDate = datum?.displayDate ?? (typeof label === "string" ? formatTooltipDate(label) : String(label ?? ""));
+  const pct = (payload[0]?.value as number) ?? 0;
+  const dotColor = pct >= FOOD_COST_TARGET_LOW && pct <= FOOD_COST_TARGET_HIGH
+    ? EMERALD
+    : pct > FOOD_COST_TARGET_HIGH
+    ? RED
+    : BLUE;
+
+  return (
+    <div
+      style={{
+        background: TOOLTIP_BG,
+        border: `1px solid ${TOOLTIP_BORDER}`,
+        borderRadius: 10,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        padding: "12px 16px",
+        maxWidth: 200,
+        fontFamily: MONO,
+      }}
+    >
+      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 500, marginBottom: 8 }}>
+        {displayDate}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+          <span style={{ fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.50)", fontWeight: 400 }}>
+            Food Cost
+          </span>
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.90)", fontVariantNumeric: "tabular-nums" }}>
+          {pct.toFixed(1)}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Custom Tooltip — Bar (Revenue by Day)                              */
+/* ------------------------------------------------------------------ */
+
+function DowCustomTooltip({ active, payload, label }: TooltipContentProps<number, string>) {
+  if (!active || !payload || payload.length === 0) return null;
+  const value = (payload[0]?.value as number) ?? 0;
+
+  return (
+    <div
+      style={{
+        background: TOOLTIP_BG,
+        border: `1px solid ${TOOLTIP_BORDER}`,
+        borderRadius: 10,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        padding: "12px 16px",
+        maxWidth: 200,
+        fontFamily: MONO,
+      }}
+    >
+      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 500, marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+        <span style={{ fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.50)", fontWeight: 400 }}>
+          Revenue
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.90)", fontVariantNumeric: "tabular-nums" }}>
+          ${value.toLocaleString()}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Axis tick style (shared)                                           */
+/* ------------------------------------------------------------------ */
+
+const axisTick = {
+  fill: AXIS_TEXT,
+  fontSize: 10,
+  fontFamily: MONO,
 };
 
 /* ------------------------------------------------------------------ */
-/*  Chart 1: Daily Revenue Trend                                       */
+/*  Revenue Area Chart                                                 */
 /* ------------------------------------------------------------------ */
 
-interface RevenueTrendChartProps {
-  rows: DailyPLRow[];
-}
-
-export function RevenueTrendChart({ rows }: RevenueTrendChartProps) {
-  const data: RevenueChartDatum[] = useMemo(() => {
-    return [...rows]
-      .sort((a, b) => a.pl_date.localeCompare(b.pl_date))
-      .map((r) => ({
-        date: r.pl_date.slice(5), // "MM-DD"
-        revenue: Math.round(r.revenue),
-        cogs: Math.round(r.cogs),
-        netProfit: Math.round(r.revenue - r.cogs - r.labor_cost),
-      }));
-  }, [rows]);
-
+function RevenueAreaChart({ data }: { data: RevenueChartDatum[] }) {
   if (data.length === 0) {
-    return <ChartEmptyState label="No revenue data available" />;
+    return <ChartEmptyState />;
   }
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+    <ResponsiveContainer width="100%" height={280}>
+      <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="revGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={TEAL} stopOpacity={0.35} />
-            <stop offset="100%" stopColor={TEAL} stopOpacity={0.02} />
+            <stop offset="0%" stopColor={EMERALD} stopOpacity={0.25} />
+            <stop offset="100%" stopColor={EMERALD} stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid
-          strokeDasharray="3 3"
-          stroke={GRID_COLOR}
+          stroke={GRID}
+          strokeDasharray="0"
           vertical={false}
         />
         <XAxis
           dataKey="date"
-          tick={{ fill: AXIS_COLOR, fontSize: 10, fontFamily: "var(--font-geist-mono, monospace)" }}
+          tick={axisTick}
           axisLine={false}
           tickLine={false}
-          interval="preserveStartEnd"
+          interval={2}
         />
         <YAxis
-          tick={{ fill: AXIS_COLOR, fontSize: 10, fontFamily: "var(--font-geist-mono, monospace)" }}
+          tick={axisTick}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
           width={40}
+          domain={[0, "auto"]}
         />
-        <Tooltip
-          contentStyle={tooltipStyle}
-          labelStyle={{ color: "rgba(255,255,255,0.55)", marginBottom: 6 }}
-          formatter={(value, name) => {
-            const labels: Record<string, string> = {
-              revenue: "Revenue",
-              cogs: "COGS",
-              netProfit: "Net Profit",
-            };
-            const numVal = typeof value === "number" ? value : 0;
-            const nameStr = typeof name === "string" ? name : String(name);
-            return [
-              `$${numVal.toLocaleString()}`,
-              labels[nameStr] ?? nameStr,
-            ];
-          }}
-        />
+        <Tooltip content={(props) => <RevenueCustomTooltip {...(props as TooltipContentProps<number, string>)} />} />
         <ReferenceLine
           y={DAILY_BUDGET}
-          stroke={TEAL}
-          strokeDasharray="4 4"
-          strokeOpacity={0.4}
+          stroke={BUDGET_LINE}
+          strokeDasharray="6 4"
           strokeWidth={1}
           label={{
-            value: "Budget",
+            value: "Target",
             position: "right",
-            fill: TEAL,
+            fill: "rgba(255,255,255,0.30)",
             fontSize: 9,
-            fontFamily: "var(--font-geist-mono, monospace)",
-            opacity: 0.6,
+            fontFamily: MONO,
           }}
         />
         <Area
-          type="monotone"
+          type="natural"
           dataKey="revenue"
-          stroke={TEAL}
+          stroke={EMERALD}
           strokeWidth={2}
           fill="url(#revGradient)"
           dot={false}
-          activeDot={{ r: 4, fill: TEAL, strokeWidth: 0 }}
+          activeDot={{ r: 5, fill: EMERALD, stroke: "#fff", strokeWidth: 2 }}
+          isAnimationActive={false}
         />
       </AreaChart>
     </ResponsiveContainer>
@@ -188,102 +326,83 @@ export function RevenueTrendChart({ rows }: RevenueTrendChartProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Chart 2: Food Cost % Trend                                         */
+/*  Food Cost % Line Chart                                             */
 /* ------------------------------------------------------------------ */
 
-interface FoodCostTrendChartProps {
-  rows: DailyPLRow[];
-}
-
-export function FoodCostTrendChart({ rows }: FoodCostTrendChartProps) {
-  const data: FoodCostChartDatum[] = useMemo(() => {
-    return [...rows]
-      .sort((a, b) => a.pl_date.localeCompare(b.pl_date))
-      .map((r) => {
-        const pct =
-          r.food_cost_pct != null
-            ? r.food_cost_pct
-            : r.revenue > 0
-              ? parseFloat(((r.cogs / r.revenue) * 100).toFixed(2))
-              : 0;
-        return {
-          date: r.pl_date.slice(5),
-          foodCostPct: pct,
-        };
-      });
-  }, [rows]);
-
+function FoodCostLineChart({ data }: { data: FoodCostChartDatum[] }) {
   if (data.length === 0) {
-    return <ChartEmptyState label="No food cost data available" />;
+    return <ChartEmptyState />;
   }
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <LineChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+    <ResponsiveContainer width="100%" height={280}>
+      <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
         <CartesianGrid
-          strokeDasharray="3 3"
-          stroke={GRID_COLOR}
+          stroke={GRID}
+          strokeDasharray="0"
           vertical={false}
         />
-        {/* Target zone band */}
         <ReferenceArea
           y1={FOOD_COST_TARGET_LOW}
           y2={FOOD_COST_TARGET_HIGH}
           fill={EMERALD}
-          fillOpacity={0.07}
+          fillOpacity={0.05}
         />
         <XAxis
           dataKey="date"
-          tick={{ fill: AXIS_COLOR, fontSize: 10, fontFamily: "var(--font-geist-mono, monospace)" }}
+          tick={axisTick}
           axisLine={false}
           tickLine={false}
-          interval="preserveStartEnd"
+          interval={2}
         />
         <YAxis
-          tick={{ fill: AXIS_COLOR, fontSize: 10, fontFamily: "var(--font-geist-mono, monospace)" }}
+          tick={axisTick}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => `${v}%`}
-          domain={["auto", "auto"]}
+          domain={[24, 38]}
           width={36}
         />
-        <Tooltip
-          contentStyle={tooltipStyle}
-          labelStyle={{ color: "rgba(255,255,255,0.55)", marginBottom: 6 }}
-          formatter={(value) => {
-            const v = typeof value === "number" ? value : 0;
-            return [`${v.toFixed(1)}%`, "Food Cost"];
-          }}
-        />
+        <Tooltip content={(props) => <FoodCostCustomTooltip {...(props as TooltipContentProps<number, string>)} />} />
         <ReferenceLine
           y={FOOD_COST_TARGET_LOW}
           stroke={EMERALD}
           strokeDasharray="4 4"
-          strokeOpacity={0.35}
+          strokeOpacity={0.25}
           strokeWidth={1}
         />
         <ReferenceLine
           y={FOOD_COST_TARGET_HIGH}
           stroke={EMERALD}
           strokeDasharray="4 4"
-          strokeOpacity={0.35}
+          strokeOpacity={0.25}
           strokeWidth={1}
           label={{
             value: "Target 28–32%",
             position: "right",
             fill: EMERALD,
             fontSize: 9,
-            fontFamily: "var(--font-geist-mono, monospace)",
-            opacity: 0.7,
+            fontFamily: MONO,
+            opacity: 0.40,
           }}
         />
         <Line
-          type="monotone"
+          type="linear"
           dataKey="foodCostPct"
-          strokeWidth={2}
-          dot={{ r: 3, strokeWidth: 0 }}
-          activeDot={{ r: 5, strokeWidth: 0 }}
-          stroke={AMBER} // will be overridden per-point via Cell — use base amber
+          stroke={AMBER}
+          strokeWidth={2.5}
+          dot={(props) => {
+            const { cx, cy, payload } = props as { cx: number; cy: number; payload: FoodCostChartDatum };
+            const pct = payload.foodCostPct;
+            const color = pct >= FOOD_COST_TARGET_LOW && pct <= FOOD_COST_TARGET_HIGH
+              ? EMERALD
+              : pct > FOOD_COST_TARGET_HIGH
+              ? RED
+              : BLUE;
+            return <circle key={`dot-${cx}-${cy}`} cx={cx} cy={cy} r={4} fill={color} stroke="none" />;
+          }}
+          activeDot={{ r: 6, stroke: "#fff", strokeWidth: 2 }}
+          isAnimationActive={false}
         />
       </LineChart>
     </ResponsiveContainer>
@@ -291,79 +410,51 @@ export function FoodCostTrendChart({ rows }: FoodCostTrendChartProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Chart 3: Revenue by Day of Week                                    */
+/*  Revenue by Day of Week — Bar Chart                                 */
 /* ------------------------------------------------------------------ */
 
-interface DowChartProps {
-  rows: DailyPLRow[];
-}
-
-export function RevenueByDowChart({ rows }: DowChartProps) {
-  const data: DowChartDatum[] = useMemo(() => {
-    const totals: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
-    for (const r of rows) {
-      const d = new Date(r.pl_date);
-      // JS getDay: 0=Sun. Map to Mon=0 .. Sun=6
-      const dow = (d.getDay() + 6) % 7;
-      totals[dow] += r.revenue;
-    }
-    const maxRev = Math.max(...Object.values(totals), 1);
-    return DOW_LABELS.map((day, i) => ({
-      day,
-      revenue: Math.round(totals[i]),
-      // normalised for coloring — not rendered
-      _pct: totals[i] / maxRev,
-    })) as DowChartDatum[];
-  }, [rows]);
-
-  if (rows.length === 0) {
-    return <ChartEmptyState label="No day-of-week data available" />;
+function DowBarChart({ data }: { data: DowChartDatum[] }) {
+  if (data.length === 0) {
+    return <ChartEmptyState />;
   }
 
-  const maxRev = Math.max(...data.map((d) => d.revenue), 1);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
-      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="28%">
-        <CartesianGrid
-          strokeDasharray="3 3"
-          stroke={GRID_COLOR}
-          horizontal={true}
-          vertical={false}
-        />
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart
+        data={data}
+        margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+        barCategoryGap="35%"
+        onMouseLeave={() => setHoveredIndex(null)}
+      >
         <XAxis
           dataKey="day"
-          tick={{ fill: AXIS_COLOR, fontSize: 10, fontFamily: "var(--font-geist-mono, monospace)" }}
+          tick={axisTick}
           axisLine={false}
           tickLine={false}
         />
         <YAxis
-          tick={{ fill: AXIS_COLOR, fontSize: 10, fontFamily: "var(--font-geist-mono, monospace)" }}
+          tick={axisTick}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
           width={40}
         />
         <Tooltip
-          contentStyle={tooltipStyle}
+          content={(props) => <DowCustomTooltip {...(props as TooltipContentProps<number, string>)} />}
           cursor={{ fill: "rgba(255,255,255,0.03)" }}
-          formatter={(value) => {
-            const v = typeof value === "number" ? value : 0;
-            return [`$${v.toLocaleString()}`, "Revenue"];
-          }}
         />
-        <Bar dataKey="revenue" radius={[4, 4, 0, 0]}>
-          {data.map((entry, index) => {
-            const intensity = entry.revenue / maxRev;
-            const opacity = 0.4 + intensity * 0.6;
-            return (
-              <Cell
-                key={`dow-${index}`}
-                fill={TEAL}
-                fillOpacity={opacity}
-              />
-            );
-          })}
+        <Bar dataKey="revenue" radius={[6, 6, 0, 0]} isAnimationActive={false}>
+          {data.map((_, index) => (
+            <Cell
+              key={`dow-${index}`}
+              fill={hoveredIndex === index ? TEAL_300 : EMERALD}
+              style={{ cursor: "pointer", transition: "fill 150ms" }}
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
+            />
+          ))}
         </Bar>
       </BarChart>
     </ResponsiveContainer>
@@ -371,21 +462,260 @@ export function RevenueByDowChart({ rows }: DowChartProps) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Empty state helper                                                 */
+/*  Summary Bar                                                        */
 /* ------------------------------------------------------------------ */
 
-function ChartEmptyState({ label }: { label: string }) {
+interface SummaryItem {
+  label: string;
+  value: string;
+}
+
+function SummaryBar({ items }: { items: SummaryItem[] }) {
   return (
-    <div className="flex items-center justify-center h-[220px]">
-      <span className="text-[11px] text-muted-foreground/40 tracking-wide font-mono">
-        {label}
+    <div className="flex border-t border-border/30 divide-x divide-border/30">
+      {items.map((item, i) => (
+        <div key={i} className="flex-1 px-5 py-3">
+          <div
+            className="text-[10px] uppercase tracking-wider"
+            style={{ color: "rgba(255,255,255,0.40)", fontFamily: MONO }}
+          >
+            {item.label}
+          </div>
+          <div
+            className="text-[12px] font-medium tabular-nums mt-0.5"
+            style={{ color: "rgba(255,255,255,0.85)", fontFamily: MONO, fontVariantNumeric: "tabular-nums" }}
+          >
+            {item.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Empty state                                                        */
+/* ------------------------------------------------------------------ */
+
+function ChartEmptyState() {
+  return (
+    <div className="flex items-center justify-center" style={{ height: 280 }}>
+      <span
+        className="tracking-wide"
+        style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontFamily: MONO }}
+      >
+        No data for this period
       </span>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Chart card wrapper                                                 */
+/*  Tab pill button                                                    */
+/* ------------------------------------------------------------------ */
+
+function TabPill({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-150 ${
+        active
+          ? "bg-primary/15 text-primary"
+          : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main export: HeroChartSection                                      */
+/* ------------------------------------------------------------------ */
+
+interface HeroChartSectionProps {
+  rows: DailyPLRow[];
+}
+
+export function HeroChartSection({ rows }: HeroChartSectionProps) {
+  const [activeTab, setActiveTab] = useState<ChartTab>("revenue");
+
+  // Revenue data
+  const revenueData: RevenueChartDatum[] = useMemo(() => {
+    return [...rows]
+      .sort((a, b) => a.pl_date.localeCompare(b.pl_date))
+      .map((r) => {
+        const pct = r.food_cost_pct != null
+          ? r.food_cost_pct
+          : r.revenue > 0
+          ? parseFloat(((r.cogs / r.revenue) * 100).toFixed(2))
+          : 0;
+        return {
+          date: r.pl_date.slice(5), // "MM-DD"
+          displayDate: formatTooltipDate(r.pl_date.slice(5)),
+          revenue: Math.round(r.revenue),
+          cogs: Math.round(r.cogs),
+          netProfit: Math.round(r.revenue - r.cogs - r.labor_cost),
+          foodCostPct: pct,
+        };
+      });
+  }, [rows]);
+
+  // Food cost data
+  const foodCostData: FoodCostChartDatum[] = useMemo(() => {
+    return [...rows]
+      .sort((a, b) => a.pl_date.localeCompare(b.pl_date))
+      .map((r) => {
+        const pct = r.food_cost_pct != null
+          ? r.food_cost_pct
+          : r.revenue > 0
+          ? parseFloat(((r.cogs / r.revenue) * 100).toFixed(2))
+          : 0;
+        return {
+          date: r.pl_date.slice(5),
+          displayDate: formatTooltipDate(r.pl_date.slice(5)),
+          foodCostPct: pct,
+        };
+      });
+  }, [rows]);
+
+  // Day-of-week data
+  const dowData: DowChartDatum[] = useMemo(() => {
+    const totals: Record<number, number> = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    for (const r of rows) {
+      const d = new Date(r.pl_date);
+      const dow = (d.getDay() + 6) % 7; // Mon=0..Sun=6
+      totals[dow] += r.revenue;
+    }
+    return DOW_LABELS.map((day, i) => ({
+      day,
+      revenue: Math.round(totals[i]),
+    }));
+  }, [rows]);
+
+  // Summary bar stats
+  const summaryItems: SummaryItem[] = useMemo(() => {
+    if (activeTab === "revenue") {
+      const total = revenueData.reduce((s, d) => s + d.revenue, 0);
+      const avg = revenueData.length > 0 ? total / revenueData.length : 0;
+      const peak = revenueData.reduce(
+        (best, d) => (d.revenue > best.revenue ? d : best),
+        revenueData[0] ?? { revenue: 0, displayDate: "—" }
+      );
+      return [
+        { label: "TOTAL", value: total > 0 ? `$${total.toLocaleString()}` : "—" },
+        { label: "AVG/DAY", value: avg > 0 ? `$${Math.round(avg).toLocaleString()}` : "—" },
+        { label: "PEAK", value: peak ? peak.displayDate : "—" },
+      ];
+    }
+
+    if (activeTab === "foodcost") {
+      const valid = foodCostData.filter((d) => d.foodCostPct > 0);
+      const avg = valid.length > 0
+        ? valid.reduce((s, d) => s + d.foodCostPct, 0) / valid.length
+        : 0;
+      const best = valid.reduce(
+        (b, d) => (Math.abs(d.foodCostPct - 30) < Math.abs(b.foodCostPct - 30) ? d : b),
+        valid[0] ?? { foodCostPct: 0, displayDate: "—" }
+      );
+      const worst = valid.reduce(
+        (w, d) => (d.foodCostPct > w.foodCostPct ? d : w),
+        valid[0] ?? { foodCostPct: 0, displayDate: "—" }
+      );
+      return [
+        { label: "AVG %", value: avg > 0 ? `${avg.toFixed(1)}%` : "—" },
+        { label: "BEST", value: best ? `${best.foodCostPct.toFixed(1)}%` : "—" },
+        { label: "WORST", value: worst ? `${worst.foodCostPct.toFixed(1)}%` : "—" },
+      ];
+    }
+
+    // byday
+    const busiest = [...dowData].sort((a, b) => b.revenue - a.revenue)[0];
+    const slowest = [...dowData].filter((d) => d.revenue > 0).sort((a, b) => a.revenue - b.revenue)[0];
+    const weekendRev = (dowData[5]?.revenue ?? 0) + (dowData[6]?.revenue ?? 0);
+    const weekdayRev = dowData.slice(0, 5).reduce((s, d) => s + d.revenue, 0);
+    const wkdAvg = weekdayRev > 0 ? weekdayRev / 5 : 0;
+    const weAvg  = weekendRev > 0 ? weekendRev / 2 : 0;
+    const ratio  = wkdAvg > 0 ? `${(weAvg / wkdAvg).toFixed(1)}x` : "—";
+
+    return [
+      { label: "BUSIEST", value: busiest?.day ?? "—" },
+      { label: "SLOWEST", value: slowest?.day ?? "—" },
+      { label: "WKD vs WKN", value: ratio },
+    ];
+  }, [activeTab, revenueData, foodCostData, dowData]);
+
+  const tabs: { key: ChartTab; label: string }[] = [
+    { key: "revenue",  label: "Revenue" },
+    { key: "foodcost", label: "Food Cost %" },
+    { key: "byday",    label: "By Day" },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="rounded-xl border border-border/40 bg-transparent overflow-hidden"
+    >
+      {/* Card header: tab pills */}
+      <div className="flex items-center gap-2 px-5 pt-5 pb-3">
+        {tabs.map((tab) => (
+          <TabPill
+            key={tab.key}
+            label={tab.label}
+            active={activeTab === tab.key}
+            onClick={() => setActiveTab(tab.key)}
+          />
+        ))}
+      </div>
+
+      {/* Chart body — AnimatePresence cross-fade */}
+      <div className="px-0">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {activeTab === "revenue" && <RevenueAreaChart data={revenueData} />}
+            {activeTab === "foodcost" && <FoodCostLineChart data={foodCostData} />}
+            {activeTab === "byday" && <DowBarChart data={dowData} />}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Summary bar */}
+      <SummaryBar items={summaryItems} />
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Legacy named exports — kept for page.tsx import compatibility      */
+/* ------------------------------------------------------------------ */
+
+export function RevenueTrendChart({ rows }: { rows: DailyPLRow[] }) {
+  // Redirect: the hero section now owns all charts
+  return <HeroChartSection rows={rows} />;
+}
+
+// These are no longer standalone; page.tsx will be updated to use HeroChartSection
+export function FoodCostTrendChart(_: { rows: DailyPLRow[] }) { return null; }
+export function RevenueByDowChart(_: { rows: DailyPLRow[] }) { return null; }
+
+/* ------------------------------------------------------------------ */
+/*  ChartCard — kept for any residual usage                            */
 /* ------------------------------------------------------------------ */
 
 interface ChartCardProps {
@@ -398,24 +728,28 @@ interface ChartCardProps {
 export function ChartCard({ title, subtitle, children, index = 0 }: ChartCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, delay: 0.15 + index * 0.08, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="rounded-xl border border-border/60 bg-card overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4, delay: 0.1 + index * 0.06, ease: "easeOut" }}
+      className="rounded-xl border border-border/40 bg-transparent overflow-hidden"
     >
-      <div className="px-5 pt-4 pb-1">
-        <h3 className="text-[12px] font-semibold text-foreground/80 tracking-wide">
+      <div className="px-5 pt-5 pb-2">
+        <h3
+          className="font-semibold text-foreground/85 tracking-wide"
+          style={{ fontSize: 13, fontFamily: SANS }}
+        >
           {title}
         </h3>
         {subtitle && (
-          <p className="text-[10px] text-muted-foreground/50 mt-0.5 tracking-wide">
+          <p
+            className="mt-0.5 tracking-wide text-muted-foreground/45"
+            style={{ fontSize: 10, fontFamily: MONO }}
+          >
             {subtitle}
           </p>
         )}
       </div>
-      <div className="px-2 pb-3">
-        {children}
-      </div>
+      <div>{children}</div>
     </motion.div>
   );
 }
