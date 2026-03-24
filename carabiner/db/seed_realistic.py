@@ -1738,19 +1738,19 @@ async def seed():
 
     async with AsyncSession(engine) as session:
         async with session.begin():
-            # 1. Foundation
+            # 1. Foundation (must commit before items due to FK on UoM)
             print("🏗  Seeding foundation (location, vendors, GL, UoM)...")
             foundation = build_foundation()
             session.add_all(foundation)
             counts["foundation"] = len(foundation)
 
-            # 2. Items
+        async with session.begin():
+            # 2. Items (depends on UoM + GL from foundation)
             print("📦  Seeding items (ingredients)...")
             items = build_items()
             session.add_all(items)
             counts["items"] = len(items)
 
-        # Flush to satisfy FKs before dependent tables
         async with session.begin():
             # 3. Recipes
             print("📖  Seeding recipes + ingredients...")
