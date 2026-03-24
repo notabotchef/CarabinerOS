@@ -75,6 +75,25 @@ const TEAL_300  = "#5eead4";
 const AMBER     = "#f59e0b";
 const RED       = "#ef4444";
 const BLUE      = "#3b82f6";
+// Theme-aware colors — resolved via hook at render time
+function useChartTheme() {
+  // Check if dark mode by reading the DOM (class="dark" on html)
+  const isDark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+  return {
+    grid:       isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.06)",
+    axisText:   isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.40)",
+    budgetLine: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+    tooltipBg:  isDark ? "#141b27" : "#ffffff",
+    tooltipBorder: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)",
+    tooltipShadow: isDark ? "0 8px 32px rgba(0,0,0,0.5)" : "0 8px 32px rgba(0,0,0,0.12)",
+    tooltipText: isDark ? "rgba(255,255,255,0.90)" : "rgba(0,0,0,0.85)",
+    tooltipMuted: isDark ? "rgba(255,255,255,0.50)" : "rgba(0,0,0,0.50)",
+    tooltipDate: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.45)",
+    cursorFill: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.04)",
+    refLabel:   isDark ? "rgba(255,255,255,0.30)" : "rgba(0,0,0,0.35)",
+  };
+}
+// Keep backwards-compat defaults for non-hook contexts
 const GRID      = "rgba(255,255,255,0.04)";
 const AXIS_TEXT = "rgba(255,255,255,0.30)";
 const BUDGET_LINE = "rgba(255,255,255,0.15)";
@@ -106,8 +125,8 @@ function formatTooltipDate(mmdd: string): string {
 /* ------------------------------------------------------------------ */
 
 function RevenueCustomTooltip({ active, payload, label }: TooltipContentProps<number, string>) {
+  const t = useChartTheme();
   if (!active || !payload || payload.length === 0) return null;
-  // payload entries have an `any` .payload property (the original datum)
   const datum = (payload[0]?.payload ?? {}) as RevenueChartDatum;
   const displayDate = datum?.displayDate ?? (typeof label === "string" ? formatTooltipDate(label) : String(label ?? ""));
 
@@ -134,24 +153,24 @@ function RevenueCustomTooltip({ active, payload, label }: TooltipContentProps<nu
   return (
     <div
       style={{
-        background: TOOLTIP_BG,
-        border: `1px solid ${TOOLTIP_BORDER}`,
+        background: t.tooltipBg,
+        border: `1px solid ${t.tooltipBorder}`,
         borderRadius: 10,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        boxShadow: t.tooltipShadow,
         padding: "12px 16px",
         maxWidth: 200,
         fontFamily: MONO,
       }}
     >
-      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 500, marginBottom: 8 }}>
+      <div style={{ color: t.tooltipDate, fontSize: 10, fontWeight: 500, marginBottom: 8 }}>
         {displayDate}
       </div>
       {rows.map((row) => (
         <div key={row.label} style={{ display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 3 }}>
-          <span style={{ fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.50)", fontWeight: 400 }}>
+          <span style={{ fontFamily: SANS, fontSize: 10, color: t.tooltipMuted, fontWeight: 400 }}>
             {row.label}
           </span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.90)", fontVariantNumeric: "tabular-nums" }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: t.tooltipText, fontVariantNumeric: "tabular-nums" }}>
             {row.value}
           </span>
         </div>
@@ -159,7 +178,7 @@ function RevenueCustomTooltip({ active, payload, label }: TooltipContentProps<nu
       {foodCostPct > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 6 }}>
           <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-          <span style={{ fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.50)" }}>
+          <span style={{ fontFamily: SANS, fontSize: 10, color: t.tooltipMuted }}>
             {foodCostPct.toFixed(1)}% food cost
           </span>
         </div>
@@ -173,6 +192,7 @@ function RevenueCustomTooltip({ active, payload, label }: TooltipContentProps<nu
 /* ------------------------------------------------------------------ */
 
 function FoodCostCustomTooltip({ active, payload, label }: TooltipContentProps<number, string>) {
+  const t = useChartTheme();
   if (!active || !payload || payload.length === 0) return null;
   const datum = (payload[0]?.payload ?? {}) as FoodCostChartDatum;
   const displayDate = datum?.displayDate ?? (typeof label === "string" ? formatTooltipDate(label) : String(label ?? ""));
@@ -186,26 +206,22 @@ function FoodCostCustomTooltip({ active, payload, label }: TooltipContentProps<n
   return (
     <div
       style={{
-        background: TOOLTIP_BG,
-        border: `1px solid ${TOOLTIP_BORDER}`,
-        borderRadius: 10,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-        padding: "12px 16px",
-        maxWidth: 200,
-        fontFamily: MONO,
+        background: t.tooltipBg, border: `1px solid ${t.tooltipBorder}`,
+        borderRadius: 10, boxShadow: t.tooltipShadow,
+        padding: "12px 16px", maxWidth: 200, fontFamily: MONO,
       }}
     >
-      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 500, marginBottom: 8 }}>
+      <div style={{ color: t.tooltipDate, fontSize: 10, fontWeight: 500, marginBottom: 8 }}>
         {displayDate}
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-          <span style={{ fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.50)", fontWeight: 400 }}>
+          <span style={{ fontFamily: SANS, fontSize: 10, color: t.tooltipMuted, fontWeight: 400 }}>
             Food Cost
           </span>
         </div>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.90)", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: t.tooltipText, fontVariantNumeric: "tabular-nums" }}>
           {pct.toFixed(1)}%
         </span>
       </div>
@@ -218,29 +234,26 @@ function FoodCostCustomTooltip({ active, payload, label }: TooltipContentProps<n
 /* ------------------------------------------------------------------ */
 
 function DowCustomTooltip({ active, payload, label }: TooltipContentProps<number, string>) {
+  const t = useChartTheme();
   if (!active || !payload || payload.length === 0) return null;
   const value = (payload[0]?.value as number) ?? 0;
 
   return (
     <div
       style={{
-        background: TOOLTIP_BG,
-        border: `1px solid ${TOOLTIP_BORDER}`,
-        borderRadius: 10,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-        padding: "12px 16px",
-        maxWidth: 200,
-        fontFamily: MONO,
+        background: t.tooltipBg, border: `1px solid ${t.tooltipBorder}`,
+        borderRadius: 10, boxShadow: t.tooltipShadow,
+        padding: "12px 16px", maxWidth: 200, fontFamily: MONO,
       }}
     >
-      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: 500, marginBottom: 8 }}>
+      <div style={{ color: t.tooltipDate, fontSize: 10, fontWeight: 500, marginBottom: 8 }}>
         {label}
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
-        <span style={{ fontFamily: SANS, fontSize: 10, color: "rgba(255,255,255,0.50)", fontWeight: 400 }}>
+        <span style={{ fontFamily: SANS, fontSize: 10, color: t.tooltipMuted, fontWeight: 400 }}>
           Revenue
         </span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.90)", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: t.tooltipText, fontVariantNumeric: "tabular-nums" }}>
           ${value.toLocaleString()}
         </span>
       </div>
@@ -252,17 +265,19 @@ function DowCustomTooltip({ active, payload, label }: TooltipContentProps<number
 /*  Axis tick style (shared)                                           */
 /* ------------------------------------------------------------------ */
 
-const axisTick = {
-  fill: AXIS_TEXT,
-  fontSize: 10,
-  fontFamily: MONO,
-};
+function useAxisTick() {
+  const t = useChartTheme();
+  return { fill: t.axisText, fontSize: 10, fontFamily: MONO };
+}
 
 /* ------------------------------------------------------------------ */
 /*  Revenue Area Chart                                                 */
 /* ------------------------------------------------------------------ */
 
 function RevenueAreaChart({ data }: { data: RevenueChartDatum[] }) {
+  const t = useChartTheme();
+  const tick = useAxisTick();
+
   if (data.length === 0) {
     return <ChartEmptyState />;
   }
@@ -276,47 +291,21 @@ function RevenueAreaChart({ data }: { data: RevenueChartDatum[] }) {
             <stop offset="100%" stopColor={EMERALD} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid
-          stroke={GRID}
-          strokeDasharray="0"
-          vertical={false}
-        />
-        <XAxis
-          dataKey="date"
-          tick={axisTick}
-          axisLine={false}
-          tickLine={false}
-          interval={2}
-        />
+        <CartesianGrid stroke={t.grid} strokeDasharray="0" vertical={false} />
+        <XAxis dataKey="date" tick={tick} axisLine={false} tickLine={false} interval={2} />
         <YAxis
-          tick={axisTick}
-          axisLine={false}
-          tickLine={false}
+          tick={tick} axisLine={false} tickLine={false}
           tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
-          width={40}
-          domain={[0, "auto"]}
+          width={40} domain={[0, "auto"]}
         />
         <Tooltip content={(props) => <RevenueCustomTooltip {...(props as TooltipContentProps<number, string>)} />} />
         <ReferenceLine
-          y={DAILY_BUDGET}
-          stroke={BUDGET_LINE}
-          strokeDasharray="6 4"
-          strokeWidth={1}
-          label={{
-            value: "Target",
-            position: "right",
-            fill: "rgba(255,255,255,0.30)",
-            fontSize: 9,
-            fontFamily: MONO,
-          }}
+          y={DAILY_BUDGET} stroke={t.budgetLine} strokeDasharray="6 4" strokeWidth={1}
+          label={{ value: "Target", position: "right", fill: t.refLabel, fontSize: 9, fontFamily: MONO }}
         />
         <Area
-          type="natural"
-          dataKey="revenue"
-          stroke={EMERALD}
-          strokeWidth={2}
-          fill="url(#revGradient)"
-          dot={false}
+          type="natural" dataKey="revenue" stroke={EMERALD} strokeWidth={2}
+          fill="url(#revGradient)" dot={false}
           activeDot={{ r: 5, fill: EMERALD, stroke: "#fff", strokeWidth: 2 }}
           isAnimationActive={false}
         />
@@ -330,6 +319,9 @@ function RevenueAreaChart({ data }: { data: RevenueChartDatum[] }) {
 /* ------------------------------------------------------------------ */
 
 function FoodCostLineChart({ data }: { data: FoodCostChartDatum[] }) {
+  const t = useChartTheme();
+  const tick = useAxisTick();
+
   if (data.length === 0) {
     return <ChartEmptyState />;
   }
@@ -337,31 +329,17 @@ function FoodCostLineChart({ data }: { data: FoodCostChartDatum[] }) {
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-        <CartesianGrid
-          stroke={GRID}
-          strokeDasharray="0"
-          vertical={false}
-        />
+        <CartesianGrid stroke={t.grid} strokeDasharray="0" vertical={false} />
         <ReferenceArea
           y1={FOOD_COST_TARGET_LOW}
           y2={FOOD_COST_TARGET_HIGH}
           fill={EMERALD}
           fillOpacity={0.05}
         />
-        <XAxis
-          dataKey="date"
-          tick={axisTick}
-          axisLine={false}
-          tickLine={false}
-          interval={2}
-        />
+        <XAxis dataKey="date" tick={tick} axisLine={false} tickLine={false} interval={2} />
         <YAxis
-          tick={axisTick}
-          axisLine={false}
-          tickLine={false}
-          tickFormatter={(v: number) => `${v}%`}
-          domain={[24, 38]}
-          width={36}
+          tick={tick} axisLine={false} tickLine={false}
+          tickFormatter={(v: number) => `${v}%`} domain={[24, 38]} width={36}
         />
         <Tooltip content={(props) => <FoodCostCustomTooltip {...(props as TooltipContentProps<number, string>)} />} />
         <ReferenceLine
@@ -414,6 +392,9 @@ function FoodCostLineChart({ data }: { data: FoodCostChartDatum[] }) {
 /* ------------------------------------------------------------------ */
 
 function DowBarChart({ data }: { data: DowChartDatum[] }) {
+  const t = useChartTheme();
+  const tick = useAxisTick();
+
   if (data.length === 0) {
     return <ChartEmptyState />;
   }
@@ -430,12 +411,12 @@ function DowBarChart({ data }: { data: DowChartDatum[] }) {
       >
         <XAxis
           dataKey="day"
-          tick={axisTick}
+          tick={tick}
           axisLine={false}
           tickLine={false}
         />
         <YAxis
-          tick={axisTick}
+          tick={tick}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
@@ -443,7 +424,7 @@ function DowBarChart({ data }: { data: DowChartDatum[] }) {
         />
         <Tooltip
           content={(props) => <DowCustomTooltip {...(props as TooltipContentProps<number, string>)} />}
-          cursor={{ fill: "rgba(255,255,255,0.03)" }}
+          cursor={{ fill: t.cursorFill }}
         />
         <Bar dataKey="revenue" radius={[6, 6, 0, 0]} isAnimationActive={false}>
           {data.map((_, index) => (
@@ -476,14 +457,14 @@ function SummaryBar({ items }: { items: SummaryItem[] }) {
       {items.map((item, i) => (
         <div key={i} className="flex-1 px-5 py-3">
           <div
-            className="text-[10px] uppercase tracking-wider"
-            style={{ color: "rgba(255,255,255,0.40)", fontFamily: MONO }}
+            className="text-[10px] uppercase tracking-wider text-muted-foreground/60"
+            style={{ fontFamily: MONO }}
           >
             {item.label}
           </div>
           <div
-            className="text-[12px] font-medium tabular-nums mt-0.5"
-            style={{ color: "rgba(255,255,255,0.85)", fontFamily: MONO, fontVariantNumeric: "tabular-nums" }}
+            className="text-[12px] font-medium tabular-nums mt-0.5 text-foreground/85"
+            style={{ fontFamily: MONO }}
           >
             {item.value}
           </div>
@@ -501,8 +482,8 @@ function ChartEmptyState() {
   return (
     <div className="flex items-center justify-center" style={{ height: 280 }}>
       <span
-        className="tracking-wide"
-        style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontFamily: MONO }}
+        className="tracking-wide text-muted-foreground/40"
+        style={{ fontSize: 11, fontFamily: MONO }}
       >
         No data for this period
       </span>

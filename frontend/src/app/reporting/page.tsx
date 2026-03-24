@@ -90,12 +90,14 @@ function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-function getPeriodRange(period: Period): { start: string; end: string } {
+function getPeriodRange(period: Period, latestDate?: string): { start: string; end: string } {
   const today = new Date();
   const todayStr = toDateStr(today);
 
   if (period === "today") {
-    return { start: todayStr, end: todayStr };
+    // Use latest available date if today has no data (e.g. seed ends yesterday)
+    const effectiveDate = latestDate && latestDate < todayStr ? latestDate : todayStr;
+    return { start: effectiveDate, end: effectiveDate };
   }
 
   if (period === "week") {
@@ -429,7 +431,11 @@ export default function ReportingPage() {
     if (!hasLiveData) {
       return { currentRows: [], prevRows: [], chartRows: [] };
     }
-    const cur = getPeriodRange(period);
+    // Find the latest date in dataset for "today" fallback
+    const latestDate = rawRows.length > 0
+      ? rawRows.reduce((max, r) => r.pl_date > max ? r.pl_date : max, rawRows[0].pl_date)
+      : undefined;
+    const cur = getPeriodRange(period, latestDate);
     const prev = getPreviousPeriodRange(period);
     return {
       currentRows: filterRows(rawRows, cur.start, cur.end),
