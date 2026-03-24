@@ -456,6 +456,11 @@ class CampaignOut(TimestampSchema):
     channel: str
     stage: str
     deliverable: str
+    scheduled_at: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    budget_cents: Optional[int] = None
+    media_urls: Optional[List[Any]] = None
+    tags: Optional[List[str]] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
@@ -467,6 +472,11 @@ class CampaignCreate(BaseModel):
     channel: str
     stage: str = "Drafting"
     deliverable: str
+    scheduled_at: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    budget_cents: Optional[int] = None
+    media_urls: Optional[List[Any]] = None
+    tags: Optional[List[str]] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
@@ -477,6 +487,11 @@ class CampaignUpdate(BaseModel):
     channel: Optional[str] = None
     stage: Optional[str] = None
     deliverable: Optional[str] = None
+    scheduled_at: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    budget_cents: Optional[int] = None
+    media_urls: Optional[List[Any]] = None
+    tags: Optional[List[str]] = None
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
 

@@ -157,6 +157,24 @@ export interface OrderDetail {
   total: string;
   eta: string | null;
   line_items: OrderLineItem[] | null;
+// Marketing / Campaigns
+
+export type CampaignStage = "Research" | "Drafting" | "Review" | "Live" | "Completed";
+
+export type CampaignChannel = "Instagram" | "Facebook" | "Email" | "TikTok" | "Event" | string;
+
+export interface Campaign {
+  id: string;
+  location_id: string;
+  campaign_name: string;
+  channel: string;
+  stage: CampaignStage;
+  deliverable: string;
+  scheduled_at: string | null;
+  end_date: string | null;
+  budget_cents: number | null;
+  media_urls: string[] | null;
+  tags: string[] | null;
   summary: string | null;
   detail_points: string[] | null;
   prompt: string | null;

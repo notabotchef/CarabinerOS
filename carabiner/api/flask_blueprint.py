@@ -398,11 +398,59 @@ async def get_menu_item(item_id: str):
 async def list_campaigns():
     try:
         location_id = _parse_location_id()
-        data = await _list_workspace_model(WorkspaceCampaign, CampaignOut, location_id)
+        stage_filter = request.args.get("stage")
+        channel_filter = request.args.get("channel")
+
+        async with get_session() as session:
+            stmt = select(WorkspaceCampaign)
+            if location_id:
+                stmt = stmt.where(WorkspaceCampaign.location_id == location_id)
+            if stage_filter:
+                stmt = stmt.where(WorkspaceCampaign.stage == stage_filter)
+            if channel_filter:
+                stmt = stmt.where(WorkspaceCampaign.channel.ilike(f"%{channel_filter}%"))
+            stmt = stmt.order_by(WorkspaceCampaign.created_at)
+            result = await session.execute(stmt)
+            rows = result.scalars().all()
+            data = [CampaignOut.model_validate(r).model_dump(mode="json") for r in rows]
         return _json_response(data)
     except Exception:
         logger.exception("Failed to fetch campaigns")
         return _empty_response()
+
+
+@blueprint.route("/api/campaigns/<campaign_id>", methods=["GET"])
+async def get_campaign(campaign_id: str):
+    try:
+        cid = uuid.UUID(campaign_id)
+    except (ValueError, AttributeError):
+        return Response(
+            response=json.dumps({"error": "invalid_id"}),
+            status=400,
+            mimetype="application/json",
+        )
+    try:
+        async with get_session() as session:
+            result = await session.execute(
+                select(WorkspaceCampaign).where(WorkspaceCampaign.id == cid)
+            )
+            row = result.scalar_one_or_none()
+            if row is None:
+                return Response(
+                    response=json.dumps({"error": "not_found"}),
+                    status=404,
+                    mimetype="application/json",
+                )
+            data = CampaignOut.model_validate(row).model_dump(mode="json")
+        body = json.dumps(data, default=str)
+        return Response(response=body, status=200, mimetype="application/json")
+    except Exception:
+        logger.exception("Failed to fetch campaign %s", campaign_id)
+        return Response(
+            response=json.dumps({"error": "internal"}),
+            status=500,
+            mimetype="application/json",
+        )
 
 
 @blueprint.route("/api/recipes", methods=["GET"])

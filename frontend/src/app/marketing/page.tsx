@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
   Megaphone,
   Plus,
@@ -10,6 +10,8 @@ import {
   Music2,
   CalendarDays,
   Sparkles,
+  Calendar,
+  LayoutGrid,
 } from "lucide-react";
 import { MenuButton } from "@/components/menu-button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,37 +19,23 @@ import type { Variants } from "framer-motion";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface Campaign {
-  [key: string]: unknown;
-  id: string;
-  location_id: string;
-  campaign_name: string;
-  channel: string;
-  stage: string;
-  deliverable: string;
-  summary: string | null;
-  detail_points: string[] | null;
-  created_at: string;
-  updated_at: string;
-}
+import { useSocket } from "@/hooks/use-socket";
+import { useChat } from "@/hooks/use-chat";
+import type { Campaign, CampaignStage } from "@/lib/types";
+import { CampaignDetailPanel } from "./components/campaign-detail-panel";
+import { ContentCalendar } from "./components/content-calendar";
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
-const STAGES = [
+const STAGES: CampaignStage[] = [
   "Research",
   "Drafting",
   "Review",
   "Live",
   "Completed",
-] as const;
-type Stage = (typeof STAGES)[number];
+];
 
 const CHANNELS = [
   "All",
@@ -60,13 +48,13 @@ const CHANNELS = [
 type Channel = (typeof CHANNELS)[number];
 
 const STAGE_STYLES: Record<
-  Stage,
+  CampaignStage,
   { dot: string; badge: string; bar: string }
 > = {
   Research: {
-    dot: "bg-muted-foreground/50",
+    dot: "bg-muted-foreground/40",
     badge: "bg-muted text-muted-foreground",
-    bar: "bg-muted-foreground/30",
+    bar: "bg-muted-foreground/20",
   },
   Drafting: {
     dot: "bg-amber-500",
@@ -92,6 +80,8 @@ const STAGE_STYLES: Record<
     bar: "bg-muted-foreground/20",
   },
 };
+
+type ViewMode = "grid" | "calendar";
 
 /* ------------------------------------------------------------------ */
 /*  Motion variants                                                    */
@@ -159,7 +149,7 @@ function formatDate(v: unknown): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function normalizeStage(s: string): Stage {
+function normalizeStage(s: string): CampaignStage {
   const match = STAGES.find(
     (st) => st.toLowerCase() === s.trim().toLowerCase(),
   );
@@ -172,7 +162,7 @@ function normalizeStage(s: string): Stage {
 
 function StagePipeline({ campaigns }: { campaigns: Campaign[] }) {
   const counts = useMemo(() => {
-    const map: Record<Stage, number> = {
+    const map: Record<CampaignStage, number> = {
       Research: 0,
       Drafting: 0,
       Review: 0,
@@ -192,7 +182,7 @@ function StagePipeline({ campaigns }: { campaigns: Campaign[] }) {
       variants={fadeUp}
       initial="hidden"
       animate="visible"
-      className="rounded-xl border border-border bg-card p-5 space-y-3"
+      className="rounded-xl border border-border bg-card p-4 space-y-3"
     >
       <h2 className="text-sm font-medium text-muted-foreground tracking-wide uppercase">
         Campaign Pipeline
@@ -285,7 +275,13 @@ function ChannelFilters({
 /*  Campaign Card                                                      */
 /* ------------------------------------------------------------------ */
 
-function CampaignCard({ campaign }: { campaign: Campaign }) {
+function CampaignCard({
+  campaign,
+  onClick,
+}: {
+  campaign: Campaign;
+  onClick: () => void;
+}) {
   const stage = normalizeStage(campaign.stage);
   const style = STAGE_STYLES[stage];
 
@@ -295,7 +291,8 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
       variants={cardItem}
       whileHover={{ y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.08)" }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="group bg-card border border-border rounded-xl p-5 space-y-3 cursor-default"
+      onClick={onClick}
+      className="group bg-card border border-border rounded-xl p-4 space-y-3 cursor-pointer"
     >
       {/* Top row: name + stage */}
       <div className="flex items-start justify-between gap-2">
@@ -312,21 +309,39 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
 
       {/* Channel pill */}
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {React.createElement(channelIcon(campaign.channel), { className: "size-3.5" })}
+        {React.createElement(channelIcon(campaign.channel), {
+          className: "size-3.5",
+        })}
         <span className="font-medium">{campaign.channel}</span>
       </div>
 
       {/* Deliverable */}
       {campaign.deliverable && (
-        <p className="text-xs text-muted-foreground/80 line-clamp-2 leading-relaxed">
+        <p className="text-xs text-muted-foreground/85 line-clamp-2 leading-relaxed">
           {campaign.deliverable}
         </p>
       )}
 
+      {/* Tags */}
+      {campaign.tags && campaign.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {campaign.tags.slice(0, 3).map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-violet-500/10 text-violet-700 dark:text-violet-400"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Footer */}
       <div className="flex items-center justify-between pt-2 border-t border-border">
-        <span className="text-[11px] text-muted-foreground tabular-nums">
-          {formatDate(campaign.created_at)}
+        <span className="text-[11px] text-muted-foreground font-mono">
+          {campaign.scheduled_at
+            ? formatDate(campaign.scheduled_at)
+            : formatDate(campaign.created_at)}
         </span>
         <span className="text-[11px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
           View details
@@ -342,7 +357,7 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
 
 function PipelineSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-3 animate-pulse">
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3 animate-pulse">
       <Skeleton className="h-4 w-32" />
       <Skeleton className="h-3 w-full rounded-full" />
       <div className="flex items-center justify-between">
@@ -359,7 +374,7 @@ function PipelineSkeleton() {
 
 function CampaignCardSkeleton() {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 space-y-3 animate-pulse">
+    <div className="bg-card border border-border rounded-xl p-4 space-y-3 animate-pulse">
       <div className="flex items-start justify-between">
         <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-5 w-16 rounded-full" />
@@ -384,13 +399,47 @@ function CampaignCardSkeleton() {
 export default function MarketingPage() {
   const { data, loading, error } = useWorkspace<Campaign>("/api/campaigns");
   const [channelFilter, setChannelFilter] = useState<Channel>("All");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(
+    null,
+  );
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // Chat integration for campaign actions
+  const { snapshot } = useSocket();
+  const { sendMessage } = useChat(snapshot);
 
   const filtered = useMemo(() => {
     if (channelFilter === "All") return data;
     return data.filter(
-      (c) => c.channel.toLowerCase() === channelFilter.toLowerCase(),
+      (c) =>
+        c.channel.toLowerCase().includes(channelFilter.toLowerCase()),
     );
   }, [data, channelFilter]);
+
+  const handleCampaignClick = useCallback((campaign: Campaign) => {
+    setSelectedCampaign(campaign);
+    setDetailOpen(true);
+  }, []);
+
+  const handleCloseDetail = useCallback(() => {
+    setDetailOpen(false);
+    // Delay clearing data so exit animation completes
+    setTimeout(() => setSelectedCampaign(null), 300);
+  }, []);
+
+  const handleSendChat = useCallback(
+    (text: string) => {
+      sendMessage(text);
+    },
+    [sendMessage],
+  );
+
+  const handleNewCampaign = useCallback(() => {
+    sendMessage(
+      "What should I post this week? Suggest campaign ideas based on our menu, inventory, and any upcoming events.",
+    );
+  }, [sendMessage]);
 
   return (
     <div className="flex flex-col h-dvh bg-background">
@@ -398,21 +447,46 @@ export default function MarketingPage() {
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
         <MenuButton />
         <div className="flex-1 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center size-8 rounded-lg bg-gradient-to-br from-pink-500/20 to-violet-500/20">
-            <Megaphone className="h-4 w-4 text-pink-600 dark:text-pink-400" />
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center size-8 rounded-lg bg-gradient-to-br from-pink-500/20 to-violet-500/20">
+              <Megaphone className="h-4 w-4 text-pink-600 dark:text-pink-400" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-foreground">Marketing</h1>
+              <p className="text-xs text-muted-foreground">
+                Campaign management &amp; content strategy
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-foreground">Marketing</h1>
-            <p className="text-sm text-muted-foreground">
-              Campaign management &amp; content strategy
-            </p>
+          <div className="flex items-center gap-2">
+            {/* View toggle */}
+            <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`flex items-center justify-center size-7 rounded-md transition-colors cursor-pointer ${
+                  viewMode === "grid"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <LayoutGrid className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode("calendar")}
+                className={`flex items-center justify-center size-7 rounded-md transition-colors cursor-pointer ${
+                  viewMode === "calendar"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Calendar className="size-3.5" />
+              </button>
+            </div>
+            <Button size="sm" className="gap-1.5" onClick={handleNewCampaign}>
+              <Plus className="size-4" />
+              New Campaign
+            </Button>
           </div>
-        </div>
-        <Button size="sm" className="gap-1.5">
-          <Plus className="size-4" />
-          New Campaign
-        </Button>
         </div>
       </header>
 
@@ -422,9 +496,9 @@ export default function MarketingPage() {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground"
+            className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground"
           >
-            No data available — API endpoint not connected yet
+            No data available -- API endpoint not connected yet
           </motion.div>
         )}
 
@@ -438,8 +512,24 @@ export default function MarketingPage() {
         {/* Channel Filters */}
         <ChannelFilters active={channelFilter} onChange={setChannelFilter} />
 
-        {/* Campaign Cards */}
-        {loading ? (
+        {/* Content view */}
+        {viewMode === "calendar" ? (
+          loading ? (
+            <div className="rounded-xl border border-border bg-card p-4 animate-pulse">
+              <Skeleton className="h-4 w-40 mb-4" />
+              <div className="grid grid-cols-7 gap-4">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <Skeleton key={i} className="h-24 rounded-lg" />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <ContentCalendar
+              campaigns={filtered}
+              onCampaignClick={handleCampaignClick}
+            />
+          )
+        ) : loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <CampaignCardSkeleton key={i} />
@@ -472,10 +562,19 @@ export default function MarketingPage() {
             <h3 className="text-sm font-semibold text-foreground mb-1">
               Your creative studio awaits
             </h3>
-            <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+            <p className="text-xs text-muted-foreground max-w-xs leading-relaxed mb-4">
               Ask CarabinerOS to brainstorm content ideas, plan a social
               campaign, or draft your next email blast.
             </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={handleNewCampaign}
+            >
+              <Sparkles className="size-3.5" />
+              Ask for ideas
+            </Button>
           </motion.div>
         ) : (
           <AnimatePresence mode="popLayout">
@@ -486,12 +585,24 @@ export default function MarketingPage() {
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
             >
               {filtered.map((campaign) => (
-                <CampaignCard key={campaign.id} campaign={campaign} />
+                <CampaignCard
+                  key={campaign.id}
+                  campaign={campaign}
+                  onClick={() => handleCampaignClick(campaign)}
+                />
               ))}
             </motion.div>
           </AnimatePresence>
         )}
       </div>
+
+      {/* Campaign Detail Panel */}
+      <CampaignDetailPanel
+        campaign={selectedCampaign}
+        open={detailOpen}
+        onClose={handleCloseDetail}
+        onSendChat={handleSendChat}
+      />
     </div>
   );
 }
