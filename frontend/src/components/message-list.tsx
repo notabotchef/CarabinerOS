@@ -128,6 +128,11 @@ function InlineTicket({
   );
 }
 
+/** Strip bracket context prefix from messages sent via module chat */
+function stripContext(text: string): string {
+  return text.replace(/^\[.*?\]\s*/, "");
+}
+
 export function MessageList({ messages }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -151,7 +156,7 @@ export function MessageList({ messages }: MessageListProps) {
             >
               {msg.role === "user" ? (
                 <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-gradient-to-br from-primary to-primary/85 text-primary-foreground px-4 py-2.5 text-sm leading-relaxed shadow-sm">
-                  {msg.content}
+                  {stripContext(msg.content)}
                 </div>
               ) : (
                 <>

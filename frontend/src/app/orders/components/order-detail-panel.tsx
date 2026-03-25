@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, type KeyboardEvent } from "react";
-import { motion } from "framer-motion";
-import { ArrowUp, Send, Save, X } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Send, Save, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -20,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { OrderDetail, OrderLineItem, OrderStatus, VendorSummary } from "@/lib/types";
+import { ModuleChat } from "@/components/module-chat";
 
 /* ------------------------------------------------------------------ */
 /*  Status badge (reused from page)                                    */
@@ -61,77 +61,6 @@ function formatDate(v: unknown): string {
   const d = new Date(v);
   if (isNaN(d.getTime())) return "\u2014";
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-/* ------------------------------------------------------------------ */
-/*  Inline chat composer (order-scoped)                                */
-/* ------------------------------------------------------------------ */
-
-function OrderChatComposer({
-  onSend,
-  disabled,
-}: {
-  onSend: (text: string) => void;
-  disabled?: boolean;
-}) {
-  const [value, setValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleSubmit = useCallback(() => {
-    const text = value.trim();
-    if (!text) return;
-    onSend(text);
-    setValue("");
-  }, [value, onSend]);
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-2 px-4 py-3 border-t border-border">
-      <div className="relative flex-1">
-        <input
-          ref={inputRef}
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          placeholder="Add 2 cases of avocados..."
-          className="
-            w-full rounded-2xl border border-border bg-card/80
-            px-4 py-3 pr-12 text-sm text-foreground
-            placeholder:text-muted-foreground/40
-            outline-none transition-all duration-200
-            focus:border-primary/50 focus:ring-2 focus:ring-primary/25
-            focus:shadow-[0_0_20px_oklch(0.72_0.22_160_/_0.12)]
-            hover:border-primary/25
-            disabled:opacity-40
-          "
-        />
-        <motion.button
-          onClick={handleSubmit}
-          disabled={!value.trim() || disabled}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="
-            absolute right-1.5 top-1/2 -translate-y-1/2
-            size-8 rounded-xl flex items-center justify-center
-            bg-gradient-to-br from-primary to-primary/80 text-primary-foreground
-            hover:shadow-[0_0_12px_oklch(0.72_0.22_160_/_0.3)]
-            disabled:opacity-20 disabled:shadow-none
-            transition-all duration-200
-          "
-        >
-          <ArrowUp className="size-4" />
-        </motion.button>
-      </div>
-    </div>
-  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -241,8 +170,6 @@ interface OrderDetailPanelProps {
   orderId: string | null;
   /** If true, this is a new order creation flow */
   isNew?: boolean;
-  /** Send a message to A0 — provided by parent page via useChat */
-  onChatSend?: (text: string) => void;
 }
 
 export function OrderDetailPanel({
@@ -250,7 +177,6 @@ export function OrderDetailPanel({
   onOpenChange,
   orderId,
   isNew = false,
-  onChatSend,
 }: OrderDetailPanelProps) {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -339,18 +265,6 @@ export function OrderDetailPanel({
   const handleCancel = useCallback(() => {
     onOpenChange(false);
   }, [onOpenChange]);
-
-  const handleChatSend = useCallback(
-    (text: string) => {
-      const context = isNew
-        ? `[Order for ${selectedVendorName ?? "vendor"}] ${text}`
-        : `[Order: ${order?.vendor ?? "vendor"} - ${order?.status ?? ""}] ${text}`;
-      if (onChatSend) {
-        onChatSend(context);
-      }
-    },
-    [isNew, selectedVendorName, order?.vendor, order?.status, onChatSend]
-  );
 
   const lineItems: OrderLineItem[] = Array.isArray(order?.line_items)
     ? (order.line_items as OrderLineItem[])
@@ -535,9 +449,13 @@ export function OrderDetailPanel({
         </div>
 
         {/* Chat composer — pinned to bottom */}
-        <OrderChatComposer
-          onSend={handleChatSend}
-          disabled={isNew && !selectedVendorId}
+        <ModuleChat
+          buildContext={() => {
+            const items = lineItems.map(i => `${i.name} ${i.quantity}${i.unit}`).join(", ");
+            return `[module=orders, vendor=${order?.vendor ?? selectedVendorName ?? "unknown"}, order_id=${order?.id ?? "new"}, status=${order?.status ?? "Drafting"}, total=$${computedTotal}, items=${items}]`;
+          }}
+          placeholder="Add 2 cases of avocados..."
+          chips={["Add items", "Change quantities", "Check prices"]}
         />
       </SheetContent>
     </Sheet>
