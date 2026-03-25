@@ -157,6 +157,21 @@ export interface OrderDetail {
   total: string;
   eta: string | null;
   line_items: OrderLineItem[] | null;
+  summary: string | null;
+  detail_points: string[] | null;
+  prompt: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface VendorSummary {
+  id: string;
+  name: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+  payment_terms: string | null;
+}
+
 // Marketing / Campaigns
 
 export type CampaignStage = "Research" | "Drafting" | "Review" | "Live" | "Completed";
@@ -236,6 +251,8 @@ export interface WasteLogEntry {
   notes: string | null;
   waste_date: string;
   estimated_cost: number | null;
+}
+
 // Recipe types (Modernist Cuisine format)
 
 export type UnitSystem = "metric" | "us";
@@ -322,6 +339,8 @@ export interface RecipeComponentDraft {
   yield_unit?: string;
   ingredients: RecipeIngredientDraft[];
   steps: RecipeStepDraft[];
+}
+
 // Invoices — Phase 1
 
 export type InvoiceStatus =

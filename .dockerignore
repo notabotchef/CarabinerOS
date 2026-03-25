@@ -18,6 +18,22 @@ usr/*
 
 
 ###############################################################################
+# Frontend (has its own Docker image — not needed in agent-zero)
+frontend/
+!frontend/CLAUDE.md
+!frontend/AGENTS.md
+
+# Business / pro packs (not needed at build time)
+rune-business/
+rune-pro/
+
+# Claude Code worktrees + project files
+.claude/
+.rune/
+
+# Docs / research (not needed at runtime)
+docs/
+
 # Environment / tooling
 ###############################################################################
 .conda/

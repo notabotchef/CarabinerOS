@@ -348,6 +348,20 @@ export default function OrdersPage() {
         onOpenChange={setPanelOpen}
         orderId={selectedOrderId}
         isNew={isNewOrder}
+        onChatSend={async (text) => {
+          try {
+            const { getCsrfToken } = await import("@/lib/csrf");
+            const csrf = await getCsrfToken();
+            await fetch("/message_async", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+              credentials: "include",
+              body: JSON.stringify({ text }),
+            });
+          } catch (e) {
+            console.error("Failed to send order chat:", e);
+          }
+        }}
       />
     </div>
   );

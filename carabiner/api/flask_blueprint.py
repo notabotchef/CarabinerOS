@@ -890,6 +890,11 @@ async def get_order(order_id: str):
         logger.exception("Failed to fetch order %s", order_id)
         return Response(
             response=json.dumps({"ok": False, "error": "Internal server error"}),
+            status=500, mimetype="application/json",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Invoice Detail, Upload, Approve, Mark Paid
 # ---------------------------------------------------------------------------
 
@@ -966,6 +971,10 @@ async def submit_order(order_id: str):
         logger.exception("Failed to submit order %s", order_id)
         return Response(
             response=json.dumps({"ok": False, "error": "Internal server error"}),
+            status=500, mimetype="application/json",
+        )
+
+
 @blueprint.route("/api/invoices/upload", methods=["POST"])
 async def upload_invoice():
     """Accept multipart file upload, store to /uploads/invoices/, create invoice record."""
@@ -1076,6 +1085,10 @@ async def draft_order(order_id: str):
         logger.exception("Failed to draft order %s", order_id)
         return Response(
             response=json.dumps({"ok": False, "error": "Internal server error"}),
+            status=500, mimetype="application/json",
+        )
+
+
 @blueprint.route("/api/invoices/<invoice_id>/approve", methods=["POST"])
 async def approve_invoice(invoice_id: str):
     """Advance invoice status to Approved."""

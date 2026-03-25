@@ -21,6 +21,7 @@ Updated: 2026-03-24 (session 8)
 - [ ] **Third-party integrations architecture** — OAuth-based MCP servers for Toast, OpenTable, Square, Google Suite. Architecture doc written (`docs/plans/integration-architecture.md`). Needs: DB migration for `restaurant_integrations` table, OAuth callback routes, settings/integrations page, first MCP (Google or Square).
 - [ ] **Functional module pages** — Orders, Inventory, Prep, Menu, Recipes, Invoices, Marketing, Reporting pages need real CRUD functionality. Menu page has live data + performance badges. Reporting has live charts. Others still need work.
 - [ ] **Soft delete for orders** — A0 should set `deleted=true` instead of hard delete. Auto-purge after 30 days.
+- [ ] **Daily Brief is hardcoded** — `home-view.tsx` has 3 static fake insights (Coastal Produce delivery, food cost 28.4%, Friday reservations). Should be a scheduled A0 task that runs at startup/morning, queries real data (DailyFoodCost, orders, inventory below par, prep status), and generates the briefing. Frontend reads live data instead of the `INSIGHTS` array. Ideally an A0 scheduled task that feeds action cards.
 - [ ] **Expo filtering** — MCP tool calls invisible, "Calling LLM..." leaks through, raw tool names need kitchen-language mapping.
 - [ ] **Action card auto-emit testing** — Extension upgraded but needs live Docker test to verify end-to-end.
 - [ ] **A0 calls call_subordinate for card formatting** — System prompt should tell it the auto-emit extension handles this.

@@ -241,6 +241,8 @@ interface OrderDetailPanelProps {
   orderId: string | null;
   /** If true, this is a new order creation flow */
   isNew?: boolean;
+  /** Send a message to A0 — provided by parent page via useChat */
+  onChatSend?: (text: string) => void;
 }
 
 export function OrderDetailPanel({
@@ -248,6 +250,7 @@ export function OrderDetailPanel({
   onOpenChange,
   orderId,
   isNew = false,
+  onChatSend,
 }: OrderDetailPanelProps) {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -339,14 +342,14 @@ export function OrderDetailPanel({
 
   const handleChatSend = useCallback(
     (text: string) => {
-      // In a full implementation, this sends a message to A0 with order context.
-      // For now, we log it. The A0 integration will wire this to the chat system.
       const context = isNew
-        ? `[New Order for ${selectedVendorName ?? "unknown vendor"}] ${text}`
-        : `[Order ${order?.id ?? orderId}] ${text}`;
-      console.log("Order chat:", context);
+        ? `[Order for ${selectedVendorName ?? "vendor"}] ${text}`
+        : `[Order: ${order?.vendor ?? "vendor"} - ${order?.status ?? ""}] ${text}`;
+      if (onChatSend) {
+        onChatSend(context);
+      }
     },
-    [isNew, selectedVendorName, order?.id, orderId]
+    [isNew, selectedVendorName, order?.vendor, order?.status, onChatSend]
   );
 
   const lineItems: OrderLineItem[] = Array.isArray(order?.line_items)

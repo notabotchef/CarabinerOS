@@ -145,11 +145,12 @@ INVENTORY_META = {
 # ---------------------------------------------------------------------------
 # Campaign enhancements
 # ---------------------------------------------------------------------------
+from datetime import datetime as _dt, timezone as _tz
 CAMPAIGN_UPDATES = [
-    ("Wine Wednesday",        "2026-03-05T17:00:00+00:00", "2026-04-30T23:00:00+00:00", 15000, ["instagram", "in-house", "recurring"]),
-    ("Weekend Brunch Launch", "2026-04-05T10:00:00+00:00", "2026-04-06T15:00:00+00:00", 35000, ["instagram", "yelp", "print", "launch"]),
-    ("Tapas Tuesday",         "2026-03-04T17:00:00+00:00", "2026-04-29T22:00:00+00:00", 8000,  ["instagram", "recurring", "promotion"]),
-    ("Spring Menu Preview",   "2026-03-28T12:00:00+00:00", "2026-03-28T12:00:00+00:00", 5000,  ["email", "instagram", "seasonal"]),
+    ("Wine Wednesday",        _dt(2026, 3, 5, 17, 0, tzinfo=_tz.utc), _dt(2026, 4, 30, 23, 0, tzinfo=_tz.utc), 15000, ["instagram", "in-house", "recurring"]),
+    ("Weekend Brunch Launch", _dt(2026, 4, 5, 10, 0, tzinfo=_tz.utc), _dt(2026, 4, 6, 15, 0, tzinfo=_tz.utc), 35000, ["instagram", "yelp", "print", "launch"]),
+    ("Tapas Tuesday",         _dt(2026, 3, 4, 17, 0, tzinfo=_tz.utc), _dt(2026, 4, 29, 22, 0, tzinfo=_tz.utc), 8000,  ["instagram", "recurring", "promotion"]),
+    ("Spring Menu Preview",   _dt(2026, 3, 28, 12, 0, tzinfo=_tz.utc), _dt(2026, 3, 28, 12, 0, tzinfo=_tz.utc), 5000,  ["email", "instagram", "seasonal"]),
 ]
 
 # ---------------------------------------------------------------------------
@@ -656,6 +657,7 @@ async def run():
                 print(f"   SKIP: Could not match item={item_search} or vendor={vendor_search}")
                 continue
 
+            alert_date = date.fromisoformat(dt_str) if isinstance(dt_str, str) else dt_str
             await conn.execute(text("""
                 INSERT INTO price_alerts
                     (id, location_id, item_id, vendor_id,
@@ -668,7 +670,7 @@ async def run():
                 "loc": loc_id, "item_id": matched_item_id,
                 "vendor_id": matched_vendor_id,
                 "prev": prev, "new": new, "pct": pct,
-                "dt": dt_str, "ack": ack,
+                "dt": alert_date, "ack": ack,
             })
             inserted += 1
 
