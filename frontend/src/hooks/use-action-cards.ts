@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { getStateSyncSocket } from "@/lib/socket-client";
+import { initStateSyncSocket } from "@/lib/socket-client";
 import type { ActionCard, CardChatMessage } from "@/lib/types";
 
 const STORAGE_KEY = "cos_action_cards";
@@ -155,7 +155,7 @@ export function useActionCards(): UseActionCardsReturn {
   }, [chatThreads]);
 
   useEffect(() => {
-    const socket = getStateSyncSocket();
+    const socket = initStateSyncSocket();
     if (!socket || listenersAttached.current) return;
 
     const handleActionCard = (payload: { card: ActionCard }) => {
@@ -213,7 +213,7 @@ export function useActionCards(): UseActionCardsReturn {
   const urgentBanner = useMemo(() => computeUrgentBanner(cards), [cards]);
 
   const commitCard = useCallback((id: string) => {
-    const socket = getStateSyncSocket();
+    const socket = initStateSyncSocket();
     socket?.emit("card_commit", { cardId: id });
     setCards((prev) =>
       prev.map((c) => (c.id === id ? { ...c, status: "committed" as const } : c)),
@@ -226,7 +226,7 @@ export function useActionCards(): UseActionCardsReturn {
   }, []);
 
   const dismissCard = useCallback((id: string) => {
-    const socket = getStateSyncSocket();
+    const socket = initStateSyncSocket();
     socket?.emit("card_dismiss", { cardId: id });
     setCards((prev) => prev.filter((c) => c.id !== id));
     setChatThreads((prev) => {
@@ -237,7 +237,7 @@ export function useActionCards(): UseActionCardsReturn {
   }, []);
 
   const sendCardMessage = useCallback((id: string, text: string) => {
-    const socket = getStateSyncSocket();
+    const socket = initStateSyncSocket();
 
     // Find the card to include context for A0 processing
     const card = cards.find((c) => c.id === id);
