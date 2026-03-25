@@ -1,5 +1,79 @@
 # Progress
 
+## [2026-03-25] Session 10 — R&D Discovery Day + Platform Architecture
+
+**Completed:**
+- [x] AgentScope deep research — 3 parallel agents analyzed architecture, multi-agent patterns, memory/planning
+- [x] tiny-router A0 plugin — complete design with 12 production-ready files, routing engine, cost model
+- [x] Crucix research — graceful parallel ingestion patterns, delta engine, multi-tier alerts
+- [x] TurboQuant research — edge quantization path: 4-bit weights → local LLM with KV compression
+- [x] GitAgent research — agent versioning, segregation of duties, compliance-as-code patterns
+- [x] last30days research — automated R&D discovery engine across 10+ sources
+- [x] MarkItDown research — document intake pipeline (PDF, images, audio → markdown → A0 context)
+- [x] Karpathy autoresearch — autonomous experiment loop, 3-file pattern, mesh learning
+- [x] insanely-fast-whisper research — batch STT for post-service transcription
+- [x] OpenClaw video analysis — heartbeat pattern, memory persistence, content system architecture
+- [x] ADR-001: Fleet Learning Architecture (federated intelligence)
+- [x] ADR-002: Self-Evolving Platform Architecture (6-layer loop)
+- [x] Identified local model candidate: Qwen3.5-27B Claude Opus distilled GGUF
+- [x] Sandbox container with AgentScope + tiny-router + A0 plugins cloned
+
+**Key Architecture Decisions:**
+- Fleet Learning: 4-layer federated intelligence (tiny-router federation, anonymous benchmarks, prompt evolution, compression templates)
+- Self-Evolving Platform: 6-layer loop (discovery → fleet learning → central → GitAgent distribution → local self-update → voice-first mobile)
+- Cost stack: tiny-router ($0, 10ms) → local LLM ($0, 2-3s) → API (paid, 40-50% of msgs) → fallback
+- Voice-first mobile: primary input method for kitchen operators, not typing
+- Document intake: MarkItDown for recipes, invoices, prep sheets → markdown → A0 context
+- Heartbeat pattern (from OpenClaw): A0 should wake every 30 min for proactive maintenance
+
+**Research Artifacts (30+ docs):**
+- ADRs: `docs/adr/ADR-001-*.md`, `docs/adr/ADR-002-*.md`
+- AgentScope: `.rune/analysis-*.md`, `.rune/DECISION_MATRIX.md`, `.rune/IMPLEMENTATION_GUIDE_*.md`, `docs/ORCHESTRATION_*.md`
+- tiny-router: `PLUGIN_TINY_ROUTER_*.md` (6 files)
+- Other: `RESEARCH_GITAGENT.md`, `GITAGENT_PATTERNS_*.md`, `MARKITDOWN_*.md`, `RESEARCH_insanely_fast_whisper.md`, `docs/research/autoresearch-*.md`
+
+**Known Issues (carried):**
+- [ ] Welcome bleed still occasionally appears
+- [ ] Main chat input doesn't auto-expand
+- [ ] A0 inserts $0 instead of asking when price unknown
+- [ ] `inventory_create` type coercion
+- [ ] A0 unnecessarily calls `*_list` before create operations
+
+**Next Session Should:**
+1. Set up automated R&D discovery pipeline (last30days-style, scheduled) before starting CarabinerOS work
+2. Full visual QA walkthrough all modules on :8080
+3. Fix A0 $0 price insertion — system prompt guardrail
+4. Fix main chat textarea auto-expand
+5. Daily Brief — A0 scheduled task replacing hardcoded insights
+6. Start tiny-router A0 plugin MVP (Phase 1)
+
+---
+
+## [2026-03-25] Session 10 — Strategic Decision: Fleet Learning Architecture
+
+**Decision recorded:** ADR-001 — Fleet Learning Architecture (Federated Intelligence Across CarabinerOS Deployments)
+
+**Summary:** Approved a 4-layer federated intelligence system that makes the entire CarabinerOS fleet smarter without centralizing sensitive restaurant data.
+
+- **Layer 1** — Tiny-router federated training: anonymized classification corrections retrain the ONNX router weekly; every restaurant's corrections benefit the whole fleet
+- **Layer 2** — Anonymous pattern intelligence (Waze model): opt-in operational benchmarks, fleet aggregates returned as "restaurants like yours average X"
+- **Layer 3** — Prompt and extension evolution: winning A0 prompt patterns and self-built plugins spread across the fleet automatically
+- **Layer 4** — Memory compression templates: per-restaurant-type compression schemas learned from fleet usage patterns
+
+**Privacy architecture:** Raw data never leaves the deployment. Only anonymized, opt-in signals export. Differential privacy on all aggregates. Per-category kill switch for restaurants.
+
+**Strategic significance:** This is the structural competitive moat — a new competitor starts with zero restaurant training data. CarabinerOS compounds with every deployment. Described internally as "Tesla Autopilot for restaurants."
+
+**Build order:** Layer 1 first (telemetry pipeline + tiny-router federation). Establishes infrastructure that all other layers depend on.
+
+**Status:** Approved — post-MVP. Begins when multi-tenant deployment starts.
+
+**Artifacts:**
+- `docs/adr/ADR-001-fleet-learning-federated-intelligence.md` — full ADR
+- `.rune/decisions.md` — summary entry added
+
+---
+
 ## [2026-03-25] Session 9b Summary — "Make It Nice" Pass + Mini-Chat Architecture
 
 **Completed:**

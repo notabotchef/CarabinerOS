@@ -1,5 +1,28 @@
 # Decisions Log
 
+## [2026-03-25] Decision: Self-Evolving Platform Architecture (ADR-002)
+
+**Context:** CarabinerOS needs to continuously improve itself — discovering new techniques, learning from all deployments, distributing improvements — without manual intervention. Session 10 R&D surfaced 10 projects that form a complete self-evolving loop.
+**Decision:** 6-layer self-evolving platform: (1) Automated discovery via last30days-style scanning, (2) Fleet learning from all restaurants, (3) Central intelligence evaluation, (4) GitAgent-style versioned distribution, (5) Local self-update via compressed LLM (no API cost), (6) Voice-first mobile interface.
+**Rationale:** Compound competitive advantage. Day 1: good restaurant tool. Day 365: learned from hundreds of restaurants, knows every kitchen dialect. The moat is accumulated intelligence, not code.
+**Impact:** Every feature should include telemetry hooks. Every A0 prompt change should be git-versioned. Voice input is the default assumption for mobile. Full spec: `docs/adr/ADR-002-self-evolving-platform-architecture.md`
+
+## [2026-03-25] Decision: Message Cost Stack (tiny-router + local LLM + API)
+
+**Context:** API costs estimated at ~$600/mo at scale. Need to reduce without sacrificing quality.
+**Decision:** 4-tier cost stack: (1) tiny-router DeBERTa classifier ($0, 10ms) skips "thanks"/"ok"/closures entirely, (2) Qwen3.5-27B local via llama.cpp ($0, 2-3s) handles low-urgency actions, (3) Codex Proxy (paid) for complex reasoning, (4) LLM Fallback plugin for backup. Target: 50-60% of messages at $0.
+**Rationale:** tiny-router classifies before LLM call. Local model handles cheap tier. API only for what needs it. Combined with memory compression (40-60% token savings), total cost reduction could be 60-70%.
+**Impact:** tiny-router A0 plugin (designed, ready to build), local model setup (Qwen3.5-27B GGUF via llama.cpp), LLM Fallback plugin (already built).
+
+## [2026-03-25] Decision: Fleet Learning — Federated Intelligence Architecture (ADR-001)
+
+**Context:** Each CarabinerOS deployment holds sensitive restaurant data (costs, recipes, vendors, staff). As the fleet grows the question is how to make all deployments smarter without centralizing that data.
+**Decision:** 4-layer federated intelligence system. Layer 1: tiny-router federated training (anonymized classification corrections retraining the ONNX router weekly). Layer 2: anonymous pattern benchmarks (Waze model — opt-in operational metrics, aggregated fleet insights in return). Layer 3: prompt and plugin evolution (spread winning A0 prompt patterns and self-built integrations across fleet). Layer 4: memory compression templates (per-restaurant-type compression schemas learned from fleet usage).
+**Privacy boundary:** Raw text, dollar amounts, vendor names, recipes, staff names never leave the deployment. Only anonymized, opt-in signals export. Differential privacy on all aggregates. Per-category kill switch in restaurant dashboard.
+**Rationale:** Tesla Autopilot model for restaurants. Each kitchen operates independently; the fleet gets smarter together. A new competitor starts with zero restaurant training data. This is the fundamental structural moat — it compounds with every deployment that joins.
+**Impact:** Requires (1) telemetry/export pipeline per deployment, (2) central model registry + aggregation service, (3) privacy-preserving anonymization layer, (4) plugin validation/distribution system. Build order: Layer 1 (tiny-router federation) first — simplest, highest immediate ROI, establishes telemetry infrastructure for all other layers.
+**Status:** Approved — post-MVP, begins when multi-tenant deployment starts. Full spec: `docs/adr/ADR-001-fleet-learning-federated-intelligence.md`
+
 ## [2026-03-25] Decision: Persistent TopBar in Shell, not per-page
 
 **Context:** Module pages each rendered their own headers with MenuButton. TopBar (branding, action cards, settings) only appeared on home and chat pages. User wanted consistent top bar everywhere.
