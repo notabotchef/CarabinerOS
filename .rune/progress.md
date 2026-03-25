@@ -1,5 +1,52 @@
 # Progress
 
+## [2026-03-25] Session 9 Summary — Action Cards End-to-End Fix
+
+**Completed:**
+- [x] Debugged action card delivery — root cause: `snapshot.notifications` never consumed by frontend (data arriving, thrown on floor)
+- [x] Collapsed expo subordinate into A0 direct `notify_user` calls — saves ~800-1000 tokens per notification
+- [x] Updated `_25_restaurant_context.py` — A0 calls `notify_user` directly, no more `call_subordinate(profile="expo")`
+- [x] Expanded `A0Notification` type to match backend `NotificationItem.output()` (title, detail, priority, display_time, etc.)
+- [x] `useSocket` now extracts `snapshot.notifications` from `state_push` events
+- [x] `useActionCards` converts `A0Notification[]` → `ActionCard[]` with type mapping (success→update, warning→urgent, etc.)
+- [x] Wired notifications through `SocketProvider` context → `Shell` → `useActionCards`
+- [x] Slimmed ALL MCP `*_list` responses — `_slim()` strips 13 heavy JSONB/Text columns (line_items, detail_points, summary, etc.)
+- [x] `orders_list` token reduction: 3,103 → ~400-500 tokens (6 orders)
+- [x] Disabled auto-emit extension primary path to prevent duplicate cards (notify_user + auto-emit were both creating cards)
+- [x] Fixed card UI: removed `aspect-[4/5]` gap, hidden Sheet close button (duplicate X), cleaned card animations
+- [x] Rewrote notification panel animations — removed `layoutId`/`LayoutGroup` conflicts, clean spring enter/exit
+- [x] Verified end-to-end: user prompt → A0 DB write → A0 calls `notify_user` → `state_push` → frontend card appears
+- [x] Expo prompt updated to use `notify_user` tool (kept for scheduled proactive sweeps)
+
+**Key Architecture Decisions:**
+- A0 calls `notify_user` directly after DB writes (no subordinate delegation)
+- Notifications flow via existing `state_push` → `snapshot.notifications` (same pipe as chat streaming)
+- MCP `*_list` tools return summary-only fields; `*_get` returns full objects
+- Auto-emit extension disabled (A0 direct notification is the single path)
+
+**Known Issues (to fix):**
+- [ ] `inventory_create` type coercion — A0 passes int for VARCHAR columns, requires retry (MCP layer should coerce)
+- [ ] A0 unnecessarily calls `*_list` before create operations (e.g., lists all 48 inventory items before adding 1)
+- [ ] Token cost still high (~$600/mo estimate for real restaurant scale) — needs RAG/pagination/smarter tool selection
+- [ ] Card module badge shows "GENERAL" — notify_user `group` field not set by A0, needs prompt guidance
+- [ ] Record IDs visible in card detail text — A0 should not include UUIDs in user-facing notifications
+
+**Still Open (carried):**
+- [ ] Migration 009 not yet run
+- [ ] Full walkthrough all 8 modules — visual QA
+- [ ] Wire ModuleChat into remaining 7 modules
+- [ ] Apply "Make It Nice" to empty states, loading, errors
+- [ ] Daily Brief — A0 scheduled task
+- [ ] Settings/integrations page skeleton
+
+**Next Session Should:**
+1. Fix A0 unnecessary `*_list` calls before creates — update system prompt to say "don't list before creating"
+2. Fix `inventory_create` type coercion in MCP layer (auto-cast int→str for VARCHAR columns)
+3. Add `group` field guidance to A0 prompt so cards show correct module badge
+4. Strip UUIDs from A0 `notify_user` detail text via prompt guidance
+5. Token cost reduction: pagination on `*_list`, or RAG-based tool selection
+6. Visual QA all 8 modules on :8080
+
 ## [2026-03-24] Session 8 Summary — UI Polish + Integration Architecture
 
 **Completed:**

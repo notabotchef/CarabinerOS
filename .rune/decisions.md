@@ -1,5 +1,26 @@
 # Decisions Log
 
+## [2026-03-25] Decision: A0 direct notify_user (no expo subordinate)
+
+**Context:** Expo subordinate agent added ~800-1000 tokens per notification for a second LLM call that just reformatted data A0 already had. Expo also failed on first try (passed unsupported `priority` field), wasting another ~300 tokens.
+**Decision:** A0 calls `notify_user` directly after DB writes. No subordinate delegation for reactive notifications. Expo agent kept for scheduled proactive sweeps only.
+**Rationale:** A0 has all the context — vendor name, item counts, deadline. Spawning a subordinate to reformat is pure overhead. The notify_user tool is simple (title, message, detail, type). A0 can assess urgency inline.
+**Impact:** `usr/extensions/system_prompt/_25_restaurant_context.py` (prompt change), `usr/extensions/tool_execute_after/_30_action_card_emit.py` (auto-emit disabled). Frontend unchanged — consumes `snapshot.notifications` from `state_push`.
+
+## [2026-03-25] Decision: Slim MCP list responses
+
+**Context:** `orders_list` returned 3,103 tokens for 6 orders (full line_items JSONB, detail_points, summary, prompt). A real restaurant with 50+ orders would cost thousands in tokens monthly. `inventory_list` was even worse: 10,219 tokens for 48 items.
+**Decision:** All `*_list` MCP tools strip 13 heavy columns (line_items, detail_points, prompt, summary, extracted_data, gl_codes, media_urls, components, steps, ingredients, notes, equipment, tags, events). `*_get` tools return full objects.
+**Rationale:** LLM only needs summary fields to decide what to do. Full detail is fetched on demand via `*_get`. This is a 75-85% token reduction on list calls.
+**Impact:** `carabiner/mcp/server.py` — `_slim()` helper applied to 13 list endpoints. No model or repository changes.
+
+## [2026-03-25] Decision: Notifications via state_push (not separate Socket.IO events)
+
+**Context:** Action cards were delivered via direct `sio.emit("action_card")` on `/state_sync` — but CSRF cookie validation was rejecting CarabinerOS's socket connections. Chat streaming worked because it uses the same `state_push` mechanism.
+**Decision:** Notifications flow through the existing `state_push` → `snapshot.notifications` pipeline. Frontend reads notifications from the same events that deliver chat. No new socket events, no new handshakes.
+**Rationale:** The pipe already works (chat proves it). Adding a second delivery mechanism (direct `action_card` emit) introduced CSRF issues and duplicate cards. Single path = simple path.
+**Impact:** `frontend/src/hooks/use-action-cards.ts` (consumes `snapshot.notifications`), `frontend/src/hooks/use-socket.ts` (exposes notifications), `frontend/src/components/socket-provider.tsx` (context). Auto-emit extension disabled.
+
 ## [2026-03-24] Decision: Self-extending plugin architecture
 
 **Context:** CarabinerOS needs integrations with Toast, OpenTable, Square, Google, 7shifts, etc. Building each one manually doesn't scale. A0 can already write code at runtime.
