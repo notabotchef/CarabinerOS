@@ -96,6 +96,8 @@ function formatDate(v: unknown): string {
 /*  Animations                                                         */
 /* ------------------------------------------------------------------ */
 
+const TIP_INDEX = Math.floor(Date.now() / 86400000) % 3;
+
 const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
 
 const rowVariants = {
@@ -144,11 +146,23 @@ function PipelineStrip({ counts, loading }: { counts: Record<OrderStatus, number
 /* ------------------------------------------------------------------ */
 
 function StatusBadge({ status }: { status: OrderStatus }) {
-  return (
+  const badge = (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[status] ?? "bg-muted text-muted-foreground"}`}>
       {status}
     </span>
   );
+  if (status === "Delivered") {
+    return (
+      <motion.span
+        initial={{ scale: 1.1, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      >
+        {badge}
+      </motion.span>
+    );
+  }
+  return badge;
 }
 
 /* ------------------------------------------------------------------ */
@@ -331,6 +345,13 @@ export default function OrdersPage() {
               <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
                 Tell CarabinerOS what you need &mdash; &ldquo;Draft a produce order for
                 Chef&rsquo;s Warehouse&rdquo; &mdash; and it will build the PO for you.
+              </p>
+              <p className="text-[11px] text-muted-foreground/60 italic mt-3">
+                {[
+                  "Tip: Order proteins on Monday \u2014 prices drop after weekend demand.",
+                  "Tip: Build a standing order template for your top 3 vendors.",
+                  "Tip: Ask CarabinerOS to check par levels before placing orders.",
+                ][TIP_INDEX]}
               </p>
             </div>
             <Button variant="secondary" size="sm" className="mt-2 gap-1.5" onClick={handleNewOrder}>

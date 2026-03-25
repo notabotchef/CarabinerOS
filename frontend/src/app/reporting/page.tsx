@@ -387,6 +387,11 @@ function KpiCard({ kpi, index }: { kpi: KPI; index: number }) {
             {kpi.pctOfRevenue}
           </span>
         </div>
+        {(kpi.accent === "revenue" || kpi.accent === "profit") && !isNeutral && kpi.delta !== "\u2014" && (
+          <p className={`text-[10px] mt-1 ${isPositive ? "text-emerald-500" : "text-amber-500"}`}>
+            {isPositive ? "Nice week" : "Let\u2019s dig in"}
+          </p>
+        )}
       </div>
     </motion.div>
   );
