@@ -356,6 +356,14 @@ export function OrderDetailPanel({
     ? (order.line_items as OrderLineItem[])
     : [];
 
+  // Derive order total from line items; fall back to stored total if no items
+  const computedTotal = lineItems.length > 0
+    ? lineItems.reduce((sum, item) => {
+        const val = typeof item.total === "number" ? item.total : parseFloat(String(item.total)) || 0;
+        return sum + val;
+      }, 0)
+    : order?.total;
+
   const currentStatus = order?.status as OrderStatus | undefined;
   const canSubmit = currentStatus === "Drafting" || currentStatus === "Ready to send";
   const canDraft = currentStatus !== "Delivered" && currentStatus !== "Submitted";
@@ -455,7 +463,7 @@ export function OrderDetailPanel({
                   Order Total
                 </p>
                 <p className="text-3xl font-extrabold font-mono tabular-nums text-foreground mt-1">
-                  {formatCurrency(order.total)}
+                  {formatCurrency(computedTotal)}
                 </p>
               </div>
 
