@@ -3,13 +3,14 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { initStateSyncSocket, getStateSyncSocket } from "@/lib/socket-client";
 import { getCsrfToken } from "@/lib/csrf";
-import type { A0StatePush, A0Snapshot, ChefStatus } from "@/lib/types";
+import type { A0StatePush, A0Snapshot, A0Notification, ChefStatus } from "@/lib/types";
 import type { Socket } from "socket.io-client";
 
 interface UseSocketReturn {
   connected: boolean;
   snapshot: A0Snapshot | null;
   chefStatus: ChefStatus | null;
+  notifications: A0Notification[];
   subscribe: (contextId: string | null) => void;
 }
 
@@ -17,6 +18,7 @@ export function useSocket(): UseSocketReturn {
   const [connected, setConnected] = useState(false);
   const [snapshot, setSnapshot] = useState<A0Snapshot | null>(null);
   const [chefStatus, setChefStatus] = useState<ChefStatus | null>(null);
+  const [notifications, setNotifications] = useState<A0Notification[]>([]);
   const socketRef = useRef<Socket | null>(null);
   const logFromRef = useRef(0);
   const pendingContextRef = useRef<string | null | undefined>(undefined);
@@ -68,6 +70,9 @@ export function useSocket(): UseSocketReturn {
         console.log(`[state_push] ${snap.logs.length} logs, ${respLogs.length} responses, progress_active=${snap.log_progress_active}`);
       }
       setSnapshot(snap);
+      if (snap.notifications?.length > 0) {
+        setNotifications(snap.notifications);
+      }
       if (snap.logs?.length > 0) {
         logFromRef.current = snap.logs[snap.logs.length - 1].no + 1;
       }
@@ -114,5 +119,5 @@ export function useSocket(): UseSocketReturn {
     });
   }, []);
 
-  return { connected, snapshot, chefStatus, subscribe };
+  return { connected, snapshot, chefStatus, notifications, subscribe };
 }

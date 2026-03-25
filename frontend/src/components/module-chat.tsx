@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, type KeyboardEvent } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUp, Loader2, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -60,6 +60,8 @@ interface ModuleChatProps {
   placeholder?: string;
   /** Quick-action chip labels */
   chips?: string[];
+  /** Called after a message is sent — use to refresh parent data */
+  onMessageSent?: () => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -71,6 +73,7 @@ export function ModuleChat({
   buildContext,
   placeholder = "Type a message...",
   chips = [],
+  onMessageSent,
 }: ModuleChatProps) {
   const { snapshot, subscribe } = useSocketContext();
   const { sendMessage, messages, loading, createNewChat, resetChat } = useChat(snapshot);
@@ -116,23 +119,48 @@ export function ModuleChat({
     }
   }, [messages]);
 
+  // Refresh parent data when A0 finishes responding (loading: true → false)
+  const wasLoadingRef = useRef(false);
+  useEffect(() => {
+    if (wasLoadingRef.current && !loading && onMessageSent) {
+      onMessageSent();
+    }
+    wasLoadingRef.current = loading;
+  }, [loading, onMessageSent]);
+
   const doSend = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 
-      // On first send, create a fresh A0 context and subscribe to it
+      // On first send, create a fresh A0 context, send, then subscribe
       if (!hasStarted) {
-        // Save the current context so we can restore it on unmount
         previousContextRef.current = snapshot?.context ?? null;
 
         const newCtxId = await createNewChat();
         if (newCtxId) {
           moduleChatContextRef.current = newCtxId;
           setStoredContext(moduleId, newCtxId);
-          subscribe(newCtxId);
         }
         setHasStarted(true);
+
+        // Send the message first (createNewChat already set contextIdRef)
+        const context = buildContext();
+        const enriched = context ? `${context} ${trimmed}` : trimmed;
+        const returnedCtx = await sendMessage(enriched);
+
+        // Now subscribe to receive the streaming response
+        const ctxToSubscribe = returnedCtx || newCtxId;
+        if (ctxToSubscribe) {
+          subscribe(ctxToSubscribe);
+          // Update stored context if backend returned a different one
+          if (returnedCtx && returnedCtx !== newCtxId) {
+            moduleChatContextRef.current = returnedCtx;
+            setStoredContext(moduleId, returnedCtx);
+          }
+        }
+        setValue("");
+        return;
       }
 
       const context = buildContext();
@@ -140,7 +168,7 @@ export function ModuleChat({
       await sendMessage(enriched);
       setValue("");
     },
-    [hasStarted, createNewChat, buildContext, sendMessage, snapshot, subscribe, moduleId],
+    [hasStarted, createNewChat, buildContext, sendMessage, snapshot, subscribe, moduleId, onMessageSent],
   );
 
   const handleNewConversation = useCallback(() => {
@@ -167,10 +195,37 @@ export function ModuleChat({
     doSend(chip);
   };
 
+  // Filter out A0 welcome/bleed messages — drop greetings and anything before first user msg
+  const filteredMessages = useMemo(() => {
+    const firstUserIdx = messages.findIndex((m) => m.role === "user");
+    if (firstUserIdx === -1) return [];
+    return messages.slice(firstUserIdx).filter((m) => {
+      if (m.role !== "assistant") return true;
+      // Drop welcome greetings that bleed from A0's default context
+      const lower = m.content.toLowerCase();
+      if (lower.includes("welcome to carabiner")) return false;
+      if (lower.includes("how can i help")) return false;
+      return true;
+    });
+  }, [messages]);
+
+  // Expo whisper — show what A0 is actively doing (tool calls, agent steps)
+  const expoStatus = useMemo(() => {
+    if (!snapshot?.log_progress_active) return null;
+    const progress = snapshot.log_progress;
+    if (!progress) return null;
+    // Clean up raw progress text for kitchen-friendly display
+    return progress
+      .replace(/^Calling LLM.*$/i, "Thinking...")
+      .replace(/^Executing tool:\s*/i, "")
+      .replace(/^carabiner_db\./i, "")
+      .replace(/_/g, " ");
+  }, [snapshot?.log_progress_active, snapshot?.log_progress]);
+
   return (
     <div className="flex flex-col border-t border-border">
       {/* Messages area */}
-      {messages.length > 0 && (
+      {filteredMessages.length > 0 && (
         <div className="relative">
           {/* New conversation button — top-right of messages area */}
           <button
@@ -184,7 +239,7 @@ export function ModuleChat({
             ref={scrollRef}
             className="max-h-[280px] overflow-y-auto px-4 py-3 flex flex-col gap-2"
           >
-          {messages.map((msg) => (
+          {filteredMessages.map((msg) => (
             <div
               key={msg.id}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
@@ -211,7 +266,7 @@ export function ModuleChat({
             </div>
           ))}
 
-          {/* Loading indicator */}
+          {/* Expo whisper — shows what A0 is doing */}
           <AnimatePresence>
             {loading && (
               <motion.div
@@ -221,7 +276,9 @@ export function ModuleChat({
                 className="flex items-center gap-1.5 text-muted-foreground px-1"
               >
                 <Loader2 className="size-3 animate-spin" />
-                <span className="text-xs">Working...</span>
+                <span className="text-xs font-mono truncate max-w-[200px]">
+                  {expoStatus ?? "Working..."}
+                </span>
               </motion.div>
             )}
           </AnimatePresence>

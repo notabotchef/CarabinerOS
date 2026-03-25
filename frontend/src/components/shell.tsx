@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { TopBar } from "@/components/top-bar";
 import { NotificationPanel } from "@/components/notification-panel";
 import { useActionCards } from "@/hooks/use-action-cards";
+import { useSocketContext } from "@/components/socket-provider";
 
 interface ShellContextValue {
   openSidebar: () => void;
@@ -33,7 +34,8 @@ export function Shell({ children }: { children: ReactNode }) {
   const [newChatPending, setNewChatPending] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const actionCards = useActionCards();
+  const { notifications } = useSocketContext();
+  const actionCards = useActionCards(notifications);
 
   const openSidebar = useCallback(() => setSidebarHidden(false), []);
   const closeSidebar = useCallback(() => setSidebarHidden(true), []);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { initStateSyncSocket } from "@/lib/socket-client";
-import type { ActionCard, CardChatMessage } from "@/lib/types";
+import type { ActionCard, ActionCardType, CardChatMessage, A0Notification } from "@/lib/types";
 
 const STORAGE_KEY = "cos_action_cards";
 const THREAD_STORAGE_KEY = "cos_card_threads";
@@ -51,6 +51,31 @@ function writeThreadsToStorage(threads: Map<string, CardChatMessage[]>): void {
   try {
     sessionStorage.setItem(THREAD_STORAGE_KEY, JSON.stringify(Object.fromEntries(threads)));
   } catch { /* silent */ }
+}
+
+const NOTIFICATION_TYPE_MAP: Record<string, ActionCardType> = {
+  success: "update",
+  warning: "urgent",
+  error: "urgent",
+  info: "info",
+  progress: "info",
+};
+
+function notificationToCard(n: A0Notification): ActionCard {
+  return {
+    id: n.id,
+    type: NOTIFICATION_TYPE_MAP[n.type] ?? "info",
+    module: n.group || "general",
+    action: "update",
+    summary: n.title || n.message,
+    detail: n.detail || n.message,
+    changes: [],
+    stats: [],
+    priority: n.priority >= 20 ? 1 : 0,
+    status: "new",
+    timestamp: Math.floor(new Date(n.timestamp).getTime() / 1000),
+    source: "reactive",
+  };
 }
 
 interface UrgentBanner {
@@ -120,7 +145,7 @@ function computeUrgentBanner(cards: ActionCard[]): UrgentBanner | null {
   };
 }
 
-export function useActionCards(): UseActionCardsReturn {
+export function useActionCards(notifications?: A0Notification[]): UseActionCardsReturn {
   const [cards, setCards] = useState<ActionCard[]>([]);
   const [lastCardType, setLastCardType] = useState<string | undefined>(undefined);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
@@ -141,6 +166,22 @@ export function useActionCards(): UseActionCardsReturn {
     }
     hydrated.current = true;
   }, []);
+
+  // Convert incoming A0 notifications into action cards.
+  // Tracks which notification IDs have already been ingested to avoid duplicates.
+  const seenNotifIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!notifications?.length) return;
+    const fresh = notifications.filter(
+      (n) => !n.read && !seenNotifIds.current.has(n.id),
+    );
+    if (fresh.length === 0) return;
+    for (const n of fresh) seenNotifIds.current.add(n.id);
+    const newCards = fresh.map(notificationToCard);
+    setLastCardType(newCards[newCards.length - 1].type);
+    setCards((prev) => [...prev, ...newCards]);
+  }, [notifications]);
 
   // Persist cards to sessionStorage on every change (after hydration)
   useEffect(() => {

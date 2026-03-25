@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -140,11 +140,25 @@ export function MessageList({ messages }: MessageListProps) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Filter out welcome bleed — A0 greeting that arrives before user's first message
+  const filtered = useMemo(() => {
+    const firstUserIdx = messages.findIndex((m) => m.role === "user");
+    if (firstUserIdx === -1) return messages; // no user messages yet, show everything (home greeting)
+    // Drop any assistant messages before first user message that are welcome greetings
+    return messages.filter((m, i) => {
+      if (i >= firstUserIdx) return true; // keep everything from first user msg onward
+      if (m.role !== "assistant") return true;
+      const lower = m.content.toLowerCase();
+      if (lower.includes("welcome to carabiner") || lower.includes("how can i help")) return false;
+      return true;
+    });
+  }, [messages]);
+
   return (
     <ScrollArea className="flex-1 overflow-hidden">
       <div className="mx-auto max-w-2xl px-4 py-6 flex flex-col gap-6">
         <AnimatePresence initial={false}>
-          {messages.map((msg) => (
+          {filtered.map((msg) => (
             <motion.div
               key={msg.id}
               variants={messageVariants}

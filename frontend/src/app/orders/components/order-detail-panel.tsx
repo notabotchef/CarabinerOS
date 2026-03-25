@@ -181,6 +181,7 @@ export function OrderDetailPanel({
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [refetchKey, setRefetchKey] = useState(0);
 
   // Vendor data for new orders
   const [vendors, setVendors] = useState<VendorSummary[]>([]);
@@ -208,7 +209,7 @@ export function OrderDetailPanel({
       })
       .catch(() => setOrder(null))
       .finally(() => setLoading(false));
-  }, [open, orderId, isNew]);
+  }, [open, orderId, isNew, refetchKey]);
 
   // Fetch vendors for new order flow
   useEffect(() => {
@@ -451,12 +452,12 @@ export function OrderDetailPanel({
         {/* Chat composer — pinned to bottom */}
         <ModuleChat
           moduleId="orders"
-          buildContext={() => {
-            const items = lineItems.map(i => `${i.name} ${i.quantity}${i.unit}`).join(", ");
-            return `[module=orders, vendor=${order?.vendor ?? selectedVendorName ?? "unknown"}, order_id=${order?.id ?? "new"}, status=${order?.status ?? "Drafting"}, total=$${computedTotal}, items=${items}]`;
-          }}
+          buildContext={() =>
+            `[module=orders, order_id=${order?.id ?? "new"}]`
+          }
           placeholder="Add 2 cases of avocados..."
           chips={["Add items", "Change quantities", "Check prices"]}
+          onMessageSent={() => setRefetchKey(k => k + 1)}
         />
       </SheetContent>
     </Sheet>

@@ -34,6 +34,7 @@ Updated: 2026-03-24 (session 8)
 - [ ] **Tool-not-found dumps 750+ line catalog** — Wastes LLM context window.
 - [ ] **Sparse seed data** — Migration 009 adds more. Also now have a realistic 1-month tapas restaurant seed script.
 - [ ] **User messages stuck together after refresh** — Two messages sent before response render stuck.
+- [ ] **Main chat input doesn't auto-expand** — Text input stays single-line; long messages get clipped instead of growing to fit the full user text. Should use a textarea that auto-resizes.
 - [ ] **Cloudflare tunnel cross-origin** — Needs nginx Host header passthrough and Next.js allowedDevOrigins.
 - [ ] **Onboarding/setup flow** — New accounts need a setup wizard: connect tools (Toast, Google, OpenTable), set location, configure modules.
 

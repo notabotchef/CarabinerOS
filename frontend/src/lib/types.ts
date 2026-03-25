@@ -37,9 +37,17 @@ export interface A0Snapshot {
 }
 
 export interface A0Notification {
+  no: number;
   id: string;
   type: string;
+  priority: number;
+  title: string;
   message: string;
+  detail: string;
+  timestamp: string;
+  display_time: number;
+  read: boolean;
+  group: string;
 }
 
 // WebSocketManager wraps all emitted payloads in an envelope

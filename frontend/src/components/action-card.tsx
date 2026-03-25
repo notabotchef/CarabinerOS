@@ -72,20 +72,6 @@ export function getActionLabel(type: CardType, module: string): string {
   return "Review";
 }
 
-function relativeTime(timestamp: number): string {
-  const now = Date.now() / 1000;
-  const diff = Math.max(0, now - timestamp);
-  if (diff < 60) return "just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
-}
-
-function formatDeadline(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
 export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardProps) {
   const style = TYPE_STYLES[card.type];
   const isCommitted = card.status === "committed";
@@ -93,23 +79,21 @@ export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardPr
 
   return (
     <motion.div
-      layout
-      layoutId={`card-${card.id}`}
-      whileHover={{ y: -2, scale: 1.02 }}
+      whileHover={{ y: -2 }}
       whileTap={{ scale: 0.97 }}
       onClick={() => onExpand(card.id)}
       className={[
         "relative rounded-xl bg-card cursor-pointer",
-        "shadow-sm hover:shadow-md transition-shadow duration-300",
-        "flex flex-col aspect-[4/5]",
+        "shadow-sm hover:shadow-md transition-shadow duration-200",
+        "flex flex-col",
         isCommitted ? "opacity-60" : "",
       ].join(" ")}
     >
       {/* Content area */}
-      <div className="p-4 flex-1 flex flex-col">
+      <div className="p-4 flex-1 flex flex-col gap-1">
         {/* Module pill badge */}
         <span className={[
-          "inline-block self-start px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm mb-2",
+          "inline-block self-start px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm mb-1",
           style.pill,
         ].join(" ")}>
           {card.module}
@@ -117,7 +101,7 @@ export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardPr
 
         {/* Title */}
         <p className={[
-          "text-xs font-bold leading-tight mb-1",
+          "text-xs font-bold leading-tight",
           isCommitted ? "line-through opacity-50" : "",
         ].join(" ")}>
           {card.summary}
@@ -133,7 +117,7 @@ export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardPr
 
       {/* Footer */}
       <div
-        className="bg-muted/30 p-3 rounded-b-xl border-t border-border/40 mt-auto flex items-center justify-between"
+        className="bg-muted/30 px-3 py-2 rounded-b-xl border-t border-border/40 flex items-center justify-between"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Action label */}
@@ -152,7 +136,7 @@ export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardPr
             {onDismiss && (
               <button
                 onClick={() => onDismiss(card.id)}
-                className="w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive transition-colors"
+                className="size-7 flex items-center justify-center rounded-full text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive transition-colors"
                 title="Dismiss"
               >
                 <X className="size-4" />

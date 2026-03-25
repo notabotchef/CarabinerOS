@@ -222,10 +222,9 @@ export function CountDetailPanel({
 
   const isComplete = detail?.status === "completed";
 
-  const buildContext = useCallback(() => {
-    if (!detail || !countId) return "[module=inventory]";
-    return `[module=inventory, count_id=${countId}, count_date=${detail.count_date}, count_type=${detail.count_type}, total_value=${detail.total_value}, items=${detail.line_count}]`;
-  }, [detail, countId]);
+  const buildContext = useCallback(() =>
+    `[module=inventory, count_id=${countId ?? "unknown"}]`
+  , [countId]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
