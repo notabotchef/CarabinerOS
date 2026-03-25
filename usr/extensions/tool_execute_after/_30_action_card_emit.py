@@ -363,8 +363,11 @@ class ActionCardEmit(Extension):
 
         cards: list[dict] = []
 
-        # --- Primary path: auto-emit for DB write tools ---
-        if _is_db_write_tool(tool_name):
+        # --- Primary path: DISABLED ---
+        # A0 now calls notify_user directly after DB writes.
+        # Notifications flow via state_push → snapshot.notifications → frontend.
+        # Auto-emit is disabled to prevent duplicate cards.
+        if False and _is_db_write_tool(tool_name):
             try:
                 data = json.loads(text.strip())
             except (json.JSONDecodeError, TypeError):

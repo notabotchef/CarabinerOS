@@ -75,6 +75,22 @@ def _serialise(obj: Any) -> Any:
     return str(obj)
 
 
+# Heavy columns to strip from list responses (JSONB, long Text)
+_HEAVY_COLUMNS = {
+    "line_items", "detail_points", "prompt", "summary", "extracted_data",
+    "gl_codes", "media_urls", "components", "steps", "ingredients", "notes",
+    "equipment", "tags", "events",
+}
+
+
+def _slim(rows: list[dict]) -> list[dict]:
+    """Strip heavy JSONB/Text columns from list responses to reduce token usage.
+
+    Use the corresponding *_get tool to retrieve full details for a single record.
+    """
+    return [{k: v for k, v in row.items() if k not in _HEAVY_COLUMNS} for row in rows]
+
+
 def _parse_uuid(value: str) -> uuid.UUID:
     """Parse a string into a UUID, handling Python repr format."""
     if isinstance(value, uuid.UUID):
@@ -321,7 +337,7 @@ Examples:
                 kwargs[key] = parsed_filters[key]
 
     rows = await fn(**kwargs)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -466,13 +482,17 @@ Each result is either the operation output or {"error": "...", "message": "..."}
 
 @mcp.tool()
 async def inventory_list(location_id: Optional[str] = None) -> str:
-    """List all inventory items. Optionally filter by location_id (UUID string)."""
+    """List all inventory items (summary fields only). Optionally filter by location_id (UUID string).
+
+    Returns summary fields only — heavy columns (notes, etc.) are omitted to reduce token usage.
+    Use inventory_get(id) to retrieve the full record for a single item.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_inventory
 
     loc = _parse_uuid(location_id) if location_id else None
     rows = await list_inventory(location_id=loc)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -594,13 +614,17 @@ Args:
 
 @mcp.tool()
 async def inventory_count_list(location_id: Optional[str] = None) -> str:
-    """List past inventory counts with summary stats (line count, total value)."""
+    """List past inventory counts with summary stats (line count, total value).
+
+    Returns summary fields only — heavy columns are omitted to reduce token usage.
+    Use inventory_count_start / inventory_count_submit for full count operations.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_inventory_counts
 
     loc = _parse_uuid(location_id) if location_id else None
     rows = await list_inventory_counts(location_id=loc)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -639,13 +663,17 @@ Args:
 
 @mcp.tool()
 async def par_level_list(location_id: Optional[str] = None) -> str:
-    """List par levels for a location, showing current on-hand vs par and shortfall."""
+    """List par levels for a location, showing current on-hand vs par and shortfall.
+
+    Returns summary fields only — heavy columns are omitted to reduce token usage.
+    Use par_level_set to create or update a par level for a specific item.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_par_levels
 
     loc = _parse_uuid(location_id) if location_id else None
     rows = await list_par_levels(location_id=loc)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -702,7 +730,11 @@ async def waste_log_list(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
 ) -> str:
-    """List waste logs with item names. Optional date range filter (YYYY-MM-DD)."""
+    """List waste logs with item names. Optional date range filter (YYYY-MM-DD).
+
+    Returns summary fields only — heavy columns (notes, etc.) are omitted to reduce token usage.
+    Use waste_log_create to add a new waste entry.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_waste_logs
     from datetime import date as date_cls
@@ -711,7 +743,7 @@ async def waste_log_list(
     df = date_cls.fromisoformat(date_from) if date_from else None
     dt = date_cls.fromisoformat(date_to) if date_to else None
     rows = await list_waste_logs(location_id=loc, date_from=df, date_to=dt)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -730,13 +762,17 @@ async def inventory_valuation(location_id: Optional[str] = None) -> str:
 
 @mcp.tool()
 async def orders_list(location_id: Optional[str] = None) -> str:
-    """List all orders. Optionally filter by location_id (UUID string)."""
+    """List all orders (summary fields only). Optionally filter by location_id (UUID string).
+
+    Returns summary fields only — heavy columns (line_items, summary, detail_points, prompt)
+    are omitted to reduce token usage. Use orders_get(id) for the full record.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_orders
 
     loc = _parse_uuid(location_id) if location_id else None
     rows = await list_orders(location_id=loc)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -793,13 +829,17 @@ async def orders_delete(id: str) -> str:
 
 @mcp.tool()
 async def prep_list(location_id: Optional[str] = None) -> str:
-    """List all prep tasks. Optionally filter by location_id (UUID string)."""
+    """List all prep tasks (summary fields only). Optionally filter by location_id (UUID string).
+
+    Returns summary fields only — heavy columns (summary, detail_points, prompt) are omitted
+    to reduce token usage. Use prep_get(id) for the full record.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_prep
 
     loc = _parse_uuid(location_id) if location_id else None
     rows = await list_prep(location_id=loc)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -856,13 +896,18 @@ async def prep_delete(id: str) -> str:
 
 @mcp.tool()
 async def invoices_list(location_id: Optional[str] = None) -> str:
-    """List all invoices. Optionally filter by location_id (UUID string)."""
+    """List all invoices (summary fields only). Optionally filter by location_id (UUID string).
+
+    Returns summary fields only — heavy columns (line_items, gl_codes, extracted_data,
+    summary, detail_points, prompt) are omitted to reduce token usage.
+    Use invoices_get(id) for the full record.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_invoices
 
     loc = _parse_uuid(location_id) if location_id else None
     rows = await list_invoices(location_id=loc)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -924,13 +969,18 @@ async def recipes_list(
     category: Optional[str] = None,
     search: Optional[str] = None,
 ) -> str:
-    """List recipes. Optional filters: location_id (UUID), status, category, search (name substring)."""
+    """List recipes (summary fields only). Optional filters: location_id (UUID), status, category, search (name substring).
+
+    Returns summary fields only — heavy columns (components, ingredients, steps, equipment,
+    notes, tags) are omitted to reduce token usage.
+    Use recipes_get(id) for the full record including all components.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_recipes
 
     loc = _parse_uuid(location_id) if location_id else None
     rows = await list_recipes(location_id=loc, status=status, category=category, search=search)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -987,13 +1037,17 @@ async def recipes_delete(id: str) -> str:
 
 @mcp.tool()
 async def menu_list(location_id: Optional[str] = None) -> str:
-    """List all menu items. Optionally filter by location_id (UUID string)."""
+    """List all menu items (summary fields only). Optionally filter by location_id (UUID string).
+
+    Returns summary fields only — heavy columns (summary, detail_points, prompt) are omitted
+    to reduce token usage. Use menu_get(id) for the full record.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_menu
 
     loc = _parse_uuid(location_id) if location_id else None
     rows = await list_menu(location_id=loc)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -1285,13 +1339,17 @@ Returns:
 
 @mcp.tool()
 async def food_cost_list(location_id: Optional[str] = None) -> str:
-    """List all food cost entries. Optionally filter by location_id (UUID string)."""
+    """List all food cost entries (summary fields only). Optionally filter by location_id (UUID string).
+
+    Returns summary fields only — heavy columns (summary, detail_points, prompt) are omitted
+    to reduce token usage. Use food_cost_get(id) for the full record.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_food_cost
 
     loc = _parse_uuid(location_id) if location_id else None
     rows = await list_food_cost(location_id=loc)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -1352,9 +1410,11 @@ async def daily_food_cost_list(
     end: Optional[str] = None,
     location_id: Optional[str] = None,
 ) -> str:
-    """Query daily food cost rows for a date range.
+    """Query daily food cost rows for a date range (summary fields only).
 
     Returns actual vs theoretical food cost data per day. Defaults to last 30 days.
+    Heavy columns are omitted to reduce token usage. Use food_cost_summary_kpis for
+    aggregated KPIs, or food_cost_create_daily to upsert a daily entry.
 
     Args:
         start: Start date (YYYY-MM-DD). Defaults to 30 days ago.
@@ -1387,7 +1447,7 @@ async def daily_food_cost_list(
         result = await session.execute(stmt)
         rows = result.scalars().all()
 
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()
@@ -1551,13 +1611,17 @@ async def food_cost_create_daily(data: str) -> str:
 
 @mcp.tool()
 async def campaigns_list(location_id: Optional[str] = None) -> str:
-    """List all marketing campaigns. Optionally filter by location_id (UUID string)."""
+    """List all marketing campaigns (summary fields only). Optionally filter by location_id (UUID string).
+
+    Returns summary fields only — heavy columns (summary, detail_points, prompt, media_urls,
+    events) are omitted to reduce token usage. Use campaigns_get(id) for the full record.
+    """
     await _ensure_db()
     from carabiner.db.repositories import list_campaigns
 
     loc = _parse_uuid(location_id) if location_id else None
     rows = await list_campaigns(location_id=loc)
-    return json.dumps(_serialise(rows), default=str)
+    return json.dumps(_slim(_serialise(rows)), default=str)
 
 
 @mcp.tool()

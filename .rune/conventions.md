@@ -40,12 +40,13 @@
 - **Preferred**: Docker (port 8080) — handles all proxying correctly
 
 ## Action Cards
-- **Auto-emit**: DB write tools (`db_mutate`, `*_create`, `*_update`, `*_delete`) auto-generate cards via `_30_action_card_emit.py` extension — zero extra LLM tokens
-- **Proactive**: A0 calls `action_card` tool for non-DB notifications (menu ideas, reminders, alerts)
-- **sio access**: Always walk agent hierarchy to find sio — subordinates don't have it directly
+- **Delivery**: A0 calls `notify_user` directly after DB writes → `NotificationManager` → `state_push` → `snapshot.notifications` → frontend converts to `ActionCard`
+- **No subordinate**: Expo agent is NOT used for reactive notifications. A0 handles urgency assessment inline. Expo reserved for scheduled proactive sweeps only.
+- **No auto-emit**: `_30_action_card_emit.py` primary path disabled. Single notification path via `notify_user`.
 - **Card types**: urgent (amber), action (blue), update (emerald), info (violet)
-- **Frontend**: `useActionCards` hook, sessionStorage persistence, 2-col solitaire grid with flip expand
-- **Visual identity**: Kitchen Display System aesthetic — left-border station colors, monospace labels, "Tickets/FIRE/Cleared" vocabulary
+- **Type mapping**: A0 `notify_user` type → card type: warning→urgent, error→urgent, success→update, info→info, progress→info
+- **Frontend**: `useActionCards` hook, sessionStorage persistence, 2-col grid with spring enter/exit animations
+- **Visual identity**: Kitchen Display System aesthetic — monospace labels, "Tickets/FIRE/Cleared" vocabulary
 - **Action buttons**: ✗ (red/dismiss) + ✓ (green/commit) + contextual action label per type+module (e.g., "86 It", "Order Now", "Approve")
 - **Chat suggestions**: `getDefaultSuggestion(card)` + `getDefaultChips(card)` — type+module lookup map for pre-fill and quick-action chips
 - **Completed cards**: Green-tinted "Cleared" section at bottom of panel, still expandable, hover to dismiss
@@ -64,6 +65,11 @@
 - **Checkboxes**: Prep items get tap-to-complete checkboxes — the ONE physical interaction that needs a tap, not chat
 - **Three buttons**: Orders detail has Send / Draft / Cancel — the only structured actions
 - **Vendor select**: New orders have a vendor dropdown — the ONE structured input to prevent A0 hallucinating vendors
+
+## MCP Tools (Token Cost)
+- **List tools**: Return summary-only fields via `_slim()` — strips line_items, detail_points, summary, prompt, extracted_data, etc.
+- **Get tools**: Return full objects with all fields
+- **Never dump full tables**: A0 should NOT call `*_list` before creating a new record. Lists are for browsing, not context-gathering.
 
 ## Design Philosophy
 - **"Make It Nice"**: EMP/Guidara/Meyer hospitality philosophy applied to software (docs/research/make-it-nice-hospitality-philosophy-2026-03.md)
