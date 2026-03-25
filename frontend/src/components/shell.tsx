@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, type ReactNode, type MouseEvent } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { PersistentChatBar } from "@/components/persistent-chat-bar";
 
 interface ShellContextValue {
   openSidebar: () => void;
@@ -47,7 +48,10 @@ export function Shell({ children }: { children: ReactNode }) {
     <ShellContext.Provider value={{ openSidebar, closeSidebar, sidebarHidden, newChatPending, requestNewChat, consumeNewChat }}>
       <AppSidebar hidden={sidebarHidden} />
       <main className="flex-1 flex flex-col min-h-dvh overflow-hidden relative" onClick={handleMainClick}>
-        {children}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {children}
+        </div>
+        <PersistentChatBar />
       </main>
     </ShellContext.Provider>
   );

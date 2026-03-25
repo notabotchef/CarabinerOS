@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Flame } from "lucide-react";
 import { MenuButton } from "@/components/menu-button";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { useSocketContext } from "@/components/socket-provider";
-import { useChat } from "@/hooks/use-chat";
-import { ChatComposer } from "@/components/chat-composer";
 import { KpiStrip } from "./_components/kpi-strip";
 import { TrendChart } from "./_components/trend-chart";
 import { BudgetCard } from "./_components/budget-card";
@@ -121,29 +118,8 @@ export default function FoodCostPage() {
   const budget = useApiData<BudgetData>("/api/food-cost/budget");
   const pressure = useWorkspace<FoodCostItem>("/api/food-cost");
 
-  // --- Chat integration ---
-  const { snapshot, subscribe } = useSocketContext();
-  const { sendMessage, loading: chatLoading } = useChat(snapshot);
-
-  // Unsubscribe on mount (module page, no specific context)
-  useEffect(() => {
-    subscribe(null);
-  }, [subscribe]);
-
-  const handleSend = useCallback(async (text: string) => {
-    const newCtx = await sendMessage(text);
-    if (newCtx) subscribe(newCtx);
-    // Refresh data after chat message (agent may have created daily entries)
-    setTimeout(() => {
-      summary.refresh();
-      daily.refresh();
-      budget.refresh();
-      pressure.refresh();
-    }, 3000);
-  }, [sendMessage, subscribe, summary, daily, budget, pressure]);
-
   return (
-    <div className="flex flex-col h-dvh bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border/60 shrink-0 bg-card">
         <MenuButton />
@@ -195,15 +171,6 @@ export default function FoodCostPage() {
         </div>
       </div>
 
-      {/* Chat composer — pinned to bottom */}
-      <div className="shrink-0 border-t border-border/60 bg-card">
-        <ChatComposer
-          onSend={handleSend}
-          loading={chatLoading}
-          placeholder="Today's spend: Sysco $2,100, revenue $8,200..."
-          showSuggestions={false}
-        />
-      </div>
     </div>
   );
 }

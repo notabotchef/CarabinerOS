@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter } from "next/navigation";
 import {
   Star,
   Puzzle,
@@ -15,10 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { MenuButton } from "@/components/menu-button";
-import { ChatComposer } from "@/components/chat-composer";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { useSocketContext } from "@/components/socket-provider";
-import { useChat } from "@/hooks/use-chat";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -676,14 +672,10 @@ function EightySixBoardTab() {
 /* ------------------------------------------------------------------ */
 
 export default function MenuPage() {
-  const router = useRouter();
-  const { snapshot, subscribe } = useSocketContext();
-  const { sendMessage, createNewChat } = useChat(snapshot);
   const { data, loading, error } = useWorkspace<MenuItem>("/api/menu");
   const [activeTab, setActiveTab] = useState<TabId>("performance");
   const [activeCategory, setActiveCategory] = useState<string>("All");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-  const sendingRef = useRef(false);
 
   // Count 86'd items for the tab badge
   const eightySixCount = useMemo(() => data.filter((item) => item.is_86).length, [data]);
@@ -701,29 +693,12 @@ export default function MenuPage() {
     return map;
   }, [filtered]);
 
-  const handleSend = useCallback(async (text: string) => {
-    if (sendingRef.current) return;
-    sendingRef.current = true;
-    try {
-      const ctxId = await createNewChat();
-      if (ctxId) {
-        subscribe(ctxId);
-      }
-      await sendMessage(text);
-      if (ctxId) {
-        router.push(`/chat/${ctxId}`);
-      }
-    } finally {
-      sendingRef.current = false;
-    }
-  }, [createNewChat, subscribe, sendMessage, router]);
-
   const handleSelectItem = useCallback((item: MenuItem) => {
     setSelectedItem(item);
   }, []);
 
   return (
-    <div className="flex flex-col h-dvh bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <header className="shrink-0 border-b border-border bg-card">
         <div className="px-4 py-3">
@@ -819,15 +794,6 @@ export default function MenuPage() {
             {activeTab === "86-board" && <EightySixBoardTab />}
           </>
         )}
-      </div>
-
-      {/* Chat Composer */}
-      <div className="shrink-0 border-t border-border bg-card">
-        <ChatComposer
-          onSend={handleSend}
-          placeholder="86 the lobster bisque, raise the burger to $26, which Dogs should I cut..."
-          showSuggestions={false}
-        />
       </div>
 
       {/* Item Detail Sheet Overlay */}

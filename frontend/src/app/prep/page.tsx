@@ -16,7 +16,7 @@
 
 "use client";
 
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   AlertTriangle,
   Check,
@@ -28,11 +28,8 @@ import {
   Clock,
 } from "lucide-react";
 import { MenuButton } from "@/components/menu-button";
-import { ChatComposer } from "@/components/chat-composer";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { useSocketContext } from "@/components/socket-provider";
-import { useChat } from "@/hooks/use-chat";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -662,11 +659,6 @@ export default function PrepPage() {
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
   const [activeLane, setActiveLane] = useState<ServiceLane>("All");
 
-  // Chat
-  const { snapshot, subscribe } = useSocketContext();
-  const { sendMessage, loading: chatLoading, queuedMessages, createNewChat } = useChat(snapshot);
-  const sendingRef = useRef(false);
-
   // Fetch operational prep data
   const fetchPrepToday = useCallback(async () => {
     try {
@@ -769,21 +761,6 @@ export default function PrepPage() {
     }
   }, [prepList]);
 
-  // Chat handler
-  const handleChatSend = useCallback(async (text: string) => {
-    if (sendingRef.current) return;
-    sendingRef.current = true;
-    try {
-      const ctxId = await createNewChat();
-      if (ctxId) subscribe(ctxId);
-      await sendMessage(text);
-      // Refresh prep data after sending a message (AI may have modified it)
-      setTimeout(() => fetchPrepToday(), 2000);
-    } finally {
-      sendingRef.current = false;
-    }
-  }, [createNewChat, subscribe, sendMessage, fetchPrepToday]);
-
   // Filter operational items by service lane
   const filteredOpItems = useMemo(() => {
     if (!prepList) return [];
@@ -827,7 +804,7 @@ export default function PrepPage() {
   }, [prepList, activeLane, filteredOpItems]);
 
   return (
-    <div className="flex flex-col h-dvh bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
         <MenuButton />
@@ -965,15 +942,6 @@ export default function PrepPage() {
         )}
       </div>
 
-      {/* Chat composer at bottom */}
-      <div className="shrink-0 border-t border-border bg-card">
-        <ChatComposer
-          onSend={handleChatSend}
-          loading={chatLoading}
-          placeholder="Generate prep for tonight, 140 covers..."
-          queueCount={queuedMessages.length}
-        />
-      </div>
     </div>
   );
 }

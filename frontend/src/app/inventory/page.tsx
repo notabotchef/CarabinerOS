@@ -1,15 +1,11 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Package, AlertTriangle, TrendingUp, DollarSign, Search } from "lucide-react";
 import { MenuButton } from "@/components/menu-button";
 import { motion } from "framer-motion";
 import { useWorkspace } from "@/hooks/use-workspace";
-import { useSocket } from "@/hooks/use-socket";
-import { useChat } from "@/hooks/use-chat";
 import { WorkspaceTable } from "@/components/workspace-table";
-import { ChatComposer } from "@/components/chat-composer";
-import { MessageList } from "@/components/message-list";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -302,35 +298,9 @@ const COLUMNS = [
 /* ------------------------------------------------------------------ */
 
 export default function InventoryPage() {
-  const { data, loading, error, refresh } = useWorkspace<InventoryItem>("/api/inventory");
+  const { data, loading, error } = useWorkspace<InventoryItem>("/api/inventory");
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
-
-  // Chat integration
-  const { snapshot, subscribe } = useSocket();
-  const { messages, sendMessage, contextId, loading: chatLoading, queuedMessages } = useChat(snapshot);
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
-  // Subscribe to socket context changes
-  useEffect(() => {
-    subscribe(contextId);
-  }, [contextId, subscribe]);
-
-  // Auto-scroll chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Refresh inventory data when chat messages change (user may have modified data)
-  const prevMsgCount = useRef(messages.length);
-  useEffect(() => {
-    if (messages.length > prevMsgCount.current && !chatLoading) {
-      const timer = setTimeout(() => refresh(), 1500);
-      prevMsgCount.current = messages.length;
-      return () => clearTimeout(timer);
-    }
-    prevMsgCount.current = messages.length;
-  }, [messages.length, chatLoading, refresh]);
 
   // Valuation
   const [valuation, setValuation] = useState<{ total_value: number; item_count: number } | null>(null);
@@ -358,12 +328,8 @@ export default function InventoryPage() {
   const abovePar = data.filter((d) => parseNum(d.variance) > 0).length;
   const atPar = totalItems - belowPar - abovePar;
 
-  const handleSend = (text: string) => {
-    sendMessage(text);
-  };
-
   return (
-    <div className="flex flex-col h-dvh bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
         <MenuButton />
@@ -416,10 +382,8 @@ export default function InventoryPage() {
         })}
       </div>
 
-      {/* Content area -- split between tab content and chat */}
-      <div className="flex-1 flex min-h-0">
-        {/* Tab content -- left/main area */}
-        <div className="flex-1 overflow-auto p-6 space-y-6">
+      {/* Content area */}
+      <div className="flex-1 overflow-auto p-6 space-y-6 min-h-0">
           {activeTab === "Overview" && (
             <>
               {/* KPI Cards */}
@@ -525,44 +489,6 @@ export default function InventoryPage() {
           {activeTab === "Counts" && <CountHistory />}
           {activeTab === "Par Levels" && <ParLevelTable />}
           {activeTab === "Waste" && <WasteLogTable />}
-        </div>
-
-        {/* Chat panel -- right side */}
-        <div className="w-[380px] border-l border-border flex flex-col bg-card/50 shrink-0">
-          <div className="px-4 py-3 border-b border-border">
-            <p className="text-sm font-semibold text-foreground">Inventory Chat</p>
-            <p className="text-xs text-muted-foreground">
-              Count items, set pars, log waste
-            </p>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-auto min-h-0">
-            {messages.length > 0 ? (
-              <MessageList messages={messages} />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center">
-                <div className="flex items-center justify-center size-10 rounded-xl bg-secondary">
-                  <Package className="size-5 text-muted-foreground" />
-                </div>
-                <p className="text-xs text-muted-foreground max-w-[240px] leading-relaxed">
-                  Try: &quot;Walk-in count: 3 cases tomatoes, 2 cases avocados&quot; or &quot;Set avocado par to 4 cases&quot;
-                </p>
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-
-          {/* Composer */}
-          <div className="border-t border-border/50">
-            <ChatComposer
-              onSend={handleSend}
-              loading={chatLoading}
-              queueCount={queuedMessages.length}
-              placeholder="Count items, set pars, log waste..."
-            />
-          </div>
-        </div>
       </div>
     </div>
   );
