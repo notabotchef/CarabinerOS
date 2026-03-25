@@ -52,12 +52,15 @@
 - **Completed cards**: Green-tinted "Cleared" section at bottom of panel, still expandable, hover to dismiss
 
 ## Module Chat (Context Piggybacking)
-- **Pattern**: Every module panel has an inline `<ModuleChat>` component for A0 interaction
-- **Context piggybacking**: Module data prepended in brackets to every outgoing message: `[module=orders, vendor=X, order_id=Y, total=$Z] user message here`
-- **A0 reads silently**: System prompt tells A0 to parse brackets and never repeat them
+- **Pattern**: Detail panels (orders, inventory counts) have inline `<ModuleChat>` for A0 interaction
+- **Lean context**: Only send `[module=X, record_id=Y]` — A0 reads full details from DB. Never send line items, totals, or vendor names in brackets.
+- **Persistent conversations**: `moduleId` + localStorage map (`carabiner:module-chat-contexts`) — conversations survive navigation/refresh
+- **Send-then-subscribe**: On first send: createNewChat → sendMessage → subscribe. Never subscribe before sending (causes race condition).
+- **onMessageSent**: Fires when `loading` transitions true→false (A0 finished). Parent uses it to refetch data.
+- **Expo whisper**: Mini-chat shows `snapshot.log_progress` during loading instead of static "Working..."
+- **Welcome bleed filter**: Both mini-chat and main chat filter out A0 greetings ("Welcome to CarabinerOS") before first user message
 - **Display filter**: Frontend strips `[...]` prefix from all rendered messages (both mini-chat and main chat)
-- **No hidden messages**: Context travels WITH each message, not as a pre-sent first message
-- **Reusable**: One `ModuleChat` component used by all modules — Orders wired first, others pending
+- **No chat bar**: Chat does NOT live as a persistent bar on module pages. It lives in: detail panel slide-overs, home page, chat pages, action card panel, sidebar.
 
 ## Module Pages (Chat-First)
 - **Default pattern**: Chat-first — tabs display data, inline chat modifies it. No forms, no inline editing.

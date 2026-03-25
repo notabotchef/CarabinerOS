@@ -1,5 +1,49 @@
 # Progress
 
+## [2026-03-25] Session 9b Summary — "Make It Nice" Pass + Mini-Chat Architecture
+
+**Completed:**
+- [x] Persistent TopBar — CarabinerOS branding, action cards, settings, theme toggle on every page via Shell
+- [x] Poker-hand card icon — subtle spread on hover, sized to match Settings/ThemeToggle icons
+- [x] Persistent module chat contexts — `moduleId` + localStorage, conversations survive navigation/refresh
+- [x] Inventory count click-through modal — centered Dialog with top 5 chart, line items table, inline ModuleChat
+- [x] Dialog component — new shadcn/ui Dialog built on Radix primitives (centered overlay, fade+scale)
+- [x] Floating point fix — all inventory numbers rounded to 1 decimal, no Wall Street artifacts
+- [x] Mini-chat send-then-subscribe — fixes race condition where subscription state_push wiped messages
+- [x] Mini-chat expo whisper — shows A0 progress ("orders update", "Thinking...") instead of static "Working..."
+- [x] Mini-chat auto-refresh — `onMessageSent` callback fires when A0 finishes (loading→false), order detail refetches
+- [x] Lean context piggybacking — just `[module=orders, order_id=UUID]`, A0 reads DB for details (saves tokens)
+- [x] Welcome bleed filter — both mini-chat and main chat `message-list.tsx` now strip A0 greetings before first user message
+- [x] Hospitality pass (all 9 modules) — warm error states, inviting empty states, helpful filtered-empty states
+- [x] Design token compliance — zero `rounded-2xl`, all `p-4`, `gap-4`, `font-mono` on every number/price/date/%
+- [x] 5% delight — rotating chef tips in empty states, prep "All set" completion pulse, delivered order badge animation, "On track"/"Nice week" KPI whispers
+- [x] Removed duplicate MenuButton from all 9 module headers (TopBar provides it)
+- [x] All module pages h-dvh → h-full for Shell flex layout
+- [x] Count detail API endpoint — `GET /api/inventory/counts/<id>` with eager-loaded lines + item names
+
+**Key Architecture Decisions:**
+- TopBar lives in Shell (persistent across all pages), not per-page
+- ModuleChat uses localStorage map `carabiner:module-chat-contexts` keyed by moduleId for persistent conversations
+- Mini-chat sends message THEN subscribes (avoids race with state_push clearing messages)
+- Context piggybacking is lean — just module + record ID, A0 queries DB for full details
+- `onMessageSent` fires on loading→false transition (not fixed timer) so refresh waits for A0 to actually finish
+
+**Known Issues (to fix):**
+- [ ] Welcome bleed still occasionally appears (timing-dependent on subscription restore)
+- [ ] Main chat input doesn't auto-expand for long text (textarea auto-resize needed)
+- [ ] A0 inserts $0 instead of asking when price unknown (system prompt guardrail needed)
+- [ ] `inventory_create` type coercion — A0 passes int for VARCHAR columns
+- [ ] A0 unnecessarily calls `*_list` before create operations
+- [ ] Card module badge shows "GENERAL" — notify_user `group` field not set by A0
+
+**Next Session Should:**
+1. Full visual QA walkthrough all modules on :8080
+2. Fix A0 $0 price insertion — system prompt: "If you don't have a value, ask the user"
+3. Fix main chat textarea auto-expand
+4. Daily Brief — A0 scheduled task replacing hardcoded insights
+5. Settings/integrations page skeleton
+6. Start Google Suite MCP (first integration)
+
 ## [2026-03-25] Session 9 Summary — Action Cards End-to-End Fix
 
 **Completed:**

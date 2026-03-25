@@ -1,5 +1,26 @@
 # Decisions Log
 
+## [2026-03-25] Decision: Persistent TopBar in Shell, not per-page
+
+**Context:** Module pages each rendered their own headers with MenuButton. TopBar (branding, action cards, settings) only appeared on home and chat pages. User wanted consistent top bar everywhere.
+**Decision:** TopBar + NotificationPanel live in Shell component. Removed duplicate TopBar from home/chat pages and MenuButton from all 9 module headers.
+**Rationale:** Single source of truth for navigation chrome. Modules focus on content, Shell handles chrome.
+**Impact:** `shell.tsx` (owns TopBar + action cards), `page.tsx`, `chat/[contextId]/page.tsx`, all 9 module pages.
+
+## [2026-03-25] Decision: Lean context piggybacking (just record ID)
+
+**Context:** ModuleChat was sending ALL order details in brackets — vendor, status, total, every line item name+qty. Burned tokens on context A0 already has in the DB.
+**Decision:** Context piggybacking sends only `[module=orders, order_id=UUID]`. A0 reads full details from DB via MCP tools.
+**Rationale:** A0 has DB access. Sending data it can query is pure waste. Same principle applied to inventory count modal.
+**Impact:** `order-detail-panel.tsx`, `count-detail-panel.tsx`. Significant token savings per mini-chat message.
+
+## [2026-03-25] Decision: Mini-chat send-then-subscribe flow
+
+**Context:** ModuleChat called `createNewChat()` → `subscribe()` → `sendMessage()`. The subscription triggered a `state_push` that raced with the message send, clearing messages or attaching to wrong context.
+**Decision:** Reorder to: `createNewChat()` → `sendMessage()` → `subscribe()`. Message goes out first (createNewChat already sets contextIdRef), then subscribe to receive the streaming response.
+**Rationale:** `subscribe()` triggers server-side state_push which can wipe local state via context-switch detection. Sending first ensures the message reaches the correct context before any subscription side effects.
+**Impact:** `module-chat.tsx` doSend function.
+
 ## [2026-03-25] Decision: A0 direct notify_user (no expo subordinate)
 
 **Context:** Expo subordinate agent added ~800-1000 tokens per notification for a second LLM call that just reformatted data A0 already had. Expo also failed on first try (passed unsupported `priority` field), wasting another ~300 tokens.

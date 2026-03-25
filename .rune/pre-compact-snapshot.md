@@ -1,66 +1,87 @@
 # Pre-Compact Snapshot
-Generated: 2026-03-25T02:59:14.409Z
+Generated: 2026-03-25T08:30:35.770Z
 
 ## Session Metrics
-- Tool calls: 38
-- Session start: 2026-03-25T01:56:53.657Z
-- Top tools: unknown(38)
+- Tool calls: 136
+- Session start: 2026-03-25T06:16:47.939Z
+- Top tools: unknown(136)
 
 ## State Files (preview)
 ### .rune/progress.md
 # Progress
 
-## [2026-03-24] Session 8 Summary — UI Polish + Integration Architecture
+## [2026-03-25] Session 9 Summary — Action Cards End-to-End Fix
 
 **Completed:**
-- [x] Polaroid tactile card redesign — `rounded-[13px]`, shadow depth, module pill badges, no left-border KDS style
-- [x] Card bottom spacing fix — removed `aspect-[4/5]` causing empty space below content
-- [x] Send button consistency — gradient `ArrowUp` matching chatbot composer on collapsed cards
-- [x] Expanded card redesign — matched CarabinerOS design language: glass input, gradient buttons, ChevronLeft back, no monospace
-- [x] Sidebar unified scroll — moved `overflow-y-auto` to single wrapper around modules + conversations
-- [x] Menu page runtime fix — guarded `PERF_CFG[performance]` with `?? PERF_CFG.Dog` fallback
-- [x] Integration research — 15 restaurant platforms evaluated (Toast, OpenTable, Square, Google, 7shifts, Clover, DoorDash, Uber Eats, etc.)
-- [x] Integration architecture doc — `docs/plans/integration-architecture.md`: OAuth flow, encrypted token storage, MCP server pattern, build order, legal considerations
-- [x] Google Stitch explored — used for Polaroid Tactile action card design mockup, fetched via MCP
-- [x] Roadmap refresh — `docs/plans/open-work.md` updated with all session 8 work + integration roadmap
+- [x] Debugged action card delivery — root cause: `snapshot.notifications` never consumed by frontend (data arriving, thrown on floor)
+- [x] Collapsed expo subordinate into A0 direct `notify_user` calls — saves ~800-1000 tokens per notification
+- [x] Updated `_25_restaurant_context.py` — A0 calls `notify_user` directly, no more `call_subordinate(profile="expo")`
+- [x] Expanded `A0Notification` type to match backend `NotificationItem.output()` (title, detail, priority, display_time, etc.)
+- [x] `useSocket` now extracts `snapshot.notifications` from `state_push` events
+- [x] `useActionCards` converts `A0Notification[]` → `ActionCard[]` with type mapping (success→update, warning→urgent, etc.)
+- [x] Wired notifications through `SocketProvider` context → `Shell` → `useActionCards`
+- [x] Slimmed ALL MCP `*_list` responses — `_slim()` strips 13 heavy JSONB/Text columns (line_items, detail_points, summary, etc.)
+- [x] `orders_list` token reduction: 3,103 → ~400-500 tokens (6 orders)
+- [x] Disabled auto-emit extension primary path to prevent duplicate cards (notify_user + auto-emit were both creating cards)
+- [x] Fixed card UI: removed `aspect-[4/5]` gap, hidden Sheet close button (duplicate X), cleaned card animations
+- [x] Rewrote notification panel animations — removed `layoutId`/`LayoutGroup` conflicts, clean spring enter/exit
+- [x] Verified end-to-end: user prompt → A0 DB write → A0 calls `notify_user` → `state_push` → frontend card appears
+- [x] Expo prompt updated to use `notify_user` tool (kept for scheduled proactive sweeps)
 
-**Key Architecture Decision:**
-- Third-party integrations use OAuth-based MCP servers (one per platform)
-- `restaurant_integrations` table stores AES-256 encrypted tokens per location per platform
-- Build order: Google Suite → Square → 7shifts → Toast (after partner approval) → OpenTable
-- Browser automation viable for dev/demos; official APIs for production
-- Settings/integrations page needed for "Connect your Toast" onboarding flow
+**Key Architecture Decisions:**
+- A0 calls `notify_user` directly after DB writes (no subordinate delegation)
+- Notifications flow via existing `state_push` → `snapshot.notifications` (same pipe as chat streaming)
+- MCP `*_list` tools return summary-only fields; `*_get` returns full objects
+- Auto-emit extension disabled (A0 direct notification is the single path)
 
-**Open Bug (carried from session 6):**
-- [ ] Action cards not reaching frontend from A0 — auto-emit extension fires server-side but cards don't appear
-- [ ] A0 still calls `call_subordinate` for card formatting — system prompt should tell it the extension handles this
+**Known Issues (to fix):**
+- [ ] `inventory_create` type coercion — A0 passes int for VARCHAR columns, requires retry (MCP layer should coerce)
+- [ ] A0 unnecessarily calls `*_list` before create operations (e.g., lists all 48 inventory items before adding 1)
+- [ ] Token cost still high (~$600/mo estimate for real restaurant scale) — needs RAG/pagination/smarter tool selection
+- [ ] Card module badge shows "GENERAL" — notify_user `group` field not set by A0, needs prompt guidance
+- [ ] Record IDs visible in card detail text — A0 should not include UUIDs in user-facing notifications
 
-**Still Open:**
+**Still Open (carried):**
 - [ ] Migration 009 not yet run
-- [ ] Expo filtering not started
-- [ ] Docker image bloat (15GB) — needs .dockerignore additions
+- [ ] Full walkthrough all 8 modules — visual QA
+- [ ] Wire ModuleChat into remaining 7 modules
+- [ ] Apply "Make It Nice" to empty states, loading, errors
+- [ ] Daily Brief — A0 scheduled task
+- [ ] Settings/integrations page skeleton
 
 **Next Session Should:**
-1. Fix Docker image bloat — add `frontend/`, `rune-business/`, `rune-pro/`, `docs/`, `.claude/` to `.dockerignore`
-2. Debug action card frontend delivery — the original open bug from session 6
-3. Start `restaurant_integrations` DB migration
-4. Build settings/integrations page skeleton
-5. Start Google Suite MCP (first integration — zero approval gate)
-6. Run migration 009
+1. Fix A0 unnecessary `*_list` calls before creates — update system prompt to say "don't list before creating"
+2. Fix `inventory_create` type coercion in MCP layer (auto-cast int→str for VARCHAR columns)
+3. Add `group` field guidance to A0 prompt so cards show correct module badge
+4. Strip UUIDs from A0 `notify_user` detail text via prompt guidance
+5. Token cost reduction: pagination on `*_list`, or RAG-based tool selection
+6. Visual QA all 8 modules on :8080
 
-## [2026-03-22 03:45] Session 6 Summary — Action Cards Infrastructure + Critical Fixes
-
-**Completed:**
-- [x] MCP type coercion — Decimal/int/UUID from strings (generic column inspection)
-- [x] UUID double-wrapping fix — `_parse_uuid()` handles `UUID('...')` repr format
-- [x] `action_card` tool — LLM-driven structured card emission via Socket.IO
-- [x] Tool prompt (`agent.system.tool.action_card.md`) + system prompt extension
-- [x] Module icons on cards — lucide icons matching sidebar nav
-- [x] Card-stack arrival animation — top-bar icon flips with type color
-- [x] Card list entry/exit animations (spring slide+fade)
+## [2026-03-24] Session 8 Summary — UI Polish + Integration Architecture
 
 ### .rune/decisions.md
 # Decisions Log
+
+## [2026-03-25] Decision: A0 direct notify_user (no expo subordinate)
+
+**Context:** Expo subordinate agent added ~800-1000 tokens per notification for a second LLM call that just reformatted data A0 already had. Expo also failed on first try (passed unsupported `priority` field), wasting another ~300 tokens.
+**Decision:** A0 calls `notify_user` directly after DB writes. No subordinate delegation for reactive notifications. Expo agent kept for scheduled proactive sweeps only.
+**Rationale:** A0 has all the context — vendor name, item counts, deadline. Spawning a subordinate to reformat is pure overhead. The notify_user tool is simple (title, message, detail, type). A0 can assess urgency inline.
+**Impact:** `usr/extensions/system_prompt/_25_restaurant_context.py` (prompt change), `usr/extensions/tool_execute_after/_30_action_card_emit.py` (auto-emit disabled). Frontend unchanged — consumes `snapshot.notifications` from `state_push`.
+
+## [2026-03-25] Decision: Slim MCP list responses
+
+**Context:** `orders_list` returned 3,103 tokens for 6 orders (full line_items JSONB, detail_points, summary, prompt). A real restaurant with 50+ orders would cost thousands in tokens monthly. `inventory_list` was even worse: 10,219 tokens for 48 items.
+**Decision:** All `*_list` MCP tools strip 13 heavy columns (line_items, detail_points, prompt, summary, extracted_data, gl_codes, media_urls, components, steps, ingredients, notes, equipment, tags, events). `*_get` tools return full objects.
+**Rationale:** LLM only needs summary fields to decide what to do. Full detail is fetched on demand via `*_get`. This is a 75-85% token reduction on list calls.
+**Impact:** `carabiner/mcp/server.py` — `_slim()` helper applied to 13 list endpoints. No model or repository changes.
+
+## [2026-03-25] Decision: Notifications via state_push (not separate Socket.IO events)
+
+**Context:** Action cards were delivered via direct `sio.emit("action_card")` on `/state_sync` — but CSRF cookie validation was rejecting CarabinerOS's socket connections. Chat streaming worked because it uses the same `state_push` mechanism.
+**Decision:** Notifications flow through the existing `state_push` → `snapshot.notifications` pipeline. Frontend reads notifications from the same events that deliver chat. No new socket events, no new handshakes.
+**Rationale:** The pipe already works (chat proves it). Adding a second delivery mechanism (direct `action_card` emit) introduced CSRF issues and duplicate cards. Single path = simple path.
+**Impact:** `frontend/src/hooks/use-action-cards.ts` (consumes `snapshot.notifications`), `frontend/src/hooks/use-socket.ts` (exposes notifications), `frontend/src/components/socket-provider.tsx` (context). Auto-emit extension disabled.
 
 ## [2026-03-24] Decision: Self-extending plugin architecture
 
@@ -89,27 +110,6 @@ Generated: 2026-03-25T02:59:14.409Z
 **Context:** requirements.txt had `>=` floor pins that conflicted with exact pins in requirements2.txt (used by Docker)
 **Decision:** Use unpinned entries (just package name) so requirements2.txt wins in Docker builds
 **Rationale:** requirements2.txt is the authoritative source for Docker version pins. Our entries just ensure the packages are listed.
-**Impact:** requirements.txt
-
-## [2026-03-21 17:30] Decision: Single orchestrator pattern for Claude Code
-
-**Context:** Running two Claude Code sessions on the same repo caused branch conflicts and file corruption
-**Decision:** One Claude Code session at a time. Delegated agents use `isolation: "worktree"` for parallel work.
-**Rationale:** Git has one working tree — concurrent checkouts corrupt each other's state.
-**Impact:** Workflow pattern, not code. Saved in memory for future sessions.
-
-## [2026-03-21 20:30] Decision: Bridge notify_user → action cards instead of Expo JSON parsing
-
-**Context:** We built an Expo extension that parses tool response JSON for action card data, but it's fragile (JSON extraction, prompt engineering for raw JSON output). Meanwhile, A0 has a built-in `notify_user` tool that it naturally uses to send structured notifications with title, message, type, priority.
-**Decision:** Create a post-tool extension that intercepts `notify_user` calls and converts them to action card Socket.IO events. Keep the existing Expo extension as a secondary path.
-**Rationale:** A0 already WANTS to notify the user — it used notify_user spontaneously when it created the rush order (27B local model, no prompting). Fighting that instinct (forcing Expo to output raw JSON) is harder than riding it. The type mapping is clean: success→update, warning→urgent, info→info.
-**Impact:** New extension in usr/extensions/tool_execute_after/ that hooks notify_user → action_card emit. Frontend action card system unchanged. Expo extension remains as fallback.
-**Evidence:** A0 session 2026-03-21 — installed PostgreSQL, created schema from memory, inserted order, used notify_user to alert chef. The notification pattern was correct on first try.
-
-## [2026-03-22 00:00] Decision: Two-path action card architecture
-
-**Context:** Original plan was a Python extension that parses tool response text into action cards (fragile JSON extraction). User feedback: "A0 has an LLM brain — let it decide." But then subordinate token cost became a concern.
-**Decision:** Two complementary paths: (1) Auto-emit extension detects DB writes (`db_mutate`, `*_create`, `*_update`, `*_delete`) and constructs cards from structured MCP response — zero extra LLM tokens. (2) `action_card` tool stays available for proactive LLM-driven notifications (menu ideas, reminders, email alerts) that aren't DB writes.
 
 ### .rune/conventions.md
 # Conventions
@@ -154,11 +154,11 @@ Generated: 2026-03-25T02:59:14.409Z
 - **Preferred**: Docker (port 8080) — handles all proxying correctly
 
 ## Action Cards
-- **Auto-emit**: DB write tools (`db_mutate`, `*_create`, `*_update`, `*_delete`) auto-generate cards via `_30_action_card_emit.py` extension — zero extra LLM tokens
-- **Proactive**: A0 calls `action_card` tool for non-DB notifications (menu ideas, reminders, alerts)
-- **sio access**: Always walk agent hierarchy to find sio — subordinates don't have it directly
+- **Delivery**: A0 calls `notify_user` directly after DB writes → `NotificationManager` → `state_push` → `snapshot.notifications` → frontend converts to `ActionCard`
+- **No subordinate**: Expo agent is NOT used for reactive notifications. A0 handles urgency assessment inline. Expo reserved for scheduled proactive sweeps only.
+- **No auto-emit**: `_30_action_card_emit.py` primary path disabled. Single notification path via `notify_user`.
 - **Card types**: urgent (amber), action (blue), update (emerald), info (violet)
-- **Frontend**: `useActionCards` hook, sessionStorage persistence, 2-col solitaire grid with flip expand
-- **Visual identity**: Kitchen Display System aesthetic — left-border station colors, monospace labels, "Tickets/FIRE/Cleared" vocabulary
+- **Type mapping**: A0 `notify_user` type → card type: warning→urgent, error→urgent, success→update, info→info, progress→info
+- **Frontend**: `useActionCards` hook, sessionStorage persistence, 2-col grid with spring enter/exit animations
+- **Visual identity**: Kitchen Display System aesthetic — monospace labels, "Tickets/FIRE/Cleared" vocabulary
 - **Action buttons**: ✗ (red/dismiss) + ✓ (green/commit) + contextual action label per type+module (e.g., "86 It", "Order Now", "Approve")
-- **Chat suggestions**: `getDefaultSuggestion(card)` + `getDefaultChips(card)` — type+module lookup map for pre-fill and quick-action chips
