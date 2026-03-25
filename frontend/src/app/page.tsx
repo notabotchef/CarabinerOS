@@ -2,12 +2,9 @@
 
 import { useSocketContext } from "@/components/socket-provider";
 import { useChat } from "@/hooks/use-chat";
-import { useActionCards } from "@/hooks/use-action-cards";
-import { TopBar } from "@/components/top-bar";
-import { NotificationPanel } from "@/components/notification-panel";
 import { HomeView } from "@/components/home-view";
 import { useShell } from "@/components/shell";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 export default function HomePage() {
@@ -15,8 +12,6 @@ export default function HomePage() {
   const { newChatPending, consumeNewChat } = useShell();
   const { snapshot, subscribe } = useSocketContext();
   const { sendMessage, resetChat, createNewChat } = useChat(snapshot);
-  const actionCards = useActionCards();
-  const [notifOpen, setNotifOpen] = useState(false);
   const creatingChatRef = useRef(false);
   const sendingRef = useRef(false);
 
@@ -86,31 +81,8 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col h-dvh bg-background">
-      <TopBar
-        unreadCount={actionCards.unreadCount}
-        lastCardType={actionCards.lastCardType}
-        onBellClick={() => { setNotifOpen(true); actionCards.markAllRead(); }}
-      />
-
+    <div className="flex flex-col flex-1 min-h-0 bg-background">
       <HomeView onSend={handleSend} />
-
-      <NotificationPanel
-        open={notifOpen}
-        onOpenChange={setNotifOpen}
-        cards={actionCards.sortedCards}
-        urgentBanner={actionCards.urgentBanner}
-        unreadCount={actionCards.unreadCount}
-        expandedCardId={actionCards.expandedCardId}
-        expandedCard={actionCards.expandedCardId ? actionCards.sortedCards.find(c => c.id === actionCards.expandedCardId) ?? null : null}
-        chatThread={actionCards.chatThread}
-        chatLoading={actionCards.chatLoading}
-        onExpand={actionCards.expandCard}
-        onCollapse={actionCards.collapseCard}
-        onCommit={actionCards.commitCard}
-        onDismiss={actionCards.dismissCard}
-        onSendMessage={actionCards.sendCardMessage}
-      />
     </div>
   );
 }

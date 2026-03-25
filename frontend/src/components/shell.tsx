@@ -2,7 +2,9 @@
 
 import { createContext, useContext, useState, useCallback, type ReactNode, type MouseEvent } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
-import { PersistentChatBar } from "@/components/persistent-chat-bar";
+import { TopBar } from "@/components/top-bar";
+import { NotificationPanel } from "@/components/notification-panel";
+import { useActionCards } from "@/hooks/use-action-cards";
 
 interface ShellContextValue {
   openSidebar: () => void;
@@ -29,6 +31,9 @@ export function useShell() {
 export function Shell({ children }: { children: ReactNode }) {
   const [sidebarHidden, setSidebarHidden] = useState(true);
   const [newChatPending, setNewChatPending] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  const actionCards = useActionCards();
 
   const openSidebar = useCallback(() => setSidebarHidden(false), []);
   const closeSidebar = useCallback(() => setSidebarHidden(true), []);
@@ -48,10 +53,28 @@ export function Shell({ children }: { children: ReactNode }) {
     <ShellContext.Provider value={{ openSidebar, closeSidebar, sidebarHidden, newChatPending, requestNewChat, consumeNewChat }}>
       <AppSidebar hidden={sidebarHidden} />
       <main className="flex-1 flex flex-col min-h-dvh overflow-hidden relative" onClick={handleMainClick}>
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {children}
-        </div>
-        <PersistentChatBar />
+        <TopBar
+          unreadCount={actionCards.unreadCount}
+          lastCardType={actionCards.lastCardType}
+          onBellClick={() => { setNotifOpen(true); actionCards.markAllRead(); }}
+        />
+        {children}
+        <NotificationPanel
+          open={notifOpen}
+          onOpenChange={setNotifOpen}
+          cards={actionCards.sortedCards}
+          urgentBanner={actionCards.urgentBanner}
+          unreadCount={actionCards.unreadCount}
+          expandedCardId={actionCards.expandedCardId}
+          expandedCard={actionCards.expandedCardId ? actionCards.sortedCards.find(c => c.id === actionCards.expandedCardId) ?? null : null}
+          chatThread={actionCards.chatThread}
+          chatLoading={actionCards.chatLoading}
+          onExpand={actionCards.expandCard}
+          onCollapse={actionCards.collapseCard}
+          onCommit={actionCards.commitCard}
+          onDismiss={actionCards.dismissCard}
+          onSendMessage={actionCards.sendCardMessage}
+        />
       </main>
     </ShellContext.Provider>
   );

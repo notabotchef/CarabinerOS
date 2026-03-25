@@ -23,7 +23,7 @@ import {
   Plus,
   Search,
 } from "lucide-react";
-import { MenuButton } from "@/components/menu-button";
+
 import { useWorkspace } from "@/hooks/use-workspace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -324,7 +324,6 @@ export default function InvoicesPage() {
 
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
-        <MenuButton />
         <div className="flex-1 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center size-8 rounded-lg bg-secondary">

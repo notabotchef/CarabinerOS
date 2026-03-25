@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Flame } from "lucide-react";
-import { MenuButton } from "@/components/menu-button";
+
 import { useWorkspace } from "@/hooks/use-workspace";
 import { KpiStrip } from "./_components/kpi-strip";
 import { TrendChart } from "./_components/trend-chart";
@@ -122,7 +122,6 @@ export default function FoodCostPage() {
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border/60 shrink-0 bg-card">
-        <MenuButton />
         <div className="flex-1 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center size-8 rounded-lg bg-amber-500/10">

@@ -29,16 +29,16 @@ const parentVariants = {
   hovered: {},
 };
 
-/* Back card — peeks from upper-left, fans left on hover (poker spread) */
+/* Back card — peeks from upper-left, subtle fan on hover */
 const backCardVariants = {
   idle:    { rotate: -3, x: 0, y: 0 },
-  hovered: { rotate: -14, x: -4, y: 1 },
+  hovered: { rotate: -6, x: -1, y: 0.5 },
 };
 
-/* Front card — overlaps bottom-right, fans right on hover */
+/* Front card — overlaps bottom-right, subtle fan on hover */
 const frontCardVariants = {
   idle:    { rotate: 4, x: 0, y: 0 },
-  hovered: { rotate: 8, x: 2, y: -1 },
+  hovered: { rotate: 6, x: 1, y: -0.5 },
 };
 
 const cardTransition = { type: "spring" as const, stiffness: 400, damping: 25 };

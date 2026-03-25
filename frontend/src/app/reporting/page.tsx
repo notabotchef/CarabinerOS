@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart3, TrendingUp, TrendingDown } from "lucide-react";
-import { MenuButton } from "@/components/menu-button";
+
 import { useWorkspace } from "@/hooks/use-workspace";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -492,7 +492,6 @@ export default function ReportingPage() {
     <div className="flex flex-col h-full bg-background">
       {/* ---- Header ---- */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border/60 shrink-0 bg-card">
-        <MenuButton />
         <div className="flex-1 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center size-8 rounded-lg bg-blue-500/10">

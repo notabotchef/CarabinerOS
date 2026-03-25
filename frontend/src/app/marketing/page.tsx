@@ -13,7 +13,7 @@ import {
   Calendar,
   LayoutGrid,
 } from "lucide-react";
-import { MenuButton } from "@/components/menu-button";
+
 import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { useWorkspace } from "@/hooks/use-workspace";
@@ -445,7 +445,6 @@ export default function MarketingPage() {
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
-        <MenuButton />
         <div className="flex-1 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center size-8 rounded-lg bg-gradient-to-br from-pink-500/20 to-violet-500/20">

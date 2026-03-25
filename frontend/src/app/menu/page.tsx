@@ -13,7 +13,7 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-import { MenuButton } from "@/components/menu-button";
+
 import { useWorkspace } from "@/hooks/use-workspace";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -703,7 +703,6 @@ export default function MenuPage() {
       <header className="shrink-0 border-b border-border bg-card">
         <div className="px-4 py-3">
           <div className="flex items-center gap-3">
-            <MenuButton />
             <div className="flex-1 flex items-center justify-between">
               <div>
                 <h1 className="text-lg font-semibold text-foreground">Menu Engineering</h1>

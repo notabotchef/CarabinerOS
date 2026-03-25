@@ -18,7 +18,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, ShoppingCart, ChevronRight } from "lucide-react";
-import { MenuButton } from "@/components/menu-button";
+
 import { useWorkspace } from "@/hooks/use-workspace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -196,7 +196,6 @@ export default function OrdersPage() {
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0 bg-card">
-        <MenuButton />
         <div className="flex-1 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight text-foreground">Orders</h1>
