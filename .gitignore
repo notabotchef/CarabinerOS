@@ -15,7 +15,6 @@ agent_history.gif
 .agent/**
 
 # === Rune ===
-.rune/metrics/
 frontend/.rune/
 
 # === CarabinerOS ===
