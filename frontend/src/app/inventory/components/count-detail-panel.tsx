@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { X } from "lucide-react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ModuleChat } from "@/components/module-chat";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -221,21 +222,25 @@ export function CountDetailPanel({
 
   const isComplete = detail?.status === "completed";
 
+  const buildContext = useCallback(() => {
+    if (!detail || !countId) return "[module=inventory]";
+    return `[module=inventory, count_id=${countId}, count_date=${detail.count_date}, count_type=${detail.count_type}, total_value=${detail.total_value}, items=${detail.line_count}]`;
+  }, [detail, countId]);
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-lg flex flex-col"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="w-[90vw] max-w-3xl max-h-[85vh] flex flex-col"
         showCloseButton={false}
       >
         {/* Header */}
-        <SheetHeader className="px-5 py-4 border-b border-border shrink-0">
+        <DialogHeader className="px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <SheetTitle className="text-base font-extrabold tracking-tight">
+              <DialogTitle className="text-base font-extrabold tracking-tight">
                 Inventory Count
-              </SheetTitle>
-              <SheetDescription className="text-xs text-muted-foreground mt-0.5">
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
                 {detail ? (
                   <span className="font-mono">
                     {formatDate(detail.count_date)}
@@ -243,7 +248,7 @@ export function CountDetailPanel({
                 ) : (
                   "Loading..."
                 )}
-              </SheetDescription>
+              </DialogDescription>
             </div>
             <div className="flex items-center gap-2 ml-3 shrink-0">
               {detail && (
@@ -276,7 +281,7 @@ export function CountDetailPanel({
               </Button>
             </div>
           </div>
-        </SheetHeader>
+        </DialogHeader>
 
         {/* Body */}
         <div className="flex-1 overflow-auto">
@@ -347,7 +352,17 @@ export function CountDetailPanel({
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+
+        {/* Chat footer */}
+        <div className="shrink-0 border-t border-border">
+          <ModuleChat
+            moduleId="inventory-count"
+            buildContext={buildContext}
+            placeholder="Ask about this count..."
+            chips={["What items cost the most?", "Compare to last count", "Any shrinkage?"]}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
