@@ -49,3 +49,26 @@
 - **Action buttons**: ✗ (red/dismiss) + ✓ (green/commit) + contextual action label per type+module (e.g., "86 It", "Order Now", "Approve")
 - **Chat suggestions**: `getDefaultSuggestion(card)` + `getDefaultChips(card)` — type+module lookup map for pre-fill and quick-action chips
 - **Completed cards**: Green-tinted "Cleared" section at bottom of panel, still expandable, hover to dismiss
+
+## Module Chat (Context Piggybacking)
+- **Pattern**: Every module panel has an inline `<ModuleChat>` component for A0 interaction
+- **Context piggybacking**: Module data prepended in brackets to every outgoing message: `[module=orders, vendor=X, order_id=Y, total=$Z] user message here`
+- **A0 reads silently**: System prompt tells A0 to parse brackets and never repeat them
+- **Display filter**: Frontend strips `[...]` prefix from all rendered messages (both mini-chat and main chat)
+- **No hidden messages**: Context travels WITH each message, not as a pre-sent first message
+- **Reusable**: One `ModuleChat` component used by all modules — Orders wired first, others pending
+
+## Module Pages (Chat-First)
+- **Default pattern**: Chat-first — tabs display data, inline chat modifies it. No forms, no inline editing.
+- **Exception**: Recipes gets a full editor (Smart Add, scaling, method steps) — the ONE module that isn't chat-first
+- **Checkboxes**: Prep items get tap-to-complete checkboxes — the ONE physical interaction that needs a tap, not chat
+- **Three buttons**: Orders detail has Send / Draft / Cancel — the only structured actions
+- **Vendor select**: New orders have a vendor dropdown — the ONE structured input to prevent A0 hallucinating vendors
+
+## Design Philosophy
+- **"Make It Nice"**: EMP/Guidara/Meyer hospitality philosophy applied to software (docs/research/make-it-nice-hospitality-philosophy-2026-03.md)
+- **Useful = delicious**: Core function works. Data is accurate. Speed is there.
+- **Welcoming = gracious**: Anticipates needs. Remembers. Gets out of the way. Shows up when needed.
+- **Every pixel is a touchpoint**: Empty states, loading states, error messages — all hospitality moments
+- **95/5 rule**: 95% operational excellence, 5% surprise and delight
+- **Peak-End rule**: Design the "wow" moment and the exit. The ending matters as much as the beginning.

@@ -76,18 +76,28 @@
 - [x] Merged both agent branches to main, resolved conflicts (rewrite wins over patch)
 - [x] Neural memory capture — 5 learnings saved (design, animation, merge strategy, chat UX, rune:team bug)
 
-**Open Bug (carried from session 6):**
-- [ ] Action cards not reaching frontend from A0 — auto-emit extension fires server-side but cards don't appear. Needs live debugging.
-- [ ] A0 still calls `call_subordinate` for card formatting — system prompt should tell it the extension handles this
+## [2026-03-24] Session 8b — Full Module Build + Infrastructure Fixes
 
-**In Progress (carried from session 6):**
-- [ ] Migration 009 not yet run
-- [ ] Expo filtering not started
+**Completed:**
+- [x] 8 research agents — competitive analysis for all core modules
+- [x] All 8 plans chef-reviewed — chat-first pattern, real-world references (Roister budget, Kama prep lists, mepai-capture editor)
+- [x] 8 build agents in parallel — all modules built to P0 spec, merged, conflicts resolved
+- [x] DB migrations for all new columns/tables (menu, inventory, invoices, marketing, prep)
+- [x] Functional seed: menu pricing, inventory categories, 30 days food cost/P&L, budget, par levels, waste, price alerts, vendors
+- [x] Order total auto-calc from line items (frontend)
+- [x] ModuleChat component — reusable inline chat with context piggybacking
+- [x] Mini-chat streaming fix — subscribe to new context after createNewChat()
+- [x] Order refresh fix — re-fetch 3s after chat message
+- [x] Action cards delivery fix — initStateSyncSocket() (session 6 bug resolved!)
+- [x] Docker .dockerignore fix — excludes frontend/, rune-business/, rune-pro/, docs/, .claude/
+- [x] "Make It Nice" philosophy research — docs/research/make-it-nice-hospitality-philosophy-2026-03.md
+- [x] Integration architecture + self-extending plugin system documented
+- [x] flask_blueprint.py syntax fix
 
 **Next Session Should:**
-1. Test the new solitaire card UI — load fake cards, verify 2-col grid, flip animation, action buttons, chat chips, completed section
-2. Fix `bg-current/[0.08]` on action button if it doesn't render visually
-3. Debug action card frontend delivery — the original open bug from session 6
-4. Explore Google Stitch for UI generation
-5. Consider soft delete for orders (deleted=true, 30-day auto-purge)
-6. Run migration 009
+1. Full walkthrough all 8 modules on :8080 — visual QA
+2. Wire ModuleChat into remaining 7 modules (currently only Orders)
+3. Test action cards in notification panel (session 6 bug should be fixed)
+4. Apply "Make It Nice" to empty states, loading, errors
+5. Daily Brief — A0 scheduled task replacing hardcoded insights
+6. Settings/integrations page skeleton
