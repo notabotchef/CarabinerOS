@@ -489,7 +489,7 @@ export default function ReportingPage() {
   ];
 
   return (
-    <div className="flex flex-col h-dvh bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* ---- Header ---- */}
       <header className="flex items-center gap-3 px-4 py-3 border-b border-border/60 shrink-0 bg-card">
         <MenuButton />

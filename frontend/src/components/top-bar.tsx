@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import { motion, useAnimation } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MenuButton } from "@/components/menu-button";
@@ -23,69 +23,41 @@ const TYPE_COLORS: Record<string, { border: string; bg: string }> = {
   info:   { border: "#8b5cf6", bg: "rgba(139,92,246,0.1)" },
 };
 
+/* Variant-driven: parent propagates "idle"/"hovered" to children */
 const parentVariants = {
   idle: {},
   hovered: {},
 };
 
+/* Back card — peeks from upper-left, fans left on hover (poker spread) */
 const backCardVariants = {
-  idle: { rotate: 5, x: 0 },
-  hovered: { rotate: 8, x: 2 },
+  idle:    { rotate: -3, x: 0, y: 0 },
+  hovered: { rotate: -14, x: -4, y: 1 },
 };
 
+/* Front card — overlaps bottom-right, fans right on hover */
 const frontCardVariants = {
-  idle: { rotate: -2, x: 0 },
-  hovered: { rotate: -6, x: -2 },
+  idle:    { rotate: 4, x: 0, y: 0 },
+  hovered: { rotate: 8, x: 2, y: -1 },
 };
 
 const cardTransition = { type: "spring" as const, stiffness: 400, damping: 25 };
 
 export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen", lastCardType }: TopBarProps) {
-  const backControls = useAnimation();
-  const frontControls = useAnimation();
+  const [notifyColor, setNotifyColor] = useState<{ border: string; bg: string } | null>(null);
   const prevUnreadRef = useRef(unreadCount);
   const lastAnimTimeRef = useRef(0);
 
-  const playNotifyAnimation = useCallback(async (cardType?: string) => {
+  const playNotifyAnimation = useCallback((cardType?: string) => {
     const colors = TYPE_COLORS[cardType ?? "info"] ?? TYPE_COLORS.info;
-
-    // Back card swings to front position with type color
-    await Promise.all([
-      backControls.start({
-        rotate: -6,
-        x: -2,
-        borderColor: colors.border,
-        backgroundColor: colors.bg,
-        transition: { type: "spring", stiffness: 350, damping: 20 },
-      }),
-      frontControls.start({
-        rotate: 8,
-        x: 2,
-        transition: { type: "spring", stiffness: 350, damping: 20 },
-      }),
-    ]);
-
-    // Settle back to idle
-    await Promise.all([
-      backControls.start({
-        rotate: 5,
-        x: 0,
-        borderColor: "var(--color-foreground)",
-        backgroundColor: "var(--color-card)",
-        transition: { type: "spring", stiffness: 400, damping: 25, delay: 0.15 },
-      }),
-      frontControls.start({
-        rotate: -2,
-        x: 0,
-        transition: { type: "spring", stiffness: 400, damping: 25, delay: 0.15 },
-      }),
-    ]);
-  }, [backControls, frontControls]);
+    setNotifyColor(colors);
+    // Flash the type color for 600ms then clear
+    setTimeout(() => setNotifyColor(null), 600);
+  }, []);
 
   useEffect(() => {
     if (unreadCount > prevUnreadRef.current) {
       const now = Date.now();
-      // Debounce: only animate once per 500ms
       if (now - lastAnimTimeRef.current >= 500) {
         lastAnimTimeRef.current = now;
         playNotifyAnimation(lastCardType);
@@ -130,29 +102,34 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
           <Settings className="size-4" />
         </a>
 
-        {/* Card duo notification icon */}
-        <div className="relative w-8 h-[30px] cursor-pointer group" onClick={onBellClick} title="Action Cards">
+        {/* Card duo notification icon — poker hand */}
+        <div className="relative size-8 cursor-pointer group flex items-center justify-center" onClick={onBellClick} title="Action Cards">
           <motion.div
             initial="idle"
             animate="idle"
             whileHover="hovered"
             variants={parentVariants}
-            className="relative w-full h-full"
+            className="relative w-5 h-5"
           >
-            {/* Back card */}
+            {/* Back card — peeks upper-left (behind) */}
             <motion.div
-              className="absolute w-[20px] h-[26px] rounded border-[1.8px] border-foreground/50 bg-card top-0 left-2 z-[1]"
+              className="absolute w-[13px] h-[17px] rounded-[2.5px] border-[1.5px] bg-card top-[-1px] left-[0px] z-[1]"
               variants={backCardVariants}
-              animate={backControls}
               transition={cardTransition}
-              style={{ borderColor: "var(--color-foreground)", backgroundColor: "var(--color-card)" }}
+              style={{
+                borderColor: notifyColor?.border ?? "var(--color-foreground)",
+                backgroundColor: notifyColor?.bg ?? "var(--color-card)",
+                transformOrigin: "bottom center",
+                opacity: 0.5,
+                transition: "border-color 0.2s, background-color 0.2s",
+              }}
             />
-            {/* Front card */}
+            {/* Front card — overlaps bottom-right (on top) */}
             <motion.div
-              className="absolute w-[20px] h-[26px] rounded border-[1.8px] border-foreground/50 bg-card top-[1px] left-[2px] z-[2]"
+              className="absolute w-[13px] h-[17px] rounded-[2.5px] border-[1.5px] border-foreground/50 bg-card top-[3px] left-[5px] z-[2]"
               variants={frontCardVariants}
-              animate={frontControls}
               transition={cardTransition}
+              style={{ transformOrigin: "bottom center" }}
             />
           </motion.div>
           {unreadCount > 0 && (

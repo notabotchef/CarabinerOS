@@ -450,6 +450,7 @@ export function OrderDetailPanel({
 
         {/* Chat composer — pinned to bottom */}
         <ModuleChat
+          moduleId="orders"
           buildContext={() => {
             const items = lineItems.map(i => `${i.name} ${i.quantity}${i.unit}`).join(", ");
             return `[module=orders, vendor=${order?.vendor ?? selectedVendorName ?? "unknown"}, order_id=${order?.id ?? "new"}, status=${order?.status ?? "Drafting"}, total=$${computedTotal}, items=${items}]`;

@@ -312,7 +312,7 @@ export default function InvoicesPage() {
   }, [refresh]);
 
   return (
-    <div className="flex flex-col h-dvh bg-background">
+    <div className="flex flex-col h-full bg-background">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
