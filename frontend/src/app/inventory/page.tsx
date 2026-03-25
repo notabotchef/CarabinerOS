@@ -79,6 +79,8 @@ function formatDate(v: unknown): string {
 /*  Motion variants                                                    */
 /* ------------------------------------------------------------------ */
 
+const TIP_INDEX = Math.floor(Date.now() / 86400000) % 3;
+
 const cardVariants = {
   hidden: { opacity: 0, y: 12 },
   visible: (i: number) => ({
@@ -477,6 +479,13 @@ export default function InventoryPage() {
                   </p>
                   <p className="text-sm text-muted-foreground max-w-xs">
                     Tell CarabinerOS to run a count, set par levels, or log waste &mdash; it&apos;ll take it from there.
+                  </p>
+                  <p className="text-[11px] text-muted-foreground/60 italic mt-3">
+                    {[
+                      "Tip: Count walk-in first thing, dry storage after service.",
+                      "Tip: Spot counts on high-cost items catch variance early.",
+                      "Tip: Ask CarabinerOS to flag anything below par.",
+                    ][TIP_INDEX]}
                   </p>
                 </div>
               )}

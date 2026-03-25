@@ -91,6 +91,8 @@ interface PrepListData {
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
+const TIP_INDEX = Math.floor(Date.now() / 86400000) % 3;
+
 const SERVICE_LANES = ["All", "Lunch", "Dinner", "All Day"] as const;
 type ServiceLane = (typeof SERVICE_LANES)[number];
 
@@ -289,13 +291,16 @@ function CompletionRing({ completed, total }: { completed: number; total: number
               stroke="#10b981" strokeWidth="5" strokeLinecap="round"
               strokeDasharray={`${completedLen} ${remainingLen}`}
               initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
+              animate={{ pathLength: 1, opacity: pct === 100 ? [1, 0.5, 1] : 1 }}
               transition={{ duration: 0.6 }}
             />
           )}
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-foreground tabular-nums font-mono">
-          {pct}%
+        <span className={cn(
+          "absolute inset-0 flex items-center justify-center text-sm font-bold tabular-nums font-mono",
+          pct === 100 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground",
+        )}>
+          {pct === 100 ? "All set" : `${pct}%`}
         </span>
       </div>
       <div className="flex flex-col gap-0.5">
@@ -639,6 +644,13 @@ function EmptyState() {
       <h3 className="text-sm font-semibold text-foreground mb-1">Your prep board is clean</h3>
       <p className="text-sm text-muted-foreground max-w-sm">
         Tell CarabinerOS what you&apos;re prepping today &mdash; try &quot;Generate prep for tonight, 140 covers.&quot;
+      </p>
+      <p className="text-[11px] text-muted-foreground/60 italic mt-3">
+        {[
+          "Tip: Prep proteins first \u2014 they take longest to temper.",
+          "Tip: Double-batch sauces on slow days to bank for the weekend.",
+          "Tip: Ask CarabinerOS to generate prep based on tomorrow\u2019s covers.",
+        ][TIP_INDEX]}
       </p>
     </motion.div>
   );

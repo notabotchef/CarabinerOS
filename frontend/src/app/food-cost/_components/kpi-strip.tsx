@@ -67,6 +67,12 @@ function KpiCard({
       <span className={`text-3xl font-bold font-mono tabular-nums tracking-tight ${accent}`}>
         {value}
       </span>
+      {accent === "text-emerald-400" && value !== "--" && (
+        <span className="text-[10px] text-emerald-500 mt-0.5">On track</span>
+      )}
+      {accent === "text-red-400" && value !== "--" && (
+        <span className="text-[10px] text-amber-500 mt-0.5">Watch this</span>
+      )}
     </motion.div>
   );
 }
