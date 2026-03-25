@@ -38,13 +38,25 @@ export function ModuleChat({
   placeholder = "Type a message...",
   chips = [],
 }: ModuleChatProps) {
-  const { snapshot } = useSocketContext();
+  const { snapshot, subscribe } = useSocketContext();
   const { sendMessage, messages, loading, createNewChat } = useChat(snapshot);
 
   const [value, setValue] = useState("");
   const [hasStarted, setHasStarted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previousContextRef = useRef<string | null>(null);
+  const moduleChatContextRef = useRef<string | null>(null);
+
+  // Restore the previous Socket.IO context subscription when unmounting
+  // so the main chat continues to work after closing the module chat.
+  useEffect(() => {
+    return () => {
+      if (previousContextRef.current !== undefined) {
+        subscribe(previousContextRef.current);
+      }
+    };
+  }, [subscribe]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -58,9 +70,16 @@ export function ModuleChat({
       const trimmed = text.trim();
       if (!trimmed) return;
 
-      // On first send, create a fresh A0 context
+      // On first send, create a fresh A0 context and subscribe to it
       if (!hasStarted) {
-        await createNewChat();
+        // Save the current context so we can restore it on unmount
+        previousContextRef.current = snapshot?.context ?? null;
+
+        const newCtxId = await createNewChat();
+        if (newCtxId) {
+          moduleChatContextRef.current = newCtxId;
+          subscribe(newCtxId);
+        }
         setHasStarted(true);
       }
 
@@ -69,7 +88,7 @@ export function ModuleChat({
       await sendMessage(enriched);
       setValue("");
     },
-    [hasStarted, createNewChat, buildContext, sendMessage],
+    [hasStarted, createNewChat, buildContext, sendMessage, snapshot, subscribe],
   );
 
   const handleSubmit = useCallback(() => {
