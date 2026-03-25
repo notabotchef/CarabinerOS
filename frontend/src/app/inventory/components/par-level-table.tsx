@@ -25,9 +25,15 @@ const COLUMNS = [
   {
     key: "on_hand" as const,
     label: "On Hand",
-    render: (v: unknown) => (
-      <span className="font-mono text-[13px]">{v ? parseFloat(Number(v).toFixed(1)) : "\u2014"}</span>
-    ),
+    render: (v: unknown) => {
+      if (!v) return <span className="font-mono text-[13px]">{"\u2014"}</span>;
+      const s = String(v).trim();
+      const match = s.match(/^([+-]?\d+(?:\.\d+)?)\s*(.*)/);
+      if (!match) return <span className="font-mono text-[13px]">{s}</span>;
+      const num = parseFloat(Number(match[1]).toFixed(1));
+      const unit = match[2];
+      return <span className="font-mono text-[13px]">{num}{unit ? ` ${unit}` : ""}</span>;
+    },
   },
   {
     key: "min_quantity" as const,
@@ -78,7 +84,7 @@ export function ParLevelTable() {
         columns={COLUMNS}
         data={data}
         loading={loading}
-        emptyMessage="No par levels set. Use the chat to set them."
+        emptyMessage="No par levels set yet — tell CarabinerOS your ideal stock levels to get started."
       />
     </div>
   );

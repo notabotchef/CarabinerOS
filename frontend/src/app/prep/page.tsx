@@ -246,13 +246,13 @@ function ReadinessRing({ items }: { items: WorkspacePrepItem[] }) {
             />
           ))}
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-foreground tabular-nums">
+        <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-foreground tabular-nums font-mono">
           {pct}%
         </span>
       </div>
 
       <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-semibold text-foreground tabular-nums">
+        <span className="text-sm font-semibold text-foreground tabular-nums font-mono">
           {ready}/{total} ready
         </span>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -633,12 +633,12 @@ function EmptyState() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <div className="rounded-full bg-muted p-4 mb-4">
+      <div className="rounded-xl bg-muted p-4 mb-4">
         <ClipboardList className="size-8 text-muted-foreground" />
       </div>
-      <h3 className="text-sm font-semibold text-foreground mb-1">No prep tasks yet</h3>
+      <h3 className="text-sm font-semibold text-foreground mb-1">Your prep board is clean</h3>
       <p className="text-sm text-muted-foreground max-w-sm">
-        Use the chat below to generate today&#39;s prep list. Try: &quot;Generate prep for tonight, 140 covers&quot;
+        Tell CarabinerOS what you&apos;re prepping today &mdash; try &quot;Generate prep for tonight, 140 covers.&quot;
       </p>
     </motion.div>
   );
@@ -933,7 +933,7 @@ export default function PrepPage() {
         ) : (wsError || opError) ? (
           <div className="p-6">
             <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-              No data available -- use the chat below to generate a prep list
+              We&apos;re setting up your prep board &mdash; ask CarabinerOS to generate today&apos;s list.
             </div>
           </div>
         ) : (

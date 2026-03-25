@@ -399,8 +399,7 @@ export default function InvoicesPage() {
         {/* Error banner */}
         {error && (
           <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-            Unable to reach the invoices API -- data will appear once the backend
-            is connected.
+            We&apos;re getting your invoices ready &mdash; check back in a moment.
           </div>
         )}
 
@@ -469,14 +468,14 @@ export default function InvoicesPage() {
         {/* Empty state -- filtered */}
         {!loading && !error && data.length > 0 && filtered.length === 0 && (
           <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-            No invoices match your search or filter.
+            Nothing here yet &mdash; try a different filter or ask CarabinerOS to help find it.
           </div>
         )}
 
         {/* Empty state -- no data at all */}
         {!loading && !error && data.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
-            <div className="flex items-center justify-center size-14 rounded-2xl bg-secondary shadow-sm">
+            <div className="flex items-center justify-center size-14 rounded-xl bg-secondary shadow-sm">
               <FileText className="size-7 text-muted-foreground" />
             </div>
             <div>

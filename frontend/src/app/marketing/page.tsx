@@ -215,7 +215,7 @@ function StagePipeline({ campaigns }: { campaigns: Campaign[] }) {
               className={`inline-block size-2 rounded-full ${STAGE_STYLES[stage].dot}`}
             />
             <span className="text-muted-foreground">{stage}</span>
-            <span className="font-semibold text-foreground tabular-nums">
+            <span className="font-semibold text-foreground font-mono tabular-nums">
               {counts[stage]}
             </span>
           </div>
@@ -497,7 +497,7 @@ export default function MarketingPage() {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground"
           >
-            No data available -- API endpoint not connected yet
+            We&apos;re getting your campaigns ready &mdash; check back in a moment.
           </motion.div>
         )}
 
@@ -542,7 +542,7 @@ export default function MarketingPage() {
             className="flex flex-col items-center justify-center py-20 text-center"
           >
             <div className="relative mb-6">
-              <div className="flex items-center justify-center size-16 rounded-2xl bg-gradient-to-br from-pink-500/10 to-violet-500/10">
+              <div className="flex items-center justify-center size-16 rounded-xl bg-gradient-to-br from-pink-500/10 to-violet-500/10">
                 <Sparkles className="size-7 text-pink-500/60" />
               </div>
               <motion.div
@@ -555,7 +555,7 @@ export default function MarketingPage() {
                   repeat: Infinity,
                   ease: "linear",
                 }}
-                className="absolute -inset-2 rounded-2xl bg-gradient-to-br from-pink-500/5 to-violet-500/5 -z-10"
+                className="absolute -inset-2 rounded-xl bg-gradient-to-br from-pink-500/5 to-violet-500/5 -z-10"
               />
             </div>
             <h3 className="text-sm font-semibold text-foreground mb-1">

@@ -172,7 +172,7 @@ export function InvoiceDetailPanel({
         setError(json.error || "Failed to load invoice");
       }
     } catch {
-      setError("Unable to load invoice details");
+      setError("We're having trouble loading this invoice \u2014 try again in a moment.");
     } finally {
       setLoading(false);
     }
@@ -316,7 +316,7 @@ export function InvoiceDetailPanel({
                       />
                     ) : invoice.file_path ? (
                       <div className="flex flex-col items-center gap-3 text-center">
-                        <div className="flex items-center justify-center size-16 rounded-2xl bg-secondary">
+                        <div className="flex items-center justify-center size-16 rounded-xl bg-secondary">
                           <FileText className="size-8 text-muted-foreground" />
                         </div>
                         <p className="text-sm font-semibold text-foreground">
@@ -335,7 +335,7 @@ export function InvoiceDetailPanel({
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-3 text-center">
-                        <div className="flex items-center justify-center size-16 rounded-2xl bg-secondary">
+                        <div className="flex items-center justify-center size-16 rounded-xl bg-secondary">
                           <ImageIcon className="size-8 text-muted-foreground" />
                         </div>
                         <p className="text-sm text-muted-foreground">
@@ -545,7 +545,7 @@ export function InvoiceDetailPanel({
                           }
                         }}
                         placeholder="Approve it, dispute a price, ask a question..."
-                        className="w-full rounded-2xl border border-border bg-card/80 px-4 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-primary/50 focus:ring-2 focus:ring-primary/25"
+                        className="w-full rounded-xl border border-border bg-card/80 px-4 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground/40 outline-none transition-all duration-200 focus:border-primary/50 focus:ring-2 focus:ring-primary/25"
                       />
                       <button
                         onClick={handleChatSend}

@@ -158,7 +158,7 @@ export function PressureTable({ data, loading, error }: PressureTableProps) {
       {/* Error */}
       {error && !loading && (
         <div className="rounded-xl border border-border/60 bg-card p-4 text-sm text-muted-foreground">
-          No AI pressure data available
+          We&apos;re crunching your cost data &mdash; pressure analysis will appear shortly.
         </div>
       )}
 
@@ -175,7 +175,9 @@ export function PressureTable({ data, loading, error }: PressureTableProps) {
       {!loading && !error && filtered.length === 0 && (
         <div className="rounded-xl border border-border/60 bg-card p-4 text-center">
           <p className="text-sm text-muted-foreground">
-            {tab === "All" ? "No pressure data yet" : `No ${tab.toLowerCase()} pressure items`}
+            {tab === "All"
+              ? "No cost pressure data yet \u2014 CarabinerOS will analyze your menu once costs are tracked."
+              : `Nothing in ${tab.toLowerCase()} pressure right now \u2014 try a different filter.`}
           </p>
         </div>
       )}

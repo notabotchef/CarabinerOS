@@ -100,14 +100,12 @@ function KpiCard({
   icon: Icon,
   tint,
   index,
-  isMoney,
 }: {
   label: string;
   value: number | string;
   icon: React.ComponentType<{ className?: string }>;
   tint?: "destructive" | "positive" | "info";
   index: number;
-  isMoney?: boolean;
 }) {
   const tintBg =
     tint === "destructive"
@@ -142,7 +140,7 @@ function KpiCard({
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {label}
         </span>
-        <span className={`text-3xl font-bold leading-tight text-foreground ${isMoney ? "font-mono" : "tabular-nums"}`}>
+        <span className={`text-3xl font-bold font-mono leading-tight text-foreground tabular-nums`}>
           {value}
         </span>
       </div>
@@ -289,7 +287,7 @@ const COLUMNS = [
     key: "updated_at" as const,
     label: "Last Updated",
     render: (v: unknown) => (
-      <span className="text-muted-foreground text-xs">{formatDate(v)}</span>
+      <span className="text-muted-foreground text-xs font-mono">{formatDate(v)}</span>
     ),
   },
 ];
@@ -427,7 +425,6 @@ export default function InventoryPage() {
                       icon={DollarSign}
                       tint="info"
                       index={3}
-                      isMoney
                     />
                   </div>
 
@@ -457,7 +454,7 @@ export default function InventoryPage() {
               {/* Error banner */}
               {error && (
                 <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-                  Unable to reach inventory API -- data will appear once the backend is connected.
+                  We&apos;re getting your inventory ready &mdash; check back in a moment.
                 </div>
               )}
 
@@ -466,7 +463,7 @@ export default function InventoryPage() {
                 columns={COLUMNS}
                 data={filtered}
                 loading={loading}
-                emptyMessage="No inventory items yet"
+                emptyMessage="Your shelves are clear — run a count or ask CarabinerOS to get started."
               />
 
               {/* Empty state */}
@@ -476,10 +473,10 @@ export default function InventoryPage() {
                     <Package className="size-6 text-muted-foreground" />
                   </div>
                   <p className="text-sm font-medium text-foreground">
-                    No inventory counts
+                    Your shelves are waiting
                   </p>
                   <p className="text-sm text-muted-foreground max-w-xs">
-                    Use the chat to run an inventory count, set par levels, or log waste.
+                    Tell CarabinerOS to run a count, set par levels, or log waste &mdash; it&apos;ll take it from there.
                   </p>
                 </div>
               )}

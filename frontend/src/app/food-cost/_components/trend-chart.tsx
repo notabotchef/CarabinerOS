@@ -176,7 +176,7 @@ export function TrendChart({ data, targetPct, loading }: TrendChartProps) {
   if (chartData.length === 0) {
     return (
       <div className="rounded-xl border border-border/60 bg-card p-4 flex items-center justify-center h-[260px]">
-        <p className="text-sm text-muted-foreground">No daily food cost data yet. Use chat to enter daily spend.</p>
+        <p className="text-sm text-muted-foreground">Your trend line starts here &mdash; log daily spend via the chat to see it come alive.</p>
       </div>
     );
   }

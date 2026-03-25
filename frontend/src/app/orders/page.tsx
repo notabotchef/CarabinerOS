@@ -115,7 +115,7 @@ function PipelineStrip({ counts, loading }: { counts: Record<OrderStatus, number
     <div className="flex items-center gap-2">
       {PIPELINE_STAGES.map((stage, i) => (
         <div key={stage.key} className="flex items-center gap-2 flex-1">
-          <div className="flex-1 rounded-lg border border-border bg-card p-3">
+          <div className="flex-1 rounded-xl border border-border bg-card p-4">
             {loading ? (
               <>
                 <Skeleton className="h-3 w-14 mb-1.5" />
@@ -124,7 +124,7 @@ function PipelineStrip({ counts, loading }: { counts: Record<OrderStatus, number
             ) : (
               <>
                 <p className="text-xs font-medium text-muted-foreground">{stage.label}</p>
-                <p className="text-2xl font-extrabold tabular-nums text-foreground">
+                <p className="text-2xl font-extrabold tabular-nums font-mono text-foreground">
                   {counts[stage.key]}
                 </p>
               </>
@@ -237,7 +237,7 @@ export default function OrdersPage() {
                 >
                   {s}
                   {data.length > 0 && (
-                    <span className="ml-1.5 text-xs tabular-nums font-normal text-muted-foreground">
+                    <span className="ml-1.5 text-xs tabular-nums font-mono font-normal text-muted-foreground">
                       {count}
                     </span>
                   )}
@@ -256,8 +256,8 @@ export default function OrdersPage() {
 
         {/* Error banner */}
         {error && (
-          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-            Unable to reach the orders API — data will appear once the backend is connected.
+          <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+            We&apos;re getting your orders ready &mdash; check back in a moment.
           </div>
         )}
 
@@ -299,11 +299,11 @@ export default function OrdersPage() {
                     <TableCell className="font-semibold text-foreground">{order.vendor}</TableCell>
                     <TableCell className="text-muted-foreground">{order.channel}</TableCell>
                     <TableCell><StatusBadge status={order.status} /></TableCell>
-                    <TableCell className="text-right tabular-nums font-extrabold text-foreground">
+                    <TableCell className="text-right tabular-nums font-mono font-extrabold text-foreground">
                       {formatCurrency(order.total)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{order.eta ?? "\u2014"}</TableCell>
-                    <TableCell className="text-muted-foreground">{formatDate(order.created_at)}</TableCell>
+                    <TableCell className="text-muted-foreground font-mono">{order.eta ?? "\u2014"}</TableCell>
+                    <TableCell className="text-muted-foreground font-mono">{formatDate(order.created_at)}</TableCell>
                   </motion.tr>
                 ))}
               </TableBody>
@@ -314,14 +314,14 @@ export default function OrdersPage() {
         {/* Empty state — filtered */}
         {!loading && !error && data.length > 0 && filtered.length === 0 && (
           <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-            No {filter.toLowerCase()} orders match your search.
+            Nothing here yet &mdash; try a different filter or ask CarabinerOS to help find it.
           </div>
         )}
 
         {/* Empty state — no data at all */}
         {!loading && !error && data.length === 0 && (
           <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
-            <div className="flex items-center justify-center size-14 rounded-2xl bg-secondary shadow-sm">
+            <div className="flex items-center justify-center size-14 rounded-xl bg-secondary shadow-sm">
               <ShoppingCart className="size-7 text-muted-foreground" />
             </div>
             <div>

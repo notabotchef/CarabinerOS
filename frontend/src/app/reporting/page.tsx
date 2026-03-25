@@ -354,24 +354,24 @@ function KpiCard({ kpi, index }: { kpi: KPI; index: number }) {
       className="relative overflow-hidden rounded-xl border border-border/60 bg-card"
     >
       <div className={`absolute inset-x-0 top-0 h-[2px] ${cfg.bar}`} />
-      <div className="p-5">
+      <div className="p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {kpi.label}
           </span>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-extrabold tabular-nums tracking-tight text-foreground">
+          <span className="text-3xl font-extrabold font-mono tabular-nums tracking-tight text-foreground">
             {kpi.value}
           </span>
         </div>
         <div className="flex items-center gap-2 mt-2.5">
           {!isNeutral && kpi.delta !== "—" && (
             <span
-              className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums ${
+              className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-bold font-mono tabular-nums ${
                 isPositive
-                  ? "bg-emerald-500/12 text-emerald-400"
-                  : "bg-red-500/12 text-red-400"
+                  ? "bg-emerald-500/10 text-emerald-400"
+                  : "bg-red-500/10 text-red-400"
               }`}
             >
               {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -379,7 +379,7 @@ function KpiCard({ kpi, index }: { kpi: KPI; index: number }) {
             </span>
           )}
           {(isNeutral || kpi.delta === "—") && (
-            <span className="text-[11px] font-bold tabular-nums text-muted-foreground">
+            <span className="text-[11px] font-bold font-mono tabular-nums text-muted-foreground">
               {kpi.delta}
             </span>
           )}
@@ -394,7 +394,7 @@ function KpiCard({ kpi, index }: { kpi: KPI; index: number }) {
 
 function KpiSkeleton() {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-5">
+    <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-4">
       <div className="absolute inset-x-0 top-0 h-[2px] bg-muted/40" />
       <Skeleton className="h-3 w-16 mb-3" />
       <Skeleton className="h-9 w-28 mb-2.5" />
@@ -409,7 +409,7 @@ function VarianceCell({ value }: { value: number | undefined | null }) {
   }
   const isPositive = value > 0;
   return (
-    <span className={`tabular-nums font-medium ${isPositive ? "text-emerald-400" : "text-red-400"}`}>
+    <span className={`font-mono tabular-nums font-medium ${isPositive ? "text-emerald-400" : "text-red-400"}`}>
       {isPositive ? "+" : ""}
       {fmt(value)}
     </span>
@@ -564,7 +564,7 @@ export default function ReportingPage() {
               transition={{ delay: 0.5 }}
               className="rounded-lg border border-border/40 bg-card/50 px-4 py-2.5 text-[11px] text-muted-foreground/60 tracking-wide"
             >
-              Sample data &mdash; connect API endpoint for live figures
+              Showing estimated figures &mdash; live data will appear once your daily P&amp;L is connected.
             </motion.div>
           )}
 
@@ -633,20 +633,20 @@ export default function ReportingPage() {
                             {row.category}
                           </TableCell>
                           <TableCell
-                            className={`text-right tabular-nums text-sm font-bold ${
+                            className={`text-right font-mono tabular-nums text-sm font-bold ${
                               isPositiveNet ? "text-emerald-400" : "text-red-400"
                             }`}
                           >
                             {fmt(row.amount)}
                           </TableCell>
                           <TableCell
-                            className={`text-right tabular-nums text-sm font-bold ${
+                            className={`text-right font-mono tabular-nums text-sm font-bold ${
                               isPositiveNet ? "text-emerald-400/80" : "text-red-400/80"
                             }`}
                           >
                             {(row.pctRevenue ?? 0).toFixed(1)}%
                           </TableCell>
-                          <TableCell className="text-right tabular-nums text-sm font-bold text-muted-foreground">
+                          <TableCell className="text-right font-mono tabular-nums text-sm font-bold text-muted-foreground">
                             {fmt(row.budget)}
                           </TableCell>
                           <TableCell className="text-right">
@@ -663,7 +663,7 @@ export default function ReportingPage() {
                         className={
                           isSubtotal
                             ? "bg-secondary/30 border-t border-border/40 hover:bg-secondary/40"
-                            : "hover:bg-muted/8 border-b border-border/20"
+                            : "hover:bg-muted/5 border-b border-border/20"
                         }
                       >
                         <TableCell
@@ -676,7 +676,7 @@ export default function ReportingPage() {
                           {row.category}
                         </TableCell>
                         <TableCell
-                          className={`text-right tabular-nums ${
+                          className={`text-right font-mono tabular-nums ${
                             isSubtotal
                               ? "font-semibold text-foreground text-[13px]"
                               : "text-foreground/80"
@@ -685,7 +685,7 @@ export default function ReportingPage() {
                           {fmt(row.amount)}
                         </TableCell>
                         <TableCell
-                          className={`text-right tabular-nums ${
+                          className={`text-right font-mono tabular-nums ${
                             isSubtotal
                               ? "font-semibold text-muted-foreground"
                               : "text-muted-foreground/60"
@@ -694,7 +694,7 @@ export default function ReportingPage() {
                           {(row.pctRevenue ?? 0).toFixed(1)}%
                         </TableCell>
                         <TableCell
-                          className={`text-right tabular-nums ${
+                          className={`text-right font-mono tabular-nums ${
                             isSubtotal
                               ? "font-semibold text-muted-foreground/80"
                               : "text-muted-foreground/50"

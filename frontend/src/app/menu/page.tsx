@@ -372,9 +372,9 @@ function EmptyState() {
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted">
         <UtensilsCrossed className="h-6 w-6 text-muted-foreground" />
       </div>
-      <p className="text-sm font-medium text-foreground">No menu items yet</p>
+      <p className="text-sm font-medium text-foreground">Your menu is a blank canvas</p>
       <p className="max-w-xs text-xs text-muted-foreground">
-        Items will appear here once added. Each will be classified into the BCG
+        Add items via the chat and CarabinerOS will classify each one into the
         performance matrix automatically.
       </p>
     </motion.div>
@@ -420,7 +420,7 @@ function PerformanceTab({
       {/* Enhanced data table */}
       {filtered.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          No items in this category
+          Nothing in this category yet &mdash; try a different filter or add items via the chat.
         </p>
       ) : (
         <div className="rounded-xl border border-border overflow-hidden">
@@ -524,7 +524,7 @@ function CurrentMenuTab({
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
         <UtensilsCrossed className="h-6 w-6 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">No active menu items</p>
+        <p className="text-sm text-muted-foreground">All items are off the board &mdash; un-86 something or add new dishes via the chat.</p>
       </div>
     );
   }
@@ -535,7 +535,7 @@ function CurrentMenuTab({
         <div key={category}>
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {category}
-            <span className="ml-2 font-mono text-muted-foreground/60">{items.length}</span>
+            <span className="ml-2 font-mono tabular-nums text-muted-foreground/60">{items.length}</span>
           </h3>
           <div className="space-y-2">
             {items.map((item) => (
@@ -734,7 +734,7 @@ export default function MenuPage() {
                 >
                   {tab.label}
                   {tab.id === "86-board" && eightySixCount > 0 && (
-                    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold font-mono text-white">
                       {eightySixCount}
                     </span>
                   )}
@@ -773,7 +773,7 @@ export default function MenuPage() {
           <LoadingState />
         ) : error ? (
           <div className="rounded-xl border border-border bg-card m-6 p-4 text-sm text-muted-foreground">
-            No data available -- API endpoint not connected yet
+            We&apos;re plating your menu data &mdash; check back in a moment.
           </div>
         ) : data.length === 0 ? (
           <EmptyState />

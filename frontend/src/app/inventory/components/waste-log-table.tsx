@@ -194,7 +194,7 @@ export function WasteLogTable() {
         columns={COLUMNS}
         data={data}
         loading={loading}
-        emptyMessage="No waste logged yet. Use the chat to log waste."
+        emptyMessage="No waste logged yet — that's a good sign. Log any waste via the chat when it happens."
       />
     </div>
   );

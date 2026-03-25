@@ -71,7 +71,7 @@ function RecipeCard({ recipe, index, onClick }: { recipe: Recipe; index: number;
       animate="visible"
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       onClick={onClick}
-      className="group relative bg-card border border-border rounded-xl p-5 cursor-pointer
+      className="group relative bg-card border border-border rounded-xl p-4 cursor-pointer
                  transition-shadow duration-200 hover:shadow-md hover:shadow-primary/5"
     >
       {/* Category + Status */}
@@ -102,14 +102,14 @@ function RecipeCard({ recipe, index, onClick }: { recipe: Recipe; index: number;
       {/* Cost + Yield — sharp numbers */}
       <div className="flex items-baseline justify-between mt-4 pt-3 border-t border-border/50">
         {hasCost ? (
-          <span className="text-sm font-semibold tabular-nums text-foreground">
+          <span className="text-sm font-semibold font-mono tabular-nums text-foreground">
             ${Number(recipe.estimated_cost).toFixed(2)}
           </span>
         ) : (
           <span className="text-sm text-muted-foreground/50">&mdash;</span>
         )}
         {hasYield && (
-          <span className="text-xs text-muted-foreground tabular-nums">
+          <span className="text-xs text-muted-foreground font-mono tabular-nums">
             Yield: {recipe.yield_qty} {recipe.yield_unit}
           </span>
         )}
@@ -144,7 +144,7 @@ function RecipeCard({ recipe, index, onClick }: { recipe: Recipe; index: number;
 
 function SkeletonCard() {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 space-y-3">
+    <div className="bg-card border border-border rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-16" />
         <Skeleton className="h-3 w-12" />
@@ -273,7 +273,7 @@ export default function RecipesPage() {
               }`}
             >
               {s}
-              <span className="ml-1.5 text-xs tabular-nums text-muted-foreground">
+              <span className="ml-1.5 text-xs font-mono tabular-nums text-muted-foreground">
                 {loading ? "\u2014" : counts[s]}
               </span>
             </button>
@@ -305,8 +305,8 @@ export default function RecipesPage() {
             <div className="flex items-center justify-center size-12 rounded-xl bg-secondary mb-4">
               <BookOpen className="size-6 text-muted-foreground/50" />
             </div>
-            <p className="font-medium text-foreground mb-1">No data available</p>
-            <p>API endpoint not connected yet.</p>
+            <p className="font-medium text-foreground mb-1">We&apos;re warming up your recipe library</p>
+            <p>Check back in a moment &mdash; or ask CarabinerOS to create your first recipe.</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-sm text-muted-foreground">
@@ -323,7 +323,7 @@ export default function RecipesPage() {
                 </p>
               </>
             ) : (
-              <p>No recipes match your filters.</p>
+              <p>Nothing here yet &mdash; try a different filter or ask CarabinerOS to find it.</p>
             )}
           </div>
         ) : (
