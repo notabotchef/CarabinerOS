@@ -26,21 +26,21 @@ const COLUMNS = [
     key: "on_hand" as const,
     label: "On Hand",
     render: (v: unknown) => (
-      <span className="font-mono text-[13px]">{v ? String(v) : "\u2014"}</span>
+      <span className="font-mono text-[13px]">{v ? parseFloat(Number(v).toFixed(1)) : "\u2014"}</span>
     ),
   },
   {
     key: "min_quantity" as const,
     label: "Par Level",
     render: (v: unknown) => (
-      <span className="font-mono text-[13px] text-muted-foreground">{String(v)}</span>
+      <span className="font-mono text-[13px] text-muted-foreground">{parseFloat(Number(v).toFixed(1))}</span>
     ),
   },
   {
     key: "shortfall" as const,
     label: "Shortfall",
     render: (v: unknown) => {
-      const n = Number(v);
+      const n = Math.round(Number(v) * 10) / 10;
       if (isNaN(n) || n >= 0) {
         return (
           <span className="font-mono text-[13px] text-emerald-600 dark:text-emerald-400">

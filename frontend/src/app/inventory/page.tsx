@@ -50,7 +50,7 @@ function parseNum(v: unknown): number {
   if (v == null) return 0;
   const s = String(v).trim();
   const match = s.match(/^[+-]?\d+(\.\d+)?/);
-  return match ? Number(match[0]) : 0;
+  return match ? Math.round(Number(match[0]) * 10) / 10 : 0;
 }
 
 function parseDisplay(v: unknown): string {
@@ -59,7 +59,8 @@ function parseDisplay(v: unknown): string {
   const match = s.match(/^([+-]?\d+(?:\.\d+)?)\s*(.*)/);
   if (!match) return s;
   const [, num, unit] = match;
-  return unit ? `${num} ${unit}` : num;
+  const rounded = parseFloat(Number(num).toFixed(1));
+  return unit ? `${rounded} ${unit}` : String(rounded);
 }
 
 function formatDate(v: unknown): string {
