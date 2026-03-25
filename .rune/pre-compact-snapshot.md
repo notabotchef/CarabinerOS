@@ -1,66 +1,74 @@
 # Pre-Compact Snapshot
-Generated: 2026-03-22T01:54:10.338Z
+Generated: 2026-03-25T02:59:14.409Z
 
 ## Session Metrics
-- Tool calls: 2
-- Session start: 2026-03-22T01:53:17.687Z
-- Top tools: unknown(2)
+- Tool calls: 38
+- Session start: 2026-03-25T01:56:53.657Z
+- Top tools: unknown(38)
 
 ## State Files (preview)
 ### .rune/progress.md
 # Progress
 
-## [2026-03-21 22:00] Session 5 Summary — First Real Trial of CarabinerOS v3
+## [2026-03-24] Session 8 Summary — UI Polish + Integration Architecture
 
 **Completed:**
-- [x] Hydration mismatch + script tag warnings fixed
-- [x] Chat conversation loading confirmed working
-- [x] Table data cards — briefing-style standalone cards outside chat bubbles
-- [x] "Daily Briefing" → "Daily Brief"
-- [x] Full system test (5 prompts) with live Docker log monitoring
-- [x] Bug report: 16 bugs identified, cross-referenced with backend logs
-- [x] **C1**: MCP carabiner_db tools available in Docker (env inheritance)
-- [x] **C2**: Action card emission pipeline (sio injection + JSON extraction + Expo prompt)
-- [x] **C3**: invoice_tool schema fix (Alembic migration 008)
-- [x] **C4**: Homepage always creates fresh chat context
-- [x] **H2**: Expo whispering streams steps in real-time
-- [x] **H4**: ipython installed in Docker for code_execution_tool
-- [x] **M2**: Duplicate message guard (sendingRef + 2s dedup)
-- [x] Grey bar removed from expo ticket
-- [x] MCP location_id auto-resolve for all create tools
-- [x] Codex proxy plugin installed — GPT-5.3 brain for A0
-- [x] Rune kit framework research — full capability documented
-- [x] Architectural decision: notify_user → action cards bridge
+- [x] Polaroid tactile card redesign — `rounded-[13px]`, shadow depth, module pill badges, no left-border KDS style
+- [x] Card bottom spacing fix — removed `aspect-[4/5]` causing empty space below content
+- [x] Send button consistency — gradient `ArrowUp` matching chatbot composer on collapsed cards
+- [x] Expanded card redesign — matched CarabinerOS design language: glass input, gradient buttons, ChevronLeft back, no monospace
+- [x] Sidebar unified scroll — moved `overflow-y-auto` to single wrapper around modules + conversations
+- [x] Menu page runtime fix — guarded `PERF_CFG[performance]` with `?? PERF_CFG.Dog` fallback
+- [x] Integration research — 15 restaurant platforms evaluated (Toast, OpenTable, Square, Google, 7shifts, Clover, DoorDash, Uber Eats, etc.)
+- [x] Integration architecture doc — `docs/plans/integration-architecture.md`: OAuth flow, encrypted token storage, MCP server pattern, build order, legal considerations
+- [x] Google Stitch explored — used for Polaroid Tactile action card design mockup, fetched via MCP
+- [x] Roadmap refresh — `docs/plans/open-work.md` updated with all session 8 work + integration roadmap
 
-**Stress Test Results (5 concurrent prompts with GPT-5.3 Codex):**
-- [x] Frontend handled all 5 sessions — 43 requests, all 200s, 18-26ms
-- [x] GPT-5.3 processes prompts in true parallel (interleaved streaming)
-- [x] A0 self-healed database (started PostgreSQL when down)
-- [x] Proper delegation: GM → Executive Chef with structured 7-point brief
-- [x] Data-first: Executive Chef ran 3 tools before answering (food_cost, menu, reporting)
-- [x] Read tools all work (inventory_list, orders_list, invoices_list, food_cost, menu, reporting)
-- [ ] Write tools ALL FAILED — two bugs:
-  - Type serialization: MCP binds all values as VARCHAR (breaks NUMERIC/INTEGER columns)
-  - UUID double-wrapping: db_mutate wraps location_id as `UUID('...')` string repr
-  - Esteban suspects the Codex proxy response normalization is mangling types
-- [ ] No action cards emitted (writes must succeed first)
-- [ ] Duplicate API fetches: each dashboard page fires 2x same requests (React StrictMode?)
+**Key Architecture Decision:**
+- Third-party integrations use OAuth-based MCP servers (one per platform)
+- `restaurant_integrations` table stores AES-256 encrypted tokens per location per platform
+- Build order: Google Suite → Square → 7shifts → Toast (after partner approval) → OpenTable
+- Browser automation viable for dev/demos; official APIs for production
+- Settings/integrations page needed for "Connect your Toast" onboarding flow
 
-**A0 27B vs GPT-5.3 Comparison:**
-- 27B: 27+ LLM calls, installed PostgreSQL from scratch, took 30+ minutes, never completed order
-- GPT-5.3: 6 LLM turns, proper delegation, data-grounded response, completed in seconds
-- GPT-5.3 composed structured subordinate briefs without prompting
-- GPT-5.3 tried 3 different write paths when first failed (create → mutate → batch)
+**Open Bug (carried from session 6):**
+- [ ] Action cards not reaching frontend from A0 — auto-emit extension fires server-side but cards don't appear
+- [ ] A0 still calls `call_subordinate` for card formatting — system prompt should tell it the extension handles this
 
-**In Progress:**
-- [ ] MCP write tools broken (type serialization + UUID wrapping)
-- [ ] Codex patch not persisted in Dockerfile (lost on container restart)
-- [ ] Migration 009 not yet run (fixed version on worktree branch)
+**Still Open:**
+- [ ] Migration 009 not yet run
+- [ ] Expo filtering not started
+- [ ] Docker image bloat (15GB) — needs .dockerignore additions
 
-**Blocked:**
+**Next Session Should:**
+1. Fix Docker image bloat — add `frontend/`, `rune-business/`, `rune-pro/`, `docs/`, `.claude/` to `.dockerignore`
+2. Debug action card frontend delivery — the original open bug from session 6
+3. Start `restaurant_integrations` DB migration
+4. Build settings/integrations page skeleton
+5. Start Google Suite MCP (first integration — zero approval gate)
+6. Run migration 009
+
+## [2026-03-22 03:45] Session 6 Summary — Action Cards Infrastructure + Critical Fixes
+
+**Completed:**
+- [x] MCP type coercion — Decimal/int/UUID from strings (generic column inspection)
+- [x] UUID double-wrapping fix — `_parse_uuid()` handles `UUID('...')` repr format
+- [x] `action_card` tool — LLM-driven structured card emission via Socket.IO
+- [x] Tool prompt (`agent.system.tool.action_card.md`) + system prompt extension
+- [x] Module icons on cards — lucide icons matching sidebar nav
+- [x] Card-stack arrival animation — top-bar icon flips with type color
+- [x] Card list entry/exit animations (spring slide+fade)
 
 ### .rune/decisions.md
 # Decisions Log
+
+## [2026-03-24] Decision: Self-extending plugin architecture
+
+**Context:** CarabinerOS needs integrations with Toast, OpenTable, Square, Google, 7shifts, etc. Building each one manually doesn't scale. A0 can already write code at runtime.
+**Decision:** A0 creates integrations autonomously by writing MCP servers + manifest files to `usr/plugins/`. The frontend dynamically discovers and renders plugin data via a generic PluginWidget — zero React code per integration. Manifests define UI presence, auth config, and natural language routing.
+**Rationale:** This makes CarabinerOS a self-extending platform. Traditional SaaS: feature request → 6 weeks. CarabinerOS: user request → A0 builds overnight → live tomorrow. The competitive moat is the ability to build ANY integration on demand.
+**Impact:** `docs/plans/self-extending-architecture.md` (full spec), `docs/plans/integration-architecture.md` (OAuth/token details). Build order: manifest schema → plugin discovery API → generic widget → settings page → MCP scaffolding tool → overnight agent.
+**Constraints:** A0 can only write to `usr/plugins/`. Cannot modify frontend, domain code, core, auth, or database schema without approval.
 
 ## [2026-03-21 16:00] Decision: Use remark-gfm for markdown table rendering
 
@@ -97,6 +105,11 @@ Generated: 2026-03-22T01:54:10.338Z
 **Rationale:** A0 already WANTS to notify the user — it used notify_user spontaneously when it created the rush order (27B local model, no prompting). Fighting that instinct (forcing Expo to output raw JSON) is harder than riding it. The type mapping is clean: success→update, warning→urgent, info→info.
 **Impact:** New extension in usr/extensions/tool_execute_after/ that hooks notify_user → action_card emit. Frontend action card system unchanged. Expo extension remains as fallback.
 **Evidence:** A0 session 2026-03-21 — installed PostgreSQL, created schema from memory, inserted order, used notify_user to alert chef. The notification pattern was correct on first try.
+
+## [2026-03-22 00:00] Decision: Two-path action card architecture
+
+**Context:** Original plan was a Python extension that parses tool response text into action cards (fragile JSON extraction). User feedback: "A0 has an LLM brain — let it decide." But then subordinate token cost became a concern.
+**Decision:** Two complementary paths: (1) Auto-emit extension detects DB writes (`db_mutate`, `*_create`, `*_update`, `*_delete`) and constructs cards from structured MCP response — zero extra LLM tokens. (2) `action_card` tool stays available for proactive LLM-driven notifications (menu ideas, reminders, email alerts) that aren't DB writes.
 
 ### .rune/conventions.md
 # Conventions
@@ -139,3 +152,13 @@ Generated: 2026-03-22T01:54:10.338Z
 - **Local dev**: `pnpm dev` (frontend :3000) + `.venv/bin/python run_ui.py` (backend :5000)
 - **Docker**: `docker compose -f docker-compose.dev.yml up` — serves on :8080 via nginx
 - **Preferred**: Docker (port 8080) — handles all proxying correctly
+
+## Action Cards
+- **Auto-emit**: DB write tools (`db_mutate`, `*_create`, `*_update`, `*_delete`) auto-generate cards via `_30_action_card_emit.py` extension — zero extra LLM tokens
+- **Proactive**: A0 calls `action_card` tool for non-DB notifications (menu ideas, reminders, alerts)
+- **sio access**: Always walk agent hierarchy to find sio — subordinates don't have it directly
+- **Card types**: urgent (amber), action (blue), update (emerald), info (violet)
+- **Frontend**: `useActionCards` hook, sessionStorage persistence, 2-col solitaire grid with flip expand
+- **Visual identity**: Kitchen Display System aesthetic — left-border station colors, monospace labels, "Tickets/FIRE/Cleared" vocabulary
+- **Action buttons**: ✗ (red/dismiss) + ✓ (green/commit) + contextual action label per type+module (e.g., "86 It", "Order Now", "Approve")
+- **Chat suggestions**: `getDefaultSuggestion(card)` + `getDefaultChips(card)` — type+module lookup map for pre-fill and quick-action chips

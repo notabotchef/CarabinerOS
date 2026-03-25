@@ -352,12 +352,13 @@ export default function OrdersPage() {
           try {
             const { getCsrfToken } = await import("@/lib/csrf");
             const csrf = await getCsrfToken();
-            await fetch("/message_async", {
+            const res = await fetch("/message_async", {
               method: "POST",
               headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
               credentials: "include",
-              body: JSON.stringify({ text }),
+              body: JSON.stringify({ text, context: "" }),
             });
+            if (!res.ok) console.error("Order chat failed:", res.status);
           } catch (e) {
             console.error("Failed to send order chat:", e);
           }
