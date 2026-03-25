@@ -200,6 +200,35 @@ async def list_inventory_counts():
         return _empty_response()
 
 
+@blueprint.route("/api/inventory/counts/<count_id>", methods=["GET"])
+async def get_inventory_count_detail(count_id):
+    try:
+        from carabiner.db.repositories import get_inventory_count as _get_count
+        cid = uuid.UUID(count_id)
+        data = await _get_count(cid)
+        if data is None:
+            return Response(
+                response=json.dumps({"ok": False, "error": "Count not found"}),
+                status=404,
+                mimetype="application/json",
+            )
+        body = json.dumps(data, default=str)
+        return Response(response=body, status=200, mimetype="application/json")
+    except (ValueError, AttributeError):
+        return Response(
+            response=json.dumps({"ok": False, "error": "Invalid count ID"}),
+            status=400,
+            mimetype="application/json",
+        )
+    except Exception:
+        logger.exception("Failed to fetch inventory count detail")
+        return Response(
+            response=json.dumps({"ok": False, "error": "Internal server error"}),
+            status=500,
+            mimetype="application/json",
+        )
+
+
 @blueprint.route("/api/inventory/par-levels", methods=["GET"])
 async def list_par_levels():
     try:

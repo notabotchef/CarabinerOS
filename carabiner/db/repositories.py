@@ -476,19 +476,26 @@ async def get_inventory_count(count_id: uuid.UUID) -> Optional[dict]:
             return None
         lines = []
         for line in count.lines:
-            # Fetch item name
-            item_result = await session.execute(select(Item.name).where(Item.id == line.item_id))
-            item_name = item_result.scalar_one_or_none()
+            # Fetch item name and category
+            item_result = await session.execute(
+                select(Item.name, Item.category).where(Item.id == line.item_id)
+            )
+            item_row = item_result.one_or_none()
+            item_name = item_row[0] if item_row else None
+            item_category = item_row[1] if item_row else None
+            line_total = float(line.quantity) * float(line.unit_cost)
             lines.append({
                 "id": line.id,
                 "count_id": line.count_id,
                 "item_id": line.item_id,
                 "item_name": item_name,
+                "category": item_category,
                 "quantity": float(line.quantity),
                 "unit_cost": float(line.unit_cost),
+                "line_total": round(line_total, 2),
                 "storage_area": line.storage_area,
             })
-        total_value = sum(l["quantity"] * l["unit_cost"] for l in lines)
+        total_value = sum(l["line_total"] for l in lines)
         return {
             "id": count.id,
             "location_id": count.location_id,
@@ -498,7 +505,7 @@ async def get_inventory_count(count_id: uuid.UUID) -> Optional[dict]:
             "counted_by": count.counted_by,
             "notes": count.notes,
             "line_count": len(lines),
-            "total_value": total_value,
+            "total_value": round(total_value, 2),
             "lines": lines,
             "created_at": count.created_at,
             "updated_at": count.updated_at,
