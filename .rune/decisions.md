@@ -1,5 +1,33 @@
 # Decisions Log
 
+## [2026-03-28] Decision: Tiny Router A0 Plugin — Inference-Only Extraction
+
+**Context:** The upstream `tgupj/tiny-router` package requires torch, datasets, and other heavy ML deps. At runtime in A0, only ONNX inference is needed.
+**Decision:** Extract only the inference-path functions (`prepare_record`, `scale_logits`, `canonicalize_action`, `normalize_interaction`, `build_prompt`) into `tiny_router_helpers/upstream.py`. Keep upstream as git submodule for reference. Runtime deps: only onnxruntime, transformers, sentencepiece, numpy.
+**Rationale:** Avoids ~2GB torch dependency in A0 container. The extracted functions are pure Python + numpy — no torch needed for ONNX inference.
+**Impact:** `tiny_router_helpers/upstream.py` (standalone), `vendor/tiny-router/` (submodule reference only)
+
+## [2026-03-28] Decision: Codex Proxy Startup at monologue_start
+
+**Context:** Codex proxy started at `message_loop_start` via `_10_codex_proxy.py`. LiteLLM tried to connect to `127.0.0.1:8400` before the proxy was listening, causing connection refused errors.
+**Decision:** Added `monologue_start/_05_codex_proxy_boot.py` that starts the proxy once per conversation before any message loop iteration.
+**Rationale:** `monologue_start` fires before the message loop begins. By the time `message_loop_start` → LLM call happens, the proxy is already listening.
+**Impact:** `/a0/usr/plugins/codex-provider/extensions/python/monologue_start/_05_codex_proxy_boot.py`
+
+## [2026-03-28] Decision: Ollama num_ctx Must Be Passed via kwargs
+
+**Context:** A0's `ctx_length` in model config controls how much history A0 sends to the LLM. But Ollama independently allocates its own context window — defaulting to 65K for GLM-30B (~26GB RAM). This caused OOM and hangs.
+**Decision:** Pass `num_ctx` directly to Ollama via the model config `kwargs` field: `{"kwargs": {"num_ctx": 8192}}`. This controls Ollama's actual memory allocation.
+**Rationale:** A0's `ctx_length` and Ollama's `num_ctx` are independent settings. Without explicit `num_ctx` in kwargs, Ollama uses the model's default (65K for GLM), regardless of what A0 sends.
+**Impact:** `_model_config/config.json` — `kwargs.num_ctx` for both chat and utility models
+
+## [2026-03-28] Decision: Phase 1 Tiny Router — Log Only, No LLM Skip
+
+**Context:** The upstream model is trained on synthetic data (F1: 0.78, exact match: 0.46). Routing decisions might be wrong for real restaurant messages.
+**Decision:** Phase 1 logs every classification but never skips the LLM. Phase 2 (configurable via plugin settings UI) will actually skip for canned responses once thresholds are validated.
+**Rationale:** Collect real classification data before trusting the model with cost-saving decisions. A wrong canned response ("Got it.") to an actual question would be worse than the token cost savings.
+**Impact:** Extension logs `WOULD skip LLM -> "Got it." (Phase 1: pass-through)` — visible in logs for threshold tuning
+
 ## [2026-03-25] Decision: Self-Evolving Platform Architecture (ADR-002)
 
 **Context:** CarabinerOS needs to continuously improve itself — discovering new techniques, learning from all deployments, distributing improvements — without manual intervention. Session 10 R&D surfaced 10 projects that form a complete self-evolving loop.

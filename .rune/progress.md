@@ -1,5 +1,62 @@
 # Progress
 
+## [2026-03-28] Session 11 — Tiny Router Build + A0 Personal Instance Setup
+
+**Completed:**
+- [x] Deleted OpenClaw — processes, launchd agent, npm package, `~/.openclaw/`, Docker images (~13GB reclaimed)
+- [x] Home directory audit — identified ~72GB of stale files (a0/, a0backup/, a0dev/, agent-zero/, carabiner-os.zip, .ollama, .gemini, .codex, .antigravity)
+- [x] Cleaned Docker images — removed old agent0ai/agent-zero (8.25GB), stale worktree build (4.74GB), curlimages/curl
+- [x] Built `a0-tiny-router` plugin — full ONNX inference pipeline using upstream `tgupj/tiny-router` (DeBERTa-v3-small, 44M params)
+- [x] Extracted inference-only functions into `tiny_router_helpers/upstream.py` — no torch/datasets dependency at runtime
+- [x] Downloaded INT8 ONNX model (172MB) from HuggingFace, verified 6-7ms inference inside A0 container
+- [x] 20/20 tests passing (12 routing logic + 8 smoke tests with real model)
+- [x] Made plugin A0-spec-compliant: renamed to `tiny_router`, `usr.plugins.*` imports, Store Gate webui, LICENSE, execute.py
+- [x] Installed in personal A0 at `/Users/estebannunez/agent-zero/a0/usr/plugins/tiny_router/`
+- [x] Fixed codex-proxy `created_at` bug — ChatGPT backend omits it, LiteLLM requires it
+- [x] Fixed codex-proxy startup race — new `monologue_start/_05_codex_proxy_boot.py` extension starts proxy before message loop
+- [x] Added debug logging to codex-proxy extension for troubleshooting
+- [x] Set up content pipeline — knowledge doc for X/Threads/NotebookLM publishing workflow in A0
+- [x] Extracted browser cookies (X, Threads, NotebookLM) via Chrome DevTools CDP for A0 browser agent
+- [x] Tuned A0 settings for local GLM — reduced context (16K/8K), concise behaviour rules, less workdir scanning
+- [x] Fixed Ollama `num_ctx` memory explosion — 65K→8K via model config kwargs
+- [x] Set HF_HUB_OFFLINE=1 in supervisor to prevent VectorDB init blocking on HuggingFace timeouts
+- [x] Switched A0 between codex proxy and local Ollama GLM as needed
+
+**Key Architecture Decisions:**
+- tiny-router plugin uses `usr.plugins.tiny_router.*` import path (A0 spec, no sys.path hacks)
+- Inference-only extraction from upstream package avoids torch dependency (~2GB) at runtime
+- Codex proxy starts at `monologue_start` (not `message_loop_start`) to prevent LiteLLM connection race
+- Phase 1 tiny-router: log-only mode (classify every message, don't skip LLM) for threshold tuning
+- `num_ctx` must be passed via `kwargs` in model config — A0's `ctx_length` only controls prompt size, not Ollama memory allocation
+
+**Personal A0 Instance:**
+- Container: `aefd63c40b81` at `localhost:5080`
+- Volume: `/Users/estebannunez/agent-zero/a0/usr` → `/a0/usr`
+- Models: codex proxy (gpt-5.3-codex chat, gpt-5.1-codex-mini utility) or local Ollama (glm-4.7-flash)
+- Plugins: codex-provider (enabled), tiny_router (enabled)
+- Content output: `/a0/usr/documents/content/{research,drafts,published}/`
+- Browser cookies: `/a0/usr/workdir/food_autopost/{x,threads,notebooklm}_cookies.json`
+
+**Known Issues (carried + new):**
+- [ ] Welcome bleed still occasionally appears
+- [ ] Main chat input doesn't auto-expand
+- [ ] A0 inserts $0 instead of asking when price unknown
+- [ ] `inventory_create` type coercion
+- [ ] A0 unnecessarily calls `*_list` before create operations
+- [ ] GLM-30B too heavy for concurrent Docker+A0+Chrome on Mac (use 8K num_ctx or switch to smaller model)
+- [ ] Codex usage limits hit periodically — need graceful fallback to local LLM
+- [ ] Browser agent needs vision-capable model (gpt-5.4-mini, not codex variants)
+
+**Next Session Should:**
+1. Test tiny-router live — send varied messages, review classification logs, tune thresholds
+2. Content pipeline test — research a topic, draft a thread, publish to X/Threads
+3. Implement Phase 2 tiny-router (actually skip LLM for canned responses)
+4. Add automatic codex→local LLM fallback when rate limited
+5. Full visual QA walkthrough all CarabinerOS modules on :8080
+6. Fix A0 $0 price insertion — system prompt guardrail
+
+---
+
 ## [2026-03-25] Session 10 — R&D Discovery Day + Platform Architecture
 
 **Completed:**
