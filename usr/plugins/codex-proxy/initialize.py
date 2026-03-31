@@ -79,13 +79,19 @@ def _patch_model_providers(conf_file: Path) -> None:
 
 def _patch_missing_key_banner(path: Path) -> None:
     text = path.read_text(encoding="utf-8")
-    old = 'LOCAL_PROVIDERS = ["ollama", "lm_studio"]'
-    new = 'LOCAL_PROVIDERS = ["ollama", "lm_studio", "codex_proxy"]'
     if '"codex_proxy"' in text:
         return
-    if old not in text:
-        raise RuntimeError(f"Expected LOCAL_PROVIDERS anchor not found in {path}")
-    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+    # Handle both list (old A0) and set (new A0) formats
+    old_list = 'LOCAL_PROVIDERS = ["ollama", "lm_studio"]'
+    old_set = 'LOCAL_PROVIDERS = {"ollama", "lm_studio"}'
+    if old_list in text:
+        text = text.replace(old_list, 'LOCAL_PROVIDERS = ["ollama", "lm_studio", "codex_proxy"]', 1)
+    elif old_set in text:
+        text = text.replace(old_set, 'LOCAL_PROVIDERS = {"ollama", "lm_studio", "codex_proxy"}', 1)
+    else:
+        # Don't crash — codex_proxy can work without this patch
+        return
+    path.write_text(text, encoding="utf-8")
 
 
 def _patch_settings_store(path: Path) -> None:
@@ -106,12 +112,22 @@ def install_runtime(a0_root: Path, plugin_root: Path) -> None:
     if not runtime.is_dir():
         raise RuntimeError(f"Missing runtime directory: {runtime}")
 
-    _copy_runtime_tree(runtime / "python", a0_root / "python")
+    # A0 restructured: python/{helpers,api,tools,extensions} → root-level dirs
+    # Copy runtime files to new locations; fall back to old paths for compat
+    python_target = a0_root / "python" if (a0_root / "python").is_dir() else a0_root
+    _copy_runtime_tree(runtime / "python", python_target)
     _copy_runtime_tree(runtime / "webui", a0_root / "webui")
 
     _patch_external_settings(a0_root / "webui/components/settings/external/external-settings.html")
     _patch_model_providers(a0_root / "conf/model_providers.yaml")
-    _patch_missing_key_banner(a0_root / "python/extensions/banners/_20_missing_api_key.py")
+    # Banner file moved to plugins/_model_config/ in new A0
+    banner_path = a0_root / "plugins/_model_config/extensions/python/banners/_20_missing_api_key.py"
+    if not banner_path.exists():
+        banner_path = a0_root / "extensions/python/banners/_20_missing_api_key.py"
+    if not banner_path.exists():
+        banner_path = a0_root / "python/extensions/banners/_20_missing_api_key.py"
+    if banner_path.exists():
+        _patch_missing_key_banner(banner_path)
     _patch_settings_store(a0_root / "webui/components/settings/settings-store.js")
 
 
@@ -124,7 +140,8 @@ def main() -> int:
     a0_root = Path(args.a0_root).resolve()
     plugin_root = Path(args.plugin_root).resolve()
 
-    if not (a0_root / "python").is_dir() or not (a0_root / "webui").is_dir():
+    # New A0 has helpers/ at root; old has python/
+    if not ((a0_root / "helpers").is_dir() or (a0_root / "python").is_dir()):
         raise RuntimeError(f"Target does not look like Agent0 root: {a0_root}")
 
     install_runtime(a0_root, plugin_root)

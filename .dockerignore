@@ -24,6 +24,32 @@ usr/*
 .cursor/
 .venv/
 .git/
+.claude/
+.rune/
+.github/
+
+###############################################################################
+# Frontend (built separately, not needed in agent-zero image)
+###############################################################################
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+###############################################################################
+# Docs, research, non-runtime files
+###############################################################################
+docs/
+*.md
+!prompts/**/*.md
+!knowledge/**/*.md
+!agents/**/*.md
+!plugins/**/*.md
+!skills/**/*.md
+NOTEBOOKLM_*.md
+MARKITDOWN_*.md
+PLUGIN_TINY_ROUTER_*.md
+RESEARCH_*.md
+GITAGENT_*.md
 
 
 ###############################################################################
