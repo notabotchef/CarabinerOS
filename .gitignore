@@ -49,3 +49,4 @@ agent_history.gif
 
 .agent/**
 .claude/**
+.worktrees/
