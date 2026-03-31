@@ -33,6 +33,11 @@ unstructured[all-docs]==0.16.23
 unstructured-client==0.31.0
 webcolors==24.6.0
 nest-asyncio==1.6.0
+
+# CarabinerOS database dependencies (not in upstream A0)
+asyncpg>=0.29.0
+sqlalchemy[asyncio]>=2.0.0
+alembic>=1.13.0
 crontab==1.0.1
 markdownify==1.1.0
 pydantic==2.11.7

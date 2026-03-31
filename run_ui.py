@@ -221,10 +221,11 @@ def run():
 
     init_a0()
 
-    # Initialize CarabinerOS database engine so Flask blueprint routes
-    # don't need to create a temp engine per request (which deadlocks
-    # under WSGIMiddleware's thread-pool execution).
-    _init_carabiner_db()
+    # Initialize CarabinerOS database engine (non-blocking — server starts regardless)
+    try:
+        _init_carabiner_db()
+    except Exception as e:
+        PrintStyle.warning(f"CarabinerOS DB init error (non-fatal): {e}")
 
     wsgi_app = WSGIMiddleware(webapp)
     starlette_app = Starlette(
