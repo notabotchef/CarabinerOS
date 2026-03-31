@@ -19,7 +19,7 @@ import re
 import time
 import uuid
 
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 logger = logging.getLogger(__name__)
 
@@ -431,7 +431,7 @@ class ActionCardEmit(Extension):
                 await sio.emit(
                     "action_card",
                     {"card": card},
-                    namespace="/state_sync",
+                    namespace="/ws",
                 )
                 logger.info(
                     "[ActionCardEmit] EMITTED action_card: id=%s type=%s module=%s summary=%.60s",

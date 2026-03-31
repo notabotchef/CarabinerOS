@@ -11,7 +11,7 @@ import pytest
 ENGINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ENGINE_DIR))
 
-from python.tools.action_card import ActionCard, _validate_changes, _validate_stats
+from tools.action_card import ActionCard, _validate_changes, _validate_stats
 
 
 # ---------------------------------------------------------------------------

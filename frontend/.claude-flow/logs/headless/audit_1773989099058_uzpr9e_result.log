@@ -1,0 +1,177 @@
+[2026-03-20T06:45:50.145Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "Based on my comprehensive security audit of the CarabinerOS frontend codebase, here is the detailed vulnerability report:\n\n```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 23,\n      \"type\": \"URL Parameter Injection / Query String Manipulation\",\n      \"description\": \"The locationId parameter is directly interpolated into the URL without encoding. An attacker could craft a malicious locationId like '123&admin=true' to inject additional query parameters, potentially bypassing authorization checks or manipulating API requests.\",\n      \"cwe\": \"CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code\",\n      \"code\": \"const url = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 52,\n      \"type\": \"Potential DOM-based XSS\",\n      \"description\": \"User and assistant message content from backend logs is stored directly in React state without sanitization. If the backend sends malicious HTML/JS in log.content, it will be rendered in components. This depends on how components render the content (if using dangerouslySetInnerHTML, it's critical).\",\n      \"cwe\": \"CWE-79: Improper Neutralization of Input During Web Page Generation\",\n      \"code\": \"content: log.content,\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 23,\n      \"type\": \"Untrusted Data Handling - Action Cards\",\n      \"description\": \"Action card properties (type, module, action, item) are extracted from untrusted backend kvps without validation or sanitization. If a component renders these values unsafely, it could lead to XSS. The 'item' field is passed directly as user-supplied data.\",\n      \"cwe\": \"CWE-79: Improper Neutralization of Input During Web Page Generation\",\n      \"code\": \"type: String(kvps.action), module: String(kvps.module), item: kvps.item as Record<string, unknown>\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 18,\n      \"type\": \"Insecure Cookie Attributes\",\n      \"description\": \"CSRF token cookie is missing the 'Secure' flag. In production (HTTPS), this flag must be set to prevent the cookie from being transmitted over unencrypted HTTP connections. Current cookie: 'csrf_token_{runtimeId}={token}; SameSite=Strict; Path=/' should include 'Secure'.\",\n      \"cwe\": \"CWE-614: Sensitive Cookie in HTTPS Session Without Secure Attribute\",\n      \"code\": \"document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 20,\n      \"type\": \"Sensitive Data Logging\",\n      \"description\": \"Console logging of snapshot data (lines with console.log) in state_push handler could expose sensitive information from the Agent Zero context, including chat history, tool inputs, or internal state.\",\n      \"cwe\": \"CWE-532: Insertion of Sensitive Information into Log File\",\n      \"code\": \"console.log(`[state_push] ${snap.logs.length} logs...`)\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 30,\n      \"type\": \"Insufficient Error Detail in Response Parsing\",\n      \"description\": \"The fetch response is parsed as JSON without checking Content-Type header. Malformed responses could cause unexpected behavior. While error is caught, the error message only shows status code, potentially hiding security-relevant details.\",\n      \"cwe\": \"CWE-209: Information Exposure Through an Error Message\",\n      \"code\": \"const json = await res.json(); setError(err.message);\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-socket.ts\",\n      \"line\": 45,\n      \"type\": \"Missing Input Validation on Timezone\",\n      \"description\": \"The timezone from Intl.DateTimeFormat is included in state_request without validation. While this is unlikely to be exploitable, user-facing timezone should be validated.\",\n      \"cwe\": \"CWE-20: Improper Input Validation\",\n      \"code\": \"timezone: Intl.DateTimeFormat().resolvedOptions().timeZone\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": 5,\n      \"type\": \"Environment-Dependent Backend URL\",\n      \"description\": \"Backend URL (A0_URL) defaults to localhost:5000 if not set. In production, if A0_URL environment variable is not properly configured, the app will try to connect to localhost, causing runtime failures. Not a direct vulnerability but a configuration risk.\",\n      \"cwe\": \"CWE-273: Improper Check for Dropped Privileges\",\n      \"code\": \"const A0_URL = process.env.A0_URL || 'http://localhost:5000';\"\n    }\n  ],\n  \"riskScore\": 68,\n  \"summary\": {\n    \"total_vulnerabilities\": 8,\n    \"critical\": 0,\n    \"high\": 3,\n    \"medium\": 3,\n    \"low\": 2\n  },\n  \"recommendations\": [\n    {\n      \"priority\": \"CRITICAL\",\n      \"action\": \"URL Encode Query Parameters\",\n      \"details\": \"Replace direct string interpolation in use-workspace.ts with URLSearchParams: const params = new URLSearchParams({ location_id: locationId }); const url = endpoint + '?' + params.toString();\",\n      \"affectedFiles\": [\"src/hooks/use-workspace.ts\"]\n    },\n    {\n      \"priority\": \"CRITICAL\",\n      \"action\": \"Implement XSS Protection for Log Content\",\n      \"details\": \"All user-rendered content from snapshot.logs must be sanitized. Use a library like 'DOMPurify' or ensure components use .textContent instead of dangerouslySetInnerHTML. Add type guards to validate log.content structure.\",\n      \"affectedFiles\": [\"src/hooks/use-chat.ts\", \"src/hooks/use-action-cards.ts\"]\n    },\n    {\n      \"priority\": \"HIGH\",\n      \"action\": \"Add Secure Flag to CSRF Cookie\",\n      \"details\": \"Update csrf.ts line 18 to include Secure flag for production: document.cookie = `csrf_token_${runtimeId}=${csrfToken}; Secure; SameSite=Strict; Path=/; HttpOnly`; also consider HttpOnly flag to prevent JS access.\",\n      \"affectedFiles\": [\"src/lib/csrf.ts\"]\n    },\n    {\n      \"priority\": \"HIGH\",\n      \"action\": \"Remove or Restrict Console Logging\",\n      \"details\": \"Remove console.log statements from socket-client.ts state_push handler, or gate them behind a development flag. Implement proper error tracking/monitoring instead.\",\n      \"affectedFiles\": [\"src/lib/socket-client.ts\"]\n    },\n    {\n      \"priority\": \"MEDIUM\",\n      \"action\": \"Validate Backend Response Structure\",\n      \"details\": \"Add schema validation (e.g., Zod) to validate A0Snapshot, A0StatePush, and other backend responses before storing in React state. This prevents malformed data from causing XSS or logic errors.\",\n      \"affectedFiles\": [\"src/hooks/use-socket.ts\", \"src/hooks/use-chat.ts\"]\n    },\n    {\n      \"priority\": \"MEDIUM\",\n      \"action\": \"Implement Content Security Policy (CSP)\",\n      \"details\": \"Add CSP headers via next.config.ts to restrict script sources, prevent inline scripts, and control data URIs. This mitigates XSS impact.\",\n      \"affectedFiles\": [\"next.config.ts\"]\n    },\n    {\n      \"priority\": \"LOW\",\n      \"action\": \"Require A0_URL in Production\",\n      \"details\": \"In next.config.ts, throw an error if A0_URL is not set in production environments (NODE_ENV=production). This prevents misconfiguration.\",\n      \"affectedFiles\": [\"next.config.ts\"]\n    },\n    {\n      \"priority\": \"LOW\",\n      \"action\": \"Add Rate Limiting on Client\",\n      \"details\": \"Implement client-side rate limiting for message sends to prevent accidental DoS. Consider debouncing rapid requests.\",\n      \"affectedFiles\": [\"src/hooks/use-chat.ts\"]\n    }\n  ],\n  \"dependencyAudit\": {\n    \"status\": \"requires_npm_audit\",\n    \"note\": \"Run 'npm audit' to check for known vulnerabilities in dependencies. All dependencies in package.json appear standard, but verify no CVEs exist for @base-ui/react, socket.io-client, and react-markdown.\"\n  },\n  \"passingSecurity\": [\n    \"CSRF token properly fetched and included in POST requests\",\n    \"SameSite=Strict prevents CSRF attacks\",\n    \"credentials: 'include' properly maintains session cookies\",\n    \"Socket.IO auth callback ensures fresh tokens on reconnect\",\n    \"No hardcoded API keys or secrets in code\",\n    \"Type safety with TypeScript helps prevent some injection attacks\",\n    \"No SQL queries in frontend (cannot be directly vulnerable to SQL injection)\"\n  ]\n}\n```\n\n## Key Risk Areas\n\n**🔴 HIGH PRIORITY:**\n1. **Query parameter injection** in `useWorkspace` - encode all URL parameters\n2. **XSS vectors** from untrusted backend content - implement sanitization or validation\n3. **Cookie security** - add Secure flag for production\n\n**🟡 MEDIUM PRIORITY:**\n1. Remove debug logging that exposes internal state\n2. Add response validation schemas (Zod/io-ts) for backend data\n3. Implement CSP headers\n\n**✅ STRENGTHS:**\n- CSRF protection is properly implemented\n- Session management uses secure credentials flag\n- No hardcoded secrets in code\n- TypeScript provides type safety\n\nI recommend prioritizing the HIGH items before the next production deployment.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 23,
+        "type": "URL Parameter Injection / Query String Manipulation",
+        "description": "The locationId parameter is directly interpolated into the URL without encoding. An attacker could craft a malicious locationId like '123&admin=true' to inject additional query parameters, potentially bypassing authorization checks or manipulating API requests.",
+        "cwe": "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code",
+        "code": "const url = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;"
+      },
+      {
+        "severity": "high",
+        "file": "src/hooks/use-chat.ts",
+        "line": 52,
+        "type": "Potential DOM-based XSS",
+        "description": "User and assistant message content from backend logs is stored directly in React state without sanitization. If the backend sends malicious HTML/JS in log.content, it will be rendered in components. This depends on how components render the content (if using dangerouslySetInnerHTML, it's critical).",
+        "cwe": "CWE-79: Improper Neutralization of Input During Web Page Generation",
+        "code": "content: log.content,"
+      },
+      {
+        "severity": "high",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 23,
+        "type": "Untrusted Data Handling - Action Cards",
+        "description": "Action card properties (type, module, action, item) are extracted from untrusted backend kvps without validation or sanitization. If a component renders these values unsafely, it could lead to XSS. The 'item' field is passed directly as user-supplied data.",
+        "cwe": "CWE-79: Improper Neutralization of Input During Web Page Generation",
+        "code": "type: String(kvps.action), module: String(kvps.module), item: kvps.item as Record<string, unknown>"
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 18,
+        "type": "Insecure Cookie Attributes",
+        "description": "CSRF token cookie is missing the 'Secure' flag. In production (HTTPS), this flag must be set to prevent the cookie from being transmitted over unencrypted HTTP connections. Current cookie: 'csrf_token_{runtimeId}={token}; SameSite=Strict; Path=/' should include 'Secure'.",
+        "cwe": "CWE-614: Sensitive Cookie in HTTPS Session Without Secure Attribute",
+        "code": "document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;"
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/socket-client.ts",
+        "line": 20,
+        "type": "Sensitive Data Logging",
+        "description": "Console logging of snapshot data (lines with console.log) in state_push handler could expose sensitive information from the Agent Zero context, including chat history, tool inputs, or internal state.",
+        "cwe": "CWE-532: Insertion of Sensitive Information into Log File",
+        "code": "console.log(`[state_push] ${snap.logs.length} logs...`)"
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 30,
+        "type": "Insufficient Error Detail in Response Parsing",
+        "description": "The fetch response is parsed as JSON without checking Content-Type header. Malformed responses could cause unexpected behavior. While error is caught, the error message only shows status code, potentially hiding security-relevant details.",
+        "cwe": "CWE-209: Information Exposure Through an Error Message",
+        "code": "const json = await res.json(); setError(err.message);"
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-socket.ts",
+        "line": 45,
+        "type": "Missing Input Validation on Timezone",
+        "description": "The timezone from Intl.DateTimeFormat is included in state_request without validation. While this is unlikely to be exploitable, user-facing timezone should be validated.",
+        "cwe": "CWE-20: Improper Input Validation",
+        "code": "timezone: Intl.DateTimeFormat().resolvedOptions().timeZone"
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": 5,
+        "type": "Environment-Dependent Backend URL",
+        "description": "Backend URL (A0_URL) defaults to localhost:5000 if not set. In production, if A0_URL environment variable is not properly configured, the app will try to connect to localhost, causing runtime failures. Not a direct vulnerability but a configuration risk.",
+        "cwe": "CWE-273: Improper Check for Dropped Privileges",
+        "code": "const A0_URL = process.env.A0_URL || 'http://localhost:5000';"
+      }
+    ],
+    "riskScore": 68,
+    "summary": {
+      "total_vulnerabilities": 8,
+      "critical": 0,
+      "high": 3,
+      "medium": 3,
+      "low": 2
+    },
+    "recommendations": [
+      {
+        "priority": "CRITICAL",
+        "action": "URL Encode Query Parameters",
+        "details": "Replace direct string interpolation in use-workspace.ts with URLSearchParams: const params = new URLSearchParams({ location_id: locationId }); const url = endpoint + '?' + params.toString();",
+        "affectedFiles": [
+          "src/hooks/use-workspace.ts"
+        ]
+      },
+      {
+        "priority": "CRITICAL",
+        "action": "Implement XSS Protection for Log Content",
+        "details": "All user-rendered content from snapshot.logs must be sanitized. Use a library like 'DOMPurify' or ensure components use .textContent instead of dangerouslySetInnerHTML. Add type guards to validate log.content structure.",
+        "affectedFiles": [
+          "src/hooks/use-chat.ts",
+          "src/hooks/use-action-cards.ts"
+        ]
+      },
+      {
+        "priority": "HIGH",
+        "action": "Add Secure Flag to CSRF Cookie",
+        "details": "Update csrf.ts line 18 to include Secure flag for production: document.cookie = `csrf_token_${runtimeId}=${csrfToken}; Secure; SameSite=Strict; Path=/; HttpOnly`; also consider HttpOnly flag to prevent JS access.",
+        "affectedFiles": [
+          "src/lib/csrf.ts"
+        ]
+      },
+      {
+        "priority": "HIGH",
+        "action": "Remove or Restrict Console Logging",
+        "details": "Remove console.log statements from socket-client.ts state_push handler, or gate them behind a development flag. Implement proper error tracking/monitoring instead.",
+        "affectedFiles": [
+          "src/lib/socket-client.ts"
+        ]
+      },
+      {
+        "priority": "MEDIUM",
+        "action": "Validate Backend Response Structure",
+        "details": "Add schema validation (e.g., Zod) to validate A0Snapshot, A0StatePush, and other backend responses before storing in React state. This prevents malformed data from causing XSS or logic errors.",
+        "affectedFiles": [
+          "src/hooks/use-socket.ts",
+          "src/hooks/use-chat.ts"
+        ]
+      },
+      {
+        "priority": "MEDIUM",
+        "action": "Implement Content Security Policy (CSP)",
+        "details": "Add CSP headers via next.config.ts to restrict script sources, prevent inline scripts, and control data URIs. This mitigates XSS impact.",
+        "affectedFiles": [
+          "next.config.ts"
+        ]
+      },
+      {
+        "priority": "LOW",
+        "action": "Require A0_URL in Production",
+        "details": "In next.config.ts, throw an error if A0_URL is not set in production environments (NODE_ENV=production). This prevents misconfiguration.",
+        "affectedFiles": [
+          "next.config.ts"
+        ]
+      },
+      {
+        "priority": "LOW",
+        "action": "Add Rate Limiting on Client",
+        "details": "Implement client-side rate limiting for message sends to prevent accidental DoS. Consider debouncing rapid requests.",
+        "affectedFiles": [
+          "src/hooks/use-chat.ts"
+        ]
+      }
+    ],
+    "dependencyAudit": {
+      "status": "requires_npm_audit",
+      "note": "Run 'npm audit' to check for known vulnerabilities in dependencies. All dependencies in package.json appear standard, but verify no CVEs exist for @base-ui/react, socket.io-client, and react-markdown."
+    },
+    "passingSecurity": [
+      "CSRF token properly fetched and included in POST requests",
+      "SameSite=Strict prevents CSRF attacks",
+      "credentials: 'include' properly maintains session cookies",
+      "Socket.IO auth callback ensures fresh tokens on reconnect",
+      "No hardcoded API keys or secrets in code",
+      "Type safety with TypeScript helps prevent some injection attacks",
+      "No SQL queries in frontend (cannot be directly vulnerable to SQL injection)"
+    ]
+  },
+  "durationMs": 51086,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T06:45:50.144Z",
+  "executionId": "audit_1773989099058_uzpr9e"
+}

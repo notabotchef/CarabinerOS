@@ -1,0 +1,163 @@
+[2026-03-20T06:08:06.142Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "# Performance Optimization Analysis\n\n## 1. N+1 Query Patterns\n\n### Issue: Multiple Sequential API Calls\nEach workspace module makes separate fetch requests. While not a traditional database N+1, this creates a network waterfall.\n\n**Location:** All workspace pages (`/orders`, `/inventory`, `/food-cost`, etc.)\n\n**Solution:** Implement batch API endpoint or use GraphQL\n```typescript\n// lib/api-client.ts\nexport async function fetchWorkspaceData(modules: string[]) {\n  const csrf = await getCsrfToken();\n  const res = await fetch('/api/workspace/batch', {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'X-CSRF-Token': csrf,\n    },\n    credentials: 'include',\n    body: JSON.stringify({ modules }),\n  });\n  return res.json();\n}\n```\n\n## 2. Unnecessary Re-renders in React\n\n### Issue A: useChat processes all logs on every snapshot change\n**Location:** `src/hooks/use-chat.ts:48-92`\n\n**Problem:** The effect runs even when logs haven't changed, causing unnecessary processing.\n\n**Solution:** Use deep comparison or log version tracking\n```typescript\nconst prevLogVersion = useRef(0);\n\nuseEffect(() => {\n  if (!snapshot) return;\n  \n  // Skip if logs haven't changed\n  if (snapshot.log_version === prevLogVersion.current) {\n    setLoading(snapshot.log_progress_active);\n    return;\n  }\n  prevLogVersion.current = snapshot.log_version;\n\n  // ... rest of processing\n}, [snapshot]);\n```\n\n### Issue B: useActionCards grows unbounded processedIds\n**Location:** `src/hooks/use-action-cards.ts:18-40`\n\n**Problem:** `processedIds` Set grows forever, causing memory leak and slower lookups.\n\n**Solution:** Clear old entries periodically\n```typescript\nexport function useActionCards(snapshot: A0Snapshot | null): UseActionCardsReturn {\n  const [cards, setCards] = useState<ActionCard[]>([]);\n  const processedIds = useRef(new Set<string>());\n  const lastCleanup = useRef(Date.now());\n\n  useEffect(() => {\n    if (!snapshot) return;\n\n    // Cleanup old processed IDs every 5 minutes\n    const now = Date.now();\n    if (now - lastCleanup.current > 300000) {\n      const activeIds = new Set(cards.map(c => c.id));\n      processedIds.current = activeIds;\n      lastCleanup.current = now;\n    }\n\n    for (const log of snapshot.logs) {\n      // ... rest of processing\n    }\n  }, [snapshot, cards]);\n  \n  // ... rest of hook\n}\n```\n\n### Issue C: Inline motion variants recreated on every render\n**Location:** `src/app/orders/page.tsx`, `src/app/marketing/page.tsx`, etc.\n\n**Problem:** Motion variants defined inline are recreated on every render.\n\n**Solution:** Move variants outside component\n```typescript\n// Define ONCE outside component\nconst rowVariants = {\n  hidden: { opacity: 0, y: 8 },\n  visible: (i: number) => ({\n    opacity: 1, \n    y: 0,\n    transition: { type: \"spring\", stiffness: 300, damping: 30, delay: i * 0.04 },\n  }),\n};\n\n// Already done in some files, but inconsistent\n```\n\n### Issue D: Workspace pages don't memoize filtered data\n**Location:** All workspace pages with filter logic\n\n**Solution:** Use `useMemo` for expensive computations\n```typescript\n// Example for food-cost/page.tsx\nconst filteredItems = useMemo(() => {\n  let items = data;\n  \n  if (selectedTab !== \"All\") {\n    items = items.filter(item => \n      normalizePressure(item.pressure) === selectedTab\n    );\n  }\n  \n  if (searchQuery) {\n    items = items.filter(item =>\n      item.menu_item_name.toLowerCase().includes(searchQuery.toLowerCase())\n    );\n  }\n  \n  return items;\n}, [data, selectedTab, searchQuery]);\n```\n\n## 3. Caching Opportunities\n\n### Issue A: useWorkspace refetches on every mount\n**Location:** `src/hooks/use-workspace.ts:15-42`\n\n**Problem:** No caching between route changes or component remounts.\n\n**Solution:** Implement SWR-style caching\n```typescript\n// lib/workspace-cache.ts\nconst cache = new Map<string, { data: any; timestamp: number }>();\nconst CACHE_TIME = 60000; // 1 minute\n\nexport function getCachedData<T>(key: string): T[] | null {\n  const cached = cache.get(key);\n  if (!cached) return null;\n  if (Date.now() - cached.timestamp > CACHE_TIME) {\n    cache.delete(key);\n    return null;\n  }\n  return cached.data;\n}\n\nexport function setCachedData(key: string, data: any) {\n  cache.set(key, { data, timestamp: Date.now() });\n}\n\n// Update useWorkspace:\nexport function useWorkspace<T = Record<string, unknown>>(\n  endpoint: string,\n  locationId?: string,\n): UseWorkspaceReturn<T> {\n  const [data, setData] = useState<T[]>([]);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState<string | null>(null);\n  const [refreshKey, setRefreshKey] = useState(0);\n\n  useEffect(() => {\n    const cacheKey = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;\n    \n    // Check cache first\n    const cached = getCachedData<T>(cacheKey);\n    if (cached && refreshKey === 0) {\n      setData(cached);\n      setLoading(false);\n      return;\n    }\n\n    setLoading(true);\n    fetch(cacheKey, { credentials: \"include\" })\n      .then(async (res) => {\n        if (!res.ok) throw new Error(`${res.status}`);\n        const json = await res.json();\n        const items = Array.isArray(json) ? json : json.items ?? json.data ?? [];\n        setData(items);\n        setCachedData(cacheKey, items);\n        setError(null);\n      })\n      .catch((err) => {\n        setError(err.message);\n        setData([]);\n      })\n      .finally(() => setLoading(false));\n  }, [endpoint, locationId, refreshKey]);\n\n  return { data, loading, error, refresh: () => setRefreshKey((k) => k + 1) };\n}\n```\n\n### Issue B: No React Query/SWR for server state\n**Recommendation:** Replace custom hooks with TanStack Query for automatic caching, deduplication, and background refetching.\n\n```typescript\n// Example migration to React Query\nimport { useQuery } from '@tanstack/react-query';\n\nexport function useWorkspace<T = Record<string, unknown>>(\n  endpoint: string,\n  locationId?: string,\n) {\n  const url = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;\n  \n  const { data, isLoading, error, refetch } = useQuery({\n    queryKey: ['workspace', endpoint, locationId],\n    queryFn: async () => {\n      const res = await fetch(url, { credentials: \"include\" });\n      if (!res.ok) throw new Error(`${res.status}`);\n      const json = await res.json();\n      return Array.isArray(json) ? json : json.items ?? json.data ?? [];\n    },\n    staleTime: 60000, // Consider data fresh for 1 minute\n    gcTime: 300000,   // Cache for 5 minutes\n  });\n\n  return { \n    data: data ?? [], \n    loading: isLoading, \n    error: error?.message ?? null, \n    refresh: refetch \n  };\n}\n```\n\n## 4. Memory Leaks\n\n### Issue A: Unbounded log processing Sets\n**Location:** `use-chat.ts:30`, `use-action-cards.ts:18`\n\n**Solution:** Already shown above - periodic cleanup\n\n### Issue B: Socket event listeners might leak\n**Location:** `src/lib/socket-client.ts:21-46`\n\n**Problem:** `connect_error` listener is added but parent component cleanup might not remove it.\n\n**Solution:** Return cleanup function from `initStateSyncSocket`\n```typescript\nexport function initStateSyncSocket(): { socket: Socket; cleanup: () => void } {\n  if (stateSyncSocket) return { socket: stateSyncSocket, cleanup: () => {} };\n\n  stateSyncSocket = io(`${A0_SOCKET_URL}/state_sync`, {\n    // ... config\n  });\n\n  const errorHandler = () => {\n    clearCsrfToken();\n  };\n  \n  stateSyncSocket.on(\"connect_error\", errorHandler);\n\n  const cleanup = () => {\n    stateSyncSocket?.off(\"connect_error\", errorHandler);\n  };\n\n  return { socket: stateSyncSocket, cleanup };\n}\n\n// In useSocket hook:\nuseEffect(() => {\n  const { socket, cleanup: cleanupSocket } = initStateSyncSocket();\n  \n  // ... rest of setup\n  \n  return () => {\n    // ... existing cleanup\n    cleanupSocket();\n    socket.disconnect();\n  };\n}, []);\n```\n\n### Issue C: Timer in useExpoStream might not cleanup\n**Location:** `src/hooks/use-expo-stream.ts:95-103`\n\n**Problem:** If component unmounts during timeout, timer still fires.\n\n**Solution:** Already handled correctly with `return () => clearTimeout(timer)`\n\n### Issue D: Large workspace tables load all data\n**Problem:** No pagination or virtualization for large datasets.\n\n**Solution:** Implement virtual scrolling\n```typescript\n// Use @tanstack/react-virtual\nimport { useVirtualizer } from '@tanstack/react-virtual';\n\nfunction InventoryTable({ items }: { items: InventoryItem[] }) {\n  const parentRef = useRef<HTMLDivElement>(null);\n  \n  const virtualizer = useVirtualizer({\n    count: items.length,\n    getScrollElement: () => parentRef.current,\n    estimateSize: () => 60, // estimated row height\n    overscan: 5,\n  });\n\n  return (\n    <div ref={parentRef} className=\"h-[600px] overflow-auto\">\n      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>\n        {virtualizer.getVirtualItems().map((virtualRow) => {\n          const item = items[virtualRow.index];\n          return (\n            <div\n              key={item.id}\n              style={{\n                position: 'absolute',\n                top: 0,\n                left: 0,\n                width: '100%',\n                height: `${virtualRow.size}px`,\n                transform: `translateY(${virtualRow.start}px)`,\n              }}\n            >\n              {/* Row content */}\n            </div>\n          );\n        })}\n      </div>\n    </div>\n  );\n}\n```\n\n## 5. Redundant Computations\n\n### Issue A: Parsing functions called repeatedly on same data\n**Location:** All workspace pages with `formatCurrency`, `formatDate`, `parseNum`\n\n**Solution:** Memoize parsed values\n```typescript\nconst processedItems = useMemo(() => \n  data.map(item => ({\n    ...item,\n    _parsed: {\n      total: formatCurrency(item.total),\n      date: formatDate(item.created_at),\n      onHand: parseNum(item.on_hand),\n    }\n  })),\n  [data]\n);\n\n// Then in render:\n<TableCell>{item._parsed.total}</TableCell>\n```\n\n### Issue B: useSocket subscribe callback not memoized\n**Location:** `src/hooks/use-socket.ts:60-74`\n\n**Problem:** Already using `useCallback` correctly ✅\n\n### Issue C: Filter/sort operations on every render\n**Solution:** Already addressed in Issue 2D above\n\n## Summary of Priority Fixes\n\n**High Priority:**\n1. ✅ Implement React Query for automatic caching (biggest impact)\n2. ✅ Add periodic cleanup to processedIds Sets (memory leak)\n3. ✅ Memoize filtered/sorted data in workspace pages (re-renders)\n4. ✅ Add virtual scrolling for large tables (memory + performance)\n\n**Medium Priority:**\n5. ✅ Batch API requests where possible (network performance)\n6. ✅ Use log_version for change detection in useChat (unnecessary processing)\n7. ✅ Memoize parsed values in table rows (redundant computation)\n\n**Low Priority:**\n8. Move all motion variants outside components (minor GC pressure)\n9. Optimize socket cleanup handlers (edge case leak prevention)\n\nThese optimizations should significantly improve performance, especially for users with large datasets or slower connections.\n",
+  "parsedOutput": {
+    "sections": [
+      {
+        "title": "Performance Optimization Analysis",
+        "content": "\n",
+        "level": 1
+      },
+      {
+        "title": "1. N+1 Query Patterns",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "Issue: Multiple Sequential API Calls",
+        "content": "Each workspace module makes separate fetch requests. While not a traditional database N+1, this creates a network waterfall.\n\n**Location:** All workspace pages (`/orders`, `/inventory`, `/food-cost`, etc.)\n\n**Solution:** Implement batch API endpoint or use GraphQL\n```typescript\n// lib/api-client.ts\nexport async function fetchWorkspaceData(modules: string[]) {\n  const csrf = await getCsrfToken();\n  const res = await fetch('/api/workspace/batch', {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'X-CSRF-Token': csrf,\n    },\n    credentials: 'include',\n    body: JSON.stringify({ modules }),\n  });\n  return res.json();\n}\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "2. Unnecessary Re-renders in React",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "Issue A: useChat processes all logs on every snapshot change",
+        "content": "**Location:** `src/hooks/use-chat.ts:48-92`\n\n**Problem:** The effect runs even when logs haven't changed, causing unnecessary processing.\n\n**Solution:** Use deep comparison or log version tracking\n```typescript\nconst prevLogVersion = useRef(0);\n\nuseEffect(() => {\n  if (!snapshot) return;\n  \n  // Skip if logs haven't changed\n  if (snapshot.log_version === prevLogVersion.current) {\n    setLoading(snapshot.log_progress_active);\n    return;\n  }\n  prevLogVersion.current = snapshot.log_version;\n\n  // ... rest of processing\n}, [snapshot]);\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "Issue B: useActionCards grows unbounded processedIds",
+        "content": "**Location:** `src/hooks/use-action-cards.ts:18-40`\n\n**Problem:** `processedIds` Set grows forever, causing memory leak and slower lookups.\n\n**Solution:** Clear old entries periodically\n```typescript\nexport function useActionCards(snapshot: A0Snapshot | null): UseActionCardsReturn {\n  const [cards, setCards] = useState<ActionCard[]>([]);\n  const processedIds = useRef(new Set<string>());\n  const lastCleanup = useRef(Date.now());\n\n  useEffect(() => {\n    if (!snapshot) return;\n\n    // Cleanup old processed IDs every 5 minutes\n    const now = Date.now();\n    if (now - lastCleanup.current > 300000) {\n      const activeIds = new Set(cards.map(c => c.id));\n      processedIds.current = activeIds;\n      lastCleanup.current = now;\n    }\n\n    for (const log of snapshot.logs) {\n      // ... rest of processing\n    }\n  }, [snapshot, cards]);\n  \n  // ... rest of hook\n}\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "Issue C: Inline motion variants recreated on every render",
+        "content": "**Location:** `src/app/orders/page.tsx`, `src/app/marketing/page.tsx`, etc.\n\n**Problem:** Motion variants defined inline are recreated on every render.\n\n**Solution:** Move variants outside component\n```typescript\n// Define ONCE outside component\nconst rowVariants = {\n  hidden: { opacity: 0, y: 8 },\n  visible: (i: number) => ({\n    opacity: 1, \n    y: 0,\n    transition: { type: \"spring\", stiffness: 300, damping: 30, delay: i * 0.04 },\n  }),\n};\n\n// Already done in some files, but inconsistent\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "Issue D: Workspace pages don't memoize filtered data",
+        "content": "**Location:** All workspace pages with filter logic\n\n**Solution:** Use `useMemo` for expensive computations\n```typescript\n// Example for food-cost/page.tsx\nconst filteredItems = useMemo(() => {\n  let items = data;\n  \n  if (selectedTab !== \"All\") {\n    items = items.filter(item => \n      normalizePressure(item.pressure) === selectedTab\n    );\n  }\n  \n  if (searchQuery) {\n    items = items.filter(item =>\n      item.menu_item_name.toLowerCase().includes(searchQuery.toLowerCase())\n    );\n  }\n  \n  return items;\n}, [data, selectedTab, searchQuery]);\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "3. Caching Opportunities",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "Issue A: useWorkspace refetches on every mount",
+        "content": "**Location:** `src/hooks/use-workspace.ts:15-42`\n\n**Problem:** No caching between route changes or component remounts.\n\n**Solution:** Implement SWR-style caching\n```typescript\n// lib/workspace-cache.ts\nconst cache = new Map<string, { data: any; timestamp: number }>();\nconst CACHE_TIME = 60000; // 1 minute\n\nexport function getCachedData<T>(key: string): T[] | null {\n  const cached = cache.get(key);\n  if (!cached) return null;\n  if (Date.now() - cached.timestamp > CACHE_TIME) {\n    cache.delete(key);\n    return null;\n  }\n  return cached.data;\n}\n\nexport function setCachedData(key: string, data: any) {\n  cache.set(key, { data, timestamp: Date.now() });\n}\n\n// Update useWorkspace:\nexport function useWorkspace<T = Record<string, unknown>>(\n  endpoint: string,\n  locationId?: string,\n): UseWorkspaceReturn<T> {\n  const [data, setData] = useState<T[]>([]);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState<string | null>(null);\n  const [refreshKey, setRefreshKey] = useState(0);\n\n  useEffect(() => {\n    const cacheKey = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;\n    \n    // Check cache first\n    const cached = getCachedData<T>(cacheKey);\n    if (cached && refreshKey === 0) {\n      setData(cached);\n      setLoading(false);\n      return;\n    }\n\n    setLoading(true);\n    fetch(cacheKey, { credentials: \"include\" })\n      .then(async (res) => {\n        if (!res.ok) throw new Error(`${res.status}`);\n        const json = await res.json();\n        const items = Array.isArray(json) ? json : json.items ?? json.data ?? [];\n        setData(items);\n        setCachedData(cacheKey, items);\n        setError(null);\n      })\n      .catch((err) => {\n        setError(err.message);\n        setData([]);\n      })\n      .finally(() => setLoading(false));\n  }, [endpoint, locationId, refreshKey]);\n\n  return { data, loading, error, refresh: () => setRefreshKey((k) => k + 1) };\n}\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "Issue B: No React Query/SWR for server state",
+        "content": "**Recommendation:** Replace custom hooks with TanStack Query for automatic caching, deduplication, and background refetching.\n\n```typescript\n// Example migration to React Query\nimport { useQuery } from '@tanstack/react-query';\n\nexport function useWorkspace<T = Record<string, unknown>>(\n  endpoint: string,\n  locationId?: string,\n) {\n  const url = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;\n  \n  const { data, isLoading, error, refetch } = useQuery({\n    queryKey: ['workspace', endpoint, locationId],\n    queryFn: async () => {\n      const res = await fetch(url, { credentials: \"include\" });\n      if (!res.ok) throw new Error(`${res.status}`);\n      const json = await res.json();\n      return Array.isArray(json) ? json : json.items ?? json.data ?? [];\n    },\n    staleTime: 60000, // Consider data fresh for 1 minute\n    gcTime: 300000,   // Cache for 5 minutes\n  });\n\n  return { \n    data: data ?? [], \n    loading: isLoading, \n    error: error?.message ?? null, \n    refresh: refetch \n  };\n}\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "4. Memory Leaks",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "Issue A: Unbounded log processing Sets",
+        "content": "**Location:** `use-chat.ts:30`, `use-action-cards.ts:18`\n\n**Solution:** Already shown above - periodic cleanup\n\n",
+        "level": 3
+      },
+      {
+        "title": "Issue B: Socket event listeners might leak",
+        "content": "**Location:** `src/lib/socket-client.ts:21-46`\n\n**Problem:** `connect_error` listener is added but parent component cleanup might not remove it.\n\n**Solution:** Return cleanup function from `initStateSyncSocket`\n```typescript\nexport function initStateSyncSocket(): { socket: Socket; cleanup: () => void } {\n  if (stateSyncSocket) return { socket: stateSyncSocket, cleanup: () => {} };\n\n  stateSyncSocket = io(`${A0_SOCKET_URL}/state_sync`, {\n    // ... config\n  });\n\n  const errorHandler = () => {\n    clearCsrfToken();\n  };\n  \n  stateSyncSocket.on(\"connect_error\", errorHandler);\n\n  const cleanup = () => {\n    stateSyncSocket?.off(\"connect_error\", errorHandler);\n  };\n\n  return { socket: stateSyncSocket, cleanup };\n}\n\n// In useSocket hook:\nuseEffect(() => {\n  const { socket, cleanup: cleanupSocket } = initStateSyncSocket();\n  \n  // ... rest of setup\n  \n  return () => {\n    // ... existing cleanup\n    cleanupSocket();\n    socket.disconnect();\n  };\n}, []);\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "Issue C: Timer in useExpoStream might not cleanup",
+        "content": "**Location:** `src/hooks/use-expo-stream.ts:95-103`\n\n**Problem:** If component unmounts during timeout, timer still fires.\n\n**Solution:** Already handled correctly with `return () => clearTimeout(timer)`\n\n",
+        "level": 3
+      },
+      {
+        "title": "Issue D: Large workspace tables load all data",
+        "content": "**Problem:** No pagination or virtualization for large datasets.\n\n**Solution:** Implement virtual scrolling\n```typescript\n// Use @tanstack/react-virtual\nimport { useVirtualizer } from '@tanstack/react-virtual';\n\nfunction InventoryTable({ items }: { items: InventoryItem[] }) {\n  const parentRef = useRef<HTMLDivElement>(null);\n  \n  const virtualizer = useVirtualizer({\n    count: items.length,\n    getScrollElement: () => parentRef.current,\n    estimateSize: () => 60, // estimated row height\n    overscan: 5,\n  });\n\n  return (\n    <div ref={parentRef} className=\"h-[600px] overflow-auto\">\n      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>\n        {virtualizer.getVirtualItems().map((virtualRow) => {\n          const item = items[virtualRow.index];\n          return (\n            <div\n              key={item.id}\n              style={{\n                position: 'absolute',\n                top: 0,\n                left: 0,\n                width: '100%',\n                height: `${virtualRow.size}px`,\n                transform: `translateY(${virtualRow.start}px)`,\n              }}\n            >\n              {/* Row content */}\n            </div>\n          );\n        })}\n      </div>\n    </div>\n  );\n}\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "5. Redundant Computations",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "Issue A: Parsing functions called repeatedly on same data",
+        "content": "**Location:** All workspace pages with `formatCurrency`, `formatDate`, `parseNum`\n\n**Solution:** Memoize parsed values\n```typescript\nconst processedItems = useMemo(() => \n  data.map(item => ({\n    ...item,\n    _parsed: {\n      total: formatCurrency(item.total),\n      date: formatDate(item.created_at),\n      onHand: parseNum(item.on_hand),\n    }\n  })),\n  [data]\n);\n\n// Then in render:\n<TableCell>{item._parsed.total}</TableCell>\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "Issue B: useSocket subscribe callback not memoized",
+        "content": "**Location:** `src/hooks/use-socket.ts:60-74`\n\n**Problem:** Already using `useCallback` correctly ✅\n\n",
+        "level": 3
+      },
+      {
+        "title": "Issue C: Filter/sort operations on every render",
+        "content": "**Solution:** Already addressed in Issue 2D above\n\n",
+        "level": 3
+      },
+      {
+        "title": "Summary of Priority Fixes",
+        "content": "**High Priority:**\n1. ✅ Implement React Query for automatic caching (biggest impact)\n2. ✅ Add periodic cleanup to processedIds Sets (memory leak)\n3. ✅ Memoize filtered/sorted data in workspace pages (re-renders)\n4. ✅ Add virtual scrolling for large tables (memory + performance)\n\n**Medium Priority:**\n5. ✅ Batch API requests where possible (network performance)\n6. ✅ Use log_version for change detection in useChat (unnecessary processing)\n7. ✅ Memoize parsed values in table rows (redundant computation)\n\n**Low Priority:**\n8. Move all motion variants outside components (minor GC pressure)\n9. Optimize socket cleanup handlers (edge case leak prevention)\n\nThese optimizations should significantly improve performance, especially for users with large datasets or slower connections.",
+        "level": 2
+      }
+    ],
+    "codeBlocks": [
+      {
+        "language": "typescript",
+        "code": "// lib/api-client.ts\nexport async function fetchWorkspaceData(modules: string[]) {\n  const csrf = await getCsrfToken();\n  const res = await fetch('/api/workspace/batch', {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'X-CSRF-Token': csrf,\n    },\n    credentials: 'include',\n    body: JSON.stringify({ modules }),\n  });\n  return res.json();\n}"
+      },
+      {
+        "language": "typescript",
+        "code": "const prevLogVersion = useRef(0);\n\nuseEffect(() => {\n  if (!snapshot) return;\n  \n  // Skip if logs haven't changed\n  if (snapshot.log_version === prevLogVersion.current) {\n    setLoading(snapshot.log_progress_active);\n    return;\n  }\n  prevLogVersion.current = snapshot.log_version;\n\n  // ... rest of processing\n}, [snapshot]);"
+      },
+      {
+        "language": "typescript",
+        "code": "export function useActionCards(snapshot: A0Snapshot | null): UseActionCardsReturn {\n  const [cards, setCards] = useState<ActionCard[]>([]);\n  const processedIds = useRef(new Set<string>());\n  const lastCleanup = useRef(Date.now());\n\n  useEffect(() => {\n    if (!snapshot) return;\n\n    // Cleanup old processed IDs every 5 minutes\n    const now = Date.now();\n    if (now - lastCleanup.current > 300000) {\n      const activeIds = new Set(cards.map(c => c.id));\n      processedIds.current = activeIds;\n      lastCleanup.current = now;\n    }\n\n    for (const log of snapshot.logs) {\n      // ... rest of processing\n    }\n  }, [snapshot, cards]);\n  \n  // ... rest of hook\n}"
+      },
+      {
+        "language": "typescript",
+        "code": "// Define ONCE outside component\nconst rowVariants = {\n  hidden: { opacity: 0, y: 8 },\n  visible: (i: number) => ({\n    opacity: 1, \n    y: 0,\n    transition: { type: \"spring\", stiffness: 300, damping: 30, delay: i * 0.04 },\n  }),\n};\n\n// Already done in some files, but inconsistent"
+      },
+      {
+        "language": "typescript",
+        "code": "// Example for food-cost/page.tsx\nconst filteredItems = useMemo(() => {\n  let items = data;\n  \n  if (selectedTab !== \"All\") {\n    items = items.filter(item => \n      normalizePressure(item.pressure) === selectedTab\n    );\n  }\n  \n  if (searchQuery) {\n    items = items.filter(item =>\n      item.menu_item_name.toLowerCase().includes(searchQuery.toLowerCase())\n    );\n  }\n  \n  return items;\n}, [data, selectedTab, searchQuery]);"
+      },
+      {
+        "language": "typescript",
+        "code": "// lib/workspace-cache.ts\nconst cache = new Map<string, { data: any; timestamp: number }>();\nconst CACHE_TIME = 60000; // 1 minute\n\nexport function getCachedData<T>(key: string): T[] | null {\n  const cached = cache.get(key);\n  if (!cached) return null;\n  if (Date.now() - cached.timestamp > CACHE_TIME) {\n    cache.delete(key);\n    return null;\n  }\n  return cached.data;\n}\n\nexport function setCachedData(key: string, data: any) {\n  cache.set(key, { data, timestamp: Date.now() });\n}\n\n// Update useWorkspace:\nexport function useWorkspace<T = Record<string, unknown>>(\n  endpoint: string,\n  locationId?: string,\n): UseWorkspaceReturn<T> {\n  const [data, setData] = useState<T[]>([]);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState<string | null>(null);\n  const [refreshKey, setRefreshKey] = useState(0);\n\n  useEffect(() => {\n    const cacheKey = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;\n    \n    // Check cache first\n    const cached = getCachedData<T>(cacheKey);\n    if (cached && refreshKey === 0) {\n      setData(cached);\n      setLoading(false);\n      return;\n    }\n\n    setLoading(true);\n    fetch(cacheKey, { credentials: \"include\" })\n      .then(async (res) => {\n        if (!res.ok) throw new Error(`${res.status}`);\n        const json = await res.json();\n        const items = Array.isArray(json) ? json : json.items ?? json.data ?? [];\n        setData(items);\n        setCachedData(cacheKey, items);\n        setError(null);\n      })\n      .catch((err) => {\n        setError(err.message);\n        setData([]);\n      })\n      .finally(() => setLoading(false));\n  }, [endpoint, locationId, refreshKey]);\n\n  return { data, loading, error, refresh: () => setRefreshKey((k) => k + 1) };\n}"
+      },
+      {
+        "language": "typescript",
+        "code": "// Example migration to React Query\nimport { useQuery } from '@tanstack/react-query';\n\nexport function useWorkspace<T = Record<string, unknown>>(\n  endpoint: string,\n  locationId?: string,\n) {\n  const url = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;\n  \n  const { data, isLoading, error, refetch } = useQuery({\n    queryKey: ['workspace', endpoint, locationId],\n    queryFn: async () => {\n      const res = await fetch(url, { credentials: \"include\" });\n      if (!res.ok) throw new Error(`${res.status}`);\n      const json = await res.json();\n      return Array.isArray(json) ? json : json.items ?? json.data ?? [];\n    },\n    staleTime: 60000, // Consider data fresh for 1 minute\n    gcTime: 300000,   // Cache for 5 minutes\n  });\n\n  return { \n    data: data ?? [], \n    loading: isLoading, \n    error: error?.message ?? null, \n    refresh: refetch \n  };\n}"
+      },
+      {
+        "language": "typescript",
+        "code": "export function initStateSyncSocket(): { socket: Socket; cleanup: () => void } {\n  if (stateSyncSocket) return { socket: stateSyncSocket, cleanup: () => {} };\n\n  stateSyncSocket = io(`${A0_SOCKET_URL}/state_sync`, {\n    // ... config\n  });\n\n  const errorHandler = () => {\n    clearCsrfToken();\n  };\n  \n  stateSyncSocket.on(\"connect_error\", errorHandler);\n\n  const cleanup = () => {\n    stateSyncSocket?.off(\"connect_error\", errorHandler);\n  };\n\n  return { socket: stateSyncSocket, cleanup };\n}\n\n// In useSocket hook:\nuseEffect(() => {\n  const { socket, cleanup: cleanupSocket } = initStateSyncSocket();\n  \n  // ... rest of setup\n  \n  return () => {\n    // ... existing cleanup\n    cleanupSocket();\n    socket.disconnect();\n  };\n}, []);"
+      },
+      {
+        "language": "typescript",
+        "code": "// Use @tanstack/react-virtual\nimport { useVirtualizer } from '@tanstack/react-virtual';\n\nfunction InventoryTable({ items }: { items: InventoryItem[] }) {\n  const parentRef = useRef<HTMLDivElement>(null);\n  \n  const virtualizer = useVirtualizer({\n    count: items.length,\n    getScrollElement: () => parentRef.current,\n    estimateSize: () => 60, // estimated row height\n    overscan: 5,\n  });\n\n  return (\n    <div ref={parentRef} className=\"h-[600px] overflow-auto\">\n      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>\n        {virtualizer.getVirtualItems().map((virtualRow) => {\n          const item = items[virtualRow.index];\n          return (\n            <div\n              key={item.id}\n              style={{\n                position: 'absolute',\n                top: 0,\n                left: 0,\n                width: '100%',\n                height: `${virtualRow.size}px`,\n                transform: `translateY(${virtualRow.start}px)`,\n              }}\n            >\n              {/* Row content */}\n            </div>\n          );\n        })}\n      </div>\n    </div>\n  );\n}"
+      },
+      {
+        "language": "typescript",
+        "code": "const processedItems = useMemo(() => \n  data.map(item => ({\n    ...item,\n    _parsed: {\n      total: formatCurrency(item.total),\n      date: formatDate(item.created_at),\n      onHand: parseNum(item.on_hand),\n    }\n  })),\n  [data]\n);\n\n// Then in render:\n<TableCell>{item._parsed.total}</TableCell>"
+      }
+    ]
+  },
+  "durationMs": 73617,
+  "model": "sonnet",
+  "sandboxMode": "permissive",
+  "workerType": "optimize",
+  "timestamp": "2026-03-20T06:08:06.142Z",
+  "executionId": "optimize_1773986812525_2z9243"
+}

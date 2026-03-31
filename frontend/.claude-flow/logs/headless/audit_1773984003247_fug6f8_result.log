@@ -1,0 +1,78 @@
+[2026-03-20T05:20:39.278Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/workspace-config.ts & src/hooks/use-workspace.ts\",\n      \"line\": \"35 (use-workspace.ts)\",\n      \"description\": \"URL parameter injection: locationId is interpolated directly into URL without encoding. Use URLSearchParams or encodeURIComponent to prevent URL injection attacks.\",\n      \"code_snippet\": \"const url = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": \"18\",\n      \"description\": \"Predictable CSRF token cookie names based on runtimeId. If runtimeId is guessable, attackers could craft requests with predicted token cookies. Consider using a server-generated random cookie name.\",\n      \"code_snippet\": \"document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": \"18\",\n      \"description\": \"Missing Secure flag on CSRF token cookie. In production (HTTPS), add Secure flag to prevent transmission over unencrypted connections: `SameSite=Strict; Secure; Path=/`\",\n      \"code_snippet\": \"document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": \"79-83\",\n      \"description\": \"Information disclosure: Error message reveals internal service details (port 5000). While benign in development, production should use generic error messages.\",\n      \"code_snippet\": \"content: \\\"Can't reach the kitchen right now. Make sure Agent Zero is running on port 5000.\\\"\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts & src/hooks/use-action-cards.ts\",\n      \"line\": \"48, 74\",\n      \"description\": \"Potential XSS if snapshot logs contain untrusted content. Although logs come from trusted backend, verify that rendered content is properly escaped. React auto-escapes by default, but if using dangerouslySetInnerHTML elsewhere, audit carefully.\",\n      \"code_snippet\": \"content: log.content (rendered in ChatMessage and summary)\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": \"7-12\",\n      \"description\": \"CSRF token caching without expiration awareness. If server revokes token, client cache becomes invalid. Current implementation mitigates via clearCsrfToken() on errors, but consider adding TTL.\",\n      \"code_snippet\": \"let csrfToken: string | null = null; if (csrfToken) return csrfToken;\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": \"3\",\n      \"description\": \"A0_URL defaults to localhost. In production, ensure A0_URL is properly set via environment variables and not exposed to untrusted sources.\",\n      \"code_snippet\": \"const A0_URL = process.env.A0_URL || \\\"http://localhost:5000\\\";\"\n    }\n  ],\n  \"riskScore\": 32,\n  \"recommendations\": [\n    \"**HIGH PRIORITY**: Fix URL parameter encoding in use-workspace.ts. Use `new URLSearchParams({ location_id: locationId }).toString()` instead of string interpolation.\",\n    \"**HIGH PRIORITY**: Add `Secure` flag to CSRF token cookie for production deployments. Use environment-aware cookie setting: `Secure=${process.env.NODE_ENV === 'production'}`\",\n    \"**MEDIUM PRIORITY**: Randomize CSRF cookie names by using a server-generated identifier instead of predictable runtimeId-based names.\",\n    \"**MEDIUM PRIORITY**: Add Content Security Policy (CSP) headers via next.config.ts headers middleware to prevent XSS attacks.\",\n    \"**MEDIUM PRIORITY**: Verify backend CORS configuration properly restricts Origin, Credentials, and Methods for socket.io and fetch calls.\",\n    \"**LOW PRIORITY**: Implement generic error messages for production; avoid revealing port numbers or service names.\",\n    \"**LOW PRIORITY**: Add CSRF token TTL and refresh mechanism for long-lived sessions.\",\n    \"**LOW PRIORITY**: Audit all uses of react-markdown (in dependencies but not shown in provided files) to ensure dangerouslySetInnerHTML is never used with untrusted content.\",\n    \"**MONITORING**: Enable HTTP Security Headers: Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, Referrer-Policy.\",\n    \"**TESTING**: Regularly audit Socket.IO connection parameters and CSRF flow with network inspection tools.\"\n  ]\n}\n```\n\n---\n\n### Summary\n\n**Risk Level: MEDIUM (32/100)**\n\nThis is a relatively secure frontend architecture with good CSRF protection patterns. However, **three main issues** warrant attention:\n\n1. **URL injection in workspace.ts** — `locationId` should use `encodeURIComponent()`\n2. **Missing Secure flag on CSRF cookies** — Production deployments must set this\n3. **Predictable CSRF cookie names** — Consider randomizing server-side\n\n**Strengths:**\n- ✅ CSRF token is properly fetched and sent in headers\n- ✅ SameSite=Strict cookie policy\n- ✅ Session credentials included (`withCredentials: true`, `credentials: \"include\"`)\n- ✅ Uses crypto.randomUUID() for correlation IDs\n- ✅ Socket.IO polling transport for Safari CSRF compatibility\n- ✅ React auto-escapes content (prevents most XSS)\n\n**Missing Controls:**\n- ❌ No CSP headers shown\n- ❌ No CORS configuration visible\n- ❌ No HTTPOnly flag on CSRF token cookie (if truly needed, consider server-side session instead)\n\nThe codebase demonstrates security-conscious design. Address the three medium-severity issues before production deployment.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/lib/workspace-config.ts & src/hooks/use-workspace.ts",
+        "line": "35 (use-workspace.ts)",
+        "description": "URL parameter injection: locationId is interpolated directly into URL without encoding. Use URLSearchParams or encodeURIComponent to prevent URL injection attacks.",
+        "code_snippet": "const url = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;"
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": "18",
+        "description": "Predictable CSRF token cookie names based on runtimeId. If runtimeId is guessable, attackers could craft requests with predicted token cookies. Consider using a server-generated random cookie name.",
+        "code_snippet": "document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;"
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": "18",
+        "description": "Missing Secure flag on CSRF token cookie. In production (HTTPS), add Secure flag to prevent transmission over unencrypted connections: `SameSite=Strict; Secure; Path=/`",
+        "code_snippet": "document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;"
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": "79-83",
+        "description": "Information disclosure: Error message reveals internal service details (port 5000). While benign in development, production should use generic error messages.",
+        "code_snippet": "content: \"Can't reach the kitchen right now. Make sure Agent Zero is running on port 5000.\""
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts & src/hooks/use-action-cards.ts",
+        "line": "48, 74",
+        "description": "Potential XSS if snapshot logs contain untrusted content. Although logs come from trusted backend, verify that rendered content is properly escaped. React auto-escapes by default, but if using dangerouslySetInnerHTML elsewhere, audit carefully.",
+        "code_snippet": "content: log.content (rendered in ChatMessage and summary)"
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/csrf.ts",
+        "line": "7-12",
+        "description": "CSRF token caching without expiration awareness. If server revokes token, client cache becomes invalid. Current implementation mitigates via clearCsrfToken() on errors, but consider adding TTL.",
+        "code_snippet": "let csrfToken: string | null = null; if (csrfToken) return csrfToken;"
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": "3",
+        "description": "A0_URL defaults to localhost. In production, ensure A0_URL is properly set via environment variables and not exposed to untrusted sources.",
+        "code_snippet": "const A0_URL = process.env.A0_URL || \"http://localhost:5000\";"
+      }
+    ],
+    "riskScore": 32,
+    "recommendations": [
+      "**HIGH PRIORITY**: Fix URL parameter encoding in use-workspace.ts. Use `new URLSearchParams({ location_id: locationId }).toString()` instead of string interpolation.",
+      "**HIGH PRIORITY**: Add `Secure` flag to CSRF token cookie for production deployments. Use environment-aware cookie setting: `Secure=${process.env.NODE_ENV === 'production'}`",
+      "**MEDIUM PRIORITY**: Randomize CSRF cookie names by using a server-generated identifier instead of predictable runtimeId-based names.",
+      "**MEDIUM PRIORITY**: Add Content Security Policy (CSP) headers via next.config.ts headers middleware to prevent XSS attacks.",
+      "**MEDIUM PRIORITY**: Verify backend CORS configuration properly restricts Origin, Credentials, and Methods for socket.io and fetch calls.",
+      "**LOW PRIORITY**: Implement generic error messages for production; avoid revealing port numbers or service names.",
+      "**LOW PRIORITY**: Add CSRF token TTL and refresh mechanism for long-lived sessions.",
+      "**LOW PRIORITY**: Audit all uses of react-markdown (in dependencies but not shown in provided files) to ensure dangerouslySetInnerHTML is never used with untrusted content.",
+      "**MONITORING**: Enable HTTP Security Headers: Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, Referrer-Policy.",
+      "**TESTING**: Regularly audit Socket.IO connection parameters and CSRF flow with network inspection tools."
+    ]
+  },
+  "durationMs": 36031,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T05:20:39.278Z",
+  "executionId": "audit_1773984003247_fug6f8"
+}

@@ -4,7 +4,7 @@
 from __future__ import annotations
 import random
 import logging
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,6 @@ class ChefStatusComplete(Extension):
                 "status": "completed",
                 "text": msg,
                 "active": False
-            }, namespace="/state_sync")
+            }, namespace="/ws")
         except Exception as e:
             logger.warning("Failed to emit chef_status: %s", e)

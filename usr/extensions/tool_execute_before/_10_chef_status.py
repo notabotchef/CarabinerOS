@@ -6,7 +6,7 @@ Part of the Expo Station v3+ architecture.
 from __future__ import annotations
 import random
 import logging
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,6 @@ class ChefStatusBefore(Extension):
                 "tool": tool_name,
                 "text": msg,
                 "active": True
-            }, namespace="/state_sync")
+            }, namespace="/ws")
         except Exception as e:
             logger.warning("Failed to emit chef_status: %s", e)

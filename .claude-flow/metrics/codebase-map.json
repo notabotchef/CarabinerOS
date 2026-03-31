@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-03-22T07:11:53.933Z",
+  "projectRoot": "/Users/estebannunez/Projects/carabiner-os",
+  "structure": {
+    "hasPackageJson": false,
+    "hasTsConfig": false,
+    "hasClaudeConfig": true,
+    "hasClaudeFlow": true
+  },
+  "scannedAt": 1774163513933
+}

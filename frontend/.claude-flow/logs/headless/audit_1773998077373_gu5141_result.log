@@ -1,0 +1,65 @@
+[2026-03-20T09:15:07.124Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 15,\n      \"description\": \"URL parameter injection: locationId is directly interpolated into query string without encoding. Example: locationId='1&admin=true' could inject additional parameters. Should use URLSearchParams or encodeURIComponent().\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 12,\n      \"description\": \"Unvalidated endpoint parameter passed to fetch(). If endpoint is user-controlled, this enables open redirect or URL injection attacks. Validate against a whitelist of allowed endpoints.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 17,\n      \"description\": \"Cookie injection: csrfToken and runtimeId values directly inserted into cookie string without escaping. If either contains semicolons or special characters, could break cookie format or enable injection. Sanitize values or use secure cookie library.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"package.json\",\n      \"line\": 19,\n      \"description\": \"react-markdown dependency present. If used without proper configuration (skipHtml: true, disallowedElements configured), could enable XSS via malicious markdown content. Verify usage in components.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-socket.ts\",\n      \"line\": 45,\n      \"description\": \"CSRF token stored in cookie with runtime_id suffix. While using SameSite=Strict is good, consider also adding Secure flag and HttpOnly (if backend supports) to further restrict access.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": 3,\n      \"description\": \"A0_URL defaults to localhost without validation. In production, ensure NEXT_PUBLIC_A0_URL is explicitly set. Consider restricting to HTTPS-only backends in production.\"\n    }\n  ],\n  \"riskScore\": 62,\n  \"recommendations\": [\n    \"Fix URL parameter encoding in use-workspace.ts: Replace string interpolation with URLSearchParams or encodeURIComponent()\",\n    \"Whitelist allowed endpoints in use-workspace.ts to prevent open redirects\",\n    \"Sanitize csrfToken and runtimeId before inserting into cookie string in csrf.ts\",\n    \"Audit all react-markdown usage to ensure skipHtml=true and appropriate disallowedElements configuration\",\n    \"Add Secure flag to CSRF token cookie (set to 'Secure' in production, not just SameSite=Strict)\",\n    \"Implement Content Security Policy (CSP) headers to mitigate XSS risks\",\n    \"Add input validation for all user-controlled parameters (locationId, endpoint, etc.)\",\n    \"Review backend authentication/authorization for the API endpoints being called\",\n    \"Ensure environment variables (A0_URL, NEXT_PUBLIC_A0_URL) are never committed with sensitive values\",\n    \"Monitor and update dependencies regularly (react-markdown, socket.io-client, etc.)\"\n  ]\n}\n```\n\n**Key Findings:**\n\n- **URL Parameter Injection** (Line 15 in use-workspace.ts) is the most critical issue — unencoded `locationId` could allow attackers to inject additional URL parameters\n- **Unvalidated Endpoints** (Line 12) could enable open redirect attacks if the endpoint parameter is user-controlled\n- **Cookie Injection** (Line 17 in csrf.ts) could occur if CSRF token contains special characters — should use a proper cookie library instead of string concatenation\n- **Dependency Risk** with react-markdown — verify it's configured with `skipHtml: true` wherever it's rendered\n\n**Risk Score: 62/100** — Moderate risk. The vulnerabilities are present but would require specific conditions to exploit (user-controlled endpoints, special characters in tokens). Fix the URL parameter encoding and endpoint validation immediately.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 15,
+        "description": "URL parameter injection: locationId is directly interpolated into query string without encoding. Example: locationId='1&admin=true' could inject additional parameters. Should use URLSearchParams or encodeURIComponent()."
+      },
+      {
+        "severity": "high",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 12,
+        "description": "Unvalidated endpoint parameter passed to fetch(). If endpoint is user-controlled, this enables open redirect or URL injection attacks. Validate against a whitelist of allowed endpoints."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 17,
+        "description": "Cookie injection: csrfToken and runtimeId values directly inserted into cookie string without escaping. If either contains semicolons or special characters, could break cookie format or enable injection. Sanitize values or use secure cookie library."
+      },
+      {
+        "severity": "medium",
+        "file": "package.json",
+        "line": 19,
+        "description": "react-markdown dependency present. If used without proper configuration (skipHtml: true, disallowedElements configured), could enable XSS via malicious markdown content. Verify usage in components."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-socket.ts",
+        "line": 45,
+        "description": "CSRF token stored in cookie with runtime_id suffix. While using SameSite=Strict is good, consider also adding Secure flag and HttpOnly (if backend supports) to further restrict access."
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": 3,
+        "description": "A0_URL defaults to localhost without validation. In production, ensure NEXT_PUBLIC_A0_URL is explicitly set. Consider restricting to HTTPS-only backends in production."
+      }
+    ],
+    "riskScore": 62,
+    "recommendations": [
+      "Fix URL parameter encoding in use-workspace.ts: Replace string interpolation with URLSearchParams or encodeURIComponent()",
+      "Whitelist allowed endpoints in use-workspace.ts to prevent open redirects",
+      "Sanitize csrfToken and runtimeId before inserting into cookie string in csrf.ts",
+      "Audit all react-markdown usage to ensure skipHtml=true and appropriate disallowedElements configuration",
+      "Add Secure flag to CSRF token cookie (set to 'Secure' in production, not just SameSite=Strict)",
+      "Implement Content Security Policy (CSP) headers to mitigate XSS risks",
+      "Add input validation for all user-controlled parameters (locationId, endpoint, etc.)",
+      "Review backend authentication/authorization for the API endpoints being called",
+      "Ensure environment variables (A0_URL, NEXT_PUBLIC_A0_URL) are never committed with sensitive values",
+      "Monitor and update dependencies regularly (react-markdown, socket.io-client, etc.)"
+    ]
+  },
+  "durationMs": 29751,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T09:15:07.124Z",
+  "executionId": "audit_1773998077373_gu5141"
+}

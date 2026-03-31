@@ -129,7 +129,7 @@ async def list_chats() -> list:
             from agent import AgentContext, AgentContextType
 
             try:
-                from python.helpers import persist_chat
+                from helpers import persist_chat
                 persist_chat.load_tmp_chats()
             except Exception:
                 pass
@@ -181,7 +181,7 @@ async def create_chat() -> dict:
             ctx = AgentContext(config=config)
 
             try:
-                from python.helpers import persist_chat
+                from helpers import persist_chat
                 persist_chat.save_tmp_chat(ctx)
             except Exception:
                 pass
@@ -210,7 +210,7 @@ async def delete_chat(context_id: str) -> None:
             if ctx is not None:
                 AgentContext.remove(context_id)
                 try:
-                    from python.helpers import persist_chat
+                    from helpers import persist_chat
                     persist_chat.remove_chat(context_id)
                 except Exception:
                     pass

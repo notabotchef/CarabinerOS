@@ -61,9 +61,9 @@ async def test_connect_security_is_computed_per_namespace_and_enforced(monkeypat
     from flask import Flask
     import socketio
 
-    from python.helpers.websocket import WebSocketHandler
-    from python.helpers.websocket_manager import WebSocketManager
-    from python.helpers import runtime
+    from helpers.websocket import WebSocketHandler
+    from helpers.websocket_manager import WebSocketManager
+    from helpers import runtime
     from run_ui import configure_websocket_namespaces
 
     class OpenHandler(WebSocketHandler):
@@ -181,8 +181,8 @@ async def test_unknown_namespace_rejected_with_deterministic_connect_error_paylo
     from flask import Flask
     import socketio
 
-    from python.helpers.websocket import WebSocketHandler
-    from python.helpers.websocket_manager import WebSocketManager
+    from helpers.websocket import WebSocketHandler
+    from helpers.websocket_manager import WebSocketManager
     from run_ui import configure_websocket_namespaces
 
     class OpenHandler(WebSocketHandler):
@@ -248,9 +248,9 @@ async def test_secure_namespace_rejects_missing_auth_even_with_valid_csrf(monkey
     from flask import Flask
     import socketio
 
-    from python.helpers.websocket import WebSocketHandler
-    from python.helpers.websocket_manager import WebSocketManager
-    from python.helpers import runtime
+    from helpers.websocket import WebSocketHandler
+    from helpers.websocket_manager import WebSocketManager
+    from helpers import runtime
     from run_ui import configure_websocket_namespaces
 
     class SecureHandler(WebSocketHandler):
@@ -314,9 +314,9 @@ async def test_secure_namespace_rejects_invalid_csrf_cookie(monkeypatch) -> None
     from flask import Flask
     import socketio
 
-    from python.helpers.websocket import WebSocketHandler
-    from python.helpers.websocket_manager import WebSocketManager
-    from python.helpers import runtime
+    from helpers.websocket import WebSocketHandler
+    from helpers.websocket_manager import WebSocketManager
+    from helpers import runtime
     from run_ui import configure_websocket_namespaces
 
     class SecureHandler(WebSocketHandler):
@@ -381,9 +381,9 @@ async def test_csrf_required_without_auth_is_enforced(monkeypatch) -> None:
     from flask import Flask
     import socketio
 
-    from python.helpers.websocket import WebSocketHandler
-    from python.helpers.websocket_manager import WebSocketManager
-    from python.helpers import runtime
+    from helpers.websocket import WebSocketHandler
+    from helpers.websocket_manager import WebSocketManager
+    from helpers import runtime
     from run_ui import configure_websocket_namespaces
 
     class CsrfOnlyHandler(WebSocketHandler):

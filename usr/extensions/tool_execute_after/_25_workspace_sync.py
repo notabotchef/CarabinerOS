@@ -7,7 +7,7 @@ emits Socket.IO events so the frontend auto-refreshes.
 from __future__ import annotations
 
 import logging
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 logger = logging.getLogger(__name__)
 

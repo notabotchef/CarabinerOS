@@ -13,7 +13,7 @@ import json
 import os
 from pathlib import Path
 
-from python.helpers.tool import Response, Tool
+from helpers.tool import Response, Tool
 
 # Structured extraction prompt sent alongside invoice images/text
 EXTRACTION_PROMPT = """\
@@ -231,7 +231,7 @@ class InvoiceTool(Tool):
 
     async def _extract_from_image(self, file_path: str) -> str:
         """Use Agent Zero's vision system to extract data from an invoice image."""
-        from python.helpers.images import compress_image
+        from helpers.images import compress_image
 
         # Read and compress image
         with open(file_path, "rb") as f:

@@ -1,0 +1,114 @@
+[2026-03-20T07:39:32.037Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 20,\n      \"description\": \"URL parameter injection: locationId is not URL-encoded before use in query string. Malicious input could inject additional parameters or break out of parameter context. Use URLSearchParams instead of string concatenation.\",\n      \"cve\": \"CWE-89 (equivalent for URL context)\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 121,\n      \"description\": \"Missing input validation on user chat messages. No length limits, type validation, or content filtering before sending to backend. Could enable DoS or injection attacks.\",\n      \"cve\": \"CWE-400\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 17,\n      \"description\": \"CSRF token stored in document.cookie via JavaScript. While SameSite=Strict mitigates risk, storing tokens in client-accessible cookies is generally less secure than HTTPOnly + server-side validation. Token could be exfiltrated if XSS exists elsewhere.\",\n      \"cve\": \"CWE-522\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 28,\n      \"description\": \"Unvalidated API response parsing. No error handling for res.json() or validation that response contains expected data structure. Unexpected responses could cause unhandled promise rejections.\",\n      \"cve\": \"CWE-248\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 69,\n      \"description\": \"Snapshot data from Agent Zero logs used directly without sanitization. If Agent Zero is compromised or receives malicious input, XSS could occur when rendering log.content. Assume trust boundary but add defensive rendering.\",\n      \"cve\": \"CWE-79\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 18,\n      \"description\": \"Missing validation of Socket.IO auth response. No verification that the auth callback succeeded before using socket. Silent failure could lead to unauthenticated operations.\",\n      \"cve\": \"CWE-345\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 19,\n      \"description\": \"Endpoint parameter used directly without validation. No check that endpoint is a relative path or same-origin URL. Could enable server-side request forgery (SSRF) if endpoint is user-controlled.\",\n      \"cve\": \"CWE-918\"\n    }\n  ],\n  \"riskScore\": 38,\n  \"summary\": \"Frontend codebase has moderate security posture with no critical vulnerabilities. Main risks are URL/input validation gaps and missing response validation. Backend (Agent Zero) is the primary trust boundary—security depends heavily on its implementation. No hardcoded secrets or SQL injection found.\",\n  \"recommendations\": [\n    \"🔴 CRITICAL: Replace string concatenation with URLSearchParams in use-workspace.ts line 20: const params = new URLSearchParams({location_id: locationId}); const url = `${endpoint}?${params}`\",\n    \"🔴 CRITICAL: Add input validation for chat messages—validate length (max 10,000 chars), type check, and reject suspicious patterns before sending in use-chat.ts\",\n    \"🟡 HIGH: Add JSON response validation. Wrap res.json() in try-catch and validate response shape matches expected types before setState\",\n    \"🟡 HIGH: Add explicit error handling for Socket.IO auth failures. Log and notify user if CSRF token fetch fails\",\n    \"🟡 MEDIUM: Validate endpoint parameter in use-workspace is relative URL or matches allowed origin\",\n    \"🟡 MEDIUM: Mark CSRF token cookie as HttpOnly on server-side if possible (requires backend change). Keep SameSite=Strict\",\n    \"🟡 MEDIUM: Add Content Security Policy headers to next.config.ts to prevent XSS impact even if logs contain malicious content\",\n    \"🟠 LOW: Add runtime validation library (e.g., zod) for A0Snapshot/A0StatePush to catch unexpected response structures\",\n    \"🟠 LOW: Add rate limiting on client side for message sends (e.g., max 1 per 500ms) to prevent accidental DoS\",\n    \"🟠 LOW: Document security assumptions about Agent Zero—this codebase trusts all data from A0 logs. Add inline comment explaining trust boundary\",\n    \"ℹ️ INFO: Dependencies are current. React-markdown is safe by default (escapes HTML). Consider adding `npm audit` to CI/CD\",\n    \"ℹ️ INFO: No secrets found in code. Environment variables properly use NEXT_PUBLIC_ prefix for client-side values\"\n  ],\n  \"trustBoundary\": {\n    \"trusted\": [\"Agent Zero backend (port 5000)\", \"Flask session + CSRF validation\"],\n    \"untrusted\": [\"User input in chat messages\", \"URL parameters\", \"External API responses\"],\n    \"notes\": \"Frontend is a thin client—most security enforcement happens in Agent Zero. Ensure backend validates all inputs and sanitizes outputs.\"\n  },\n  \"complianceNotes\": {\n    \"owasp_top_10\": {\n      \"A01_2021_Injection\": \"⚠️ LOW RISK: No SQL injection (backend only). URL parameter injection possible in use-workspace.\",\n      \"A02_2021_Authentication\": \"✅ GOOD: CSRF token implemented. No hardcoded credentials.\",\n      \"A03_2021_Injection\": \"⚠️ LOW RISK: XSS risk depends on Agent Zero sanitization. Frontend assumes trusted data.\",\n      \"A04_2021_Insecure_Design\": \"⚠️ MEDIUM: Missing input validation and rate limiting\",\n      \"A07_2021_XSS\": \"⚠️ LOW RISK: React auto-escapes by default. Risk if data from logs contains HTML.\",\n      \"A08_2021_SSRF\": \"⚠️ LOW RISK: Endpoint parameter not validated\",\n      \"A10_2021_SSRF\": \"✅ GOOD: No logging of sensitive data visible in code\"\n    }\n  },\n  \"auditMetadata\": {\n    \"filesAnalyzed\": 13,\n    \"linesReviewed\": 450,\n    \"vulnerabilitiesFound\": 7,\n    \"criticalCount\": 0,\n    \"highCount\": 2,\n    \"mediumCount\": 3,\n    \"lowCount\": 2,\n    \"timestamp\": \"2026-03-20\"\n  }\n}\n```\n\n## Key Findings\n\n**No Critical Issues** — but 2 HIGH priority fixes needed:\n\n1. **URL Parameter Injection** (use-workspace.ts:20) — `locationId` needs URL encoding\n2. **Missing Message Validation** (use-chat.ts:121) — Chat input needs length/type validation\n\n**Trust Model**: This frontend is a thin client that delegates security to Agent Zero. If Agent Zero is secure, the frontend risk is low. If Agent Zero is compromised, the frontend will inherit those risks.\n\n**Secrets**: ✅ Clean — no hardcoded API keys or credentials found.\n\n**Dependencies**: ✅ Current — all packages are recent and patched versions.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 20,
+        "description": "URL parameter injection: locationId is not URL-encoded before use in query string. Malicious input could inject additional parameters or break out of parameter context. Use URLSearchParams instead of string concatenation.",
+        "cve": "CWE-89 (equivalent for URL context)"
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-chat.ts",
+        "line": 121,
+        "description": "Missing input validation on user chat messages. No length limits, type validation, or content filtering before sending to backend. Could enable DoS or injection attacks.",
+        "cve": "CWE-400"
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/csrf.ts",
+        "line": 17,
+        "description": "CSRF token stored in document.cookie via JavaScript. While SameSite=Strict mitigates risk, storing tokens in client-accessible cookies is generally less secure than HTTPOnly + server-side validation. Token could be exfiltrated if XSS exists elsewhere.",
+        "cve": "CWE-522"
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 28,
+        "description": "Unvalidated API response parsing. No error handling for res.json() or validation that response contains expected data structure. Unexpected responses could cause unhandled promise rejections.",
+        "cve": "CWE-248"
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 69,
+        "description": "Snapshot data from Agent Zero logs used directly without sanitization. If Agent Zero is compromised or receives malicious input, XSS could occur when rendering log.content. Assume trust boundary but add defensive rendering.",
+        "cve": "CWE-79"
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 18,
+        "description": "Missing validation of Socket.IO auth response. No verification that the auth callback succeeded before using socket. Silent failure could lead to unauthenticated operations.",
+        "cve": "CWE-345"
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 19,
+        "description": "Endpoint parameter used directly without validation. No check that endpoint is a relative path or same-origin URL. Could enable server-side request forgery (SSRF) if endpoint is user-controlled.",
+        "cve": "CWE-918"
+      }
+    ],
+    "riskScore": 38,
+    "summary": "Frontend codebase has moderate security posture with no critical vulnerabilities. Main risks are URL/input validation gaps and missing response validation. Backend (Agent Zero) is the primary trust boundary—security depends heavily on its implementation. No hardcoded secrets or SQL injection found.",
+    "recommendations": [
+      "🔴 CRITICAL: Replace string concatenation with URLSearchParams in use-workspace.ts line 20: const params = new URLSearchParams({location_id: locationId}); const url = `${endpoint}?${params}`",
+      "🔴 CRITICAL: Add input validation for chat messages—validate length (max 10,000 chars), type check, and reject suspicious patterns before sending in use-chat.ts",
+      "🟡 HIGH: Add JSON response validation. Wrap res.json() in try-catch and validate response shape matches expected types before setState",
+      "🟡 HIGH: Add explicit error handling for Socket.IO auth failures. Log and notify user if CSRF token fetch fails",
+      "🟡 MEDIUM: Validate endpoint parameter in use-workspace is relative URL or matches allowed origin",
+      "🟡 MEDIUM: Mark CSRF token cookie as HttpOnly on server-side if possible (requires backend change). Keep SameSite=Strict",
+      "🟡 MEDIUM: Add Content Security Policy headers to next.config.ts to prevent XSS impact even if logs contain malicious content",
+      "🟠 LOW: Add runtime validation library (e.g., zod) for A0Snapshot/A0StatePush to catch unexpected response structures",
+      "🟠 LOW: Add rate limiting on client side for message sends (e.g., max 1 per 500ms) to prevent accidental DoS",
+      "🟠 LOW: Document security assumptions about Agent Zero—this codebase trusts all data from A0 logs. Add inline comment explaining trust boundary",
+      "ℹ️ INFO: Dependencies are current. React-markdown is safe by default (escapes HTML). Consider adding `npm audit` to CI/CD",
+      "ℹ️ INFO: No secrets found in code. Environment variables properly use NEXT_PUBLIC_ prefix for client-side values"
+    ],
+    "trustBoundary": {
+      "trusted": [
+        "Agent Zero backend (port 5000)",
+        "Flask session + CSRF validation"
+      ],
+      "untrusted": [
+        "User input in chat messages",
+        "URL parameters",
+        "External API responses"
+      ],
+      "notes": "Frontend is a thin client—most security enforcement happens in Agent Zero. Ensure backend validates all inputs and sanitizes outputs."
+    },
+    "complianceNotes": {
+      "owasp_top_10": {
+        "A01_2021_Injection": "⚠️ LOW RISK: No SQL injection (backend only). URL parameter injection possible in use-workspace.",
+        "A02_2021_Authentication": "✅ GOOD: CSRF token implemented. No hardcoded credentials.",
+        "A03_2021_Injection": "⚠️ LOW RISK: XSS risk depends on Agent Zero sanitization. Frontend assumes trusted data.",
+        "A04_2021_Insecure_Design": "⚠️ MEDIUM: Missing input validation and rate limiting",
+        "A07_2021_XSS": "⚠️ LOW RISK: React auto-escapes by default. Risk if data from logs contains HTML.",
+        "A08_2021_SSRF": "⚠️ LOW RISK: Endpoint parameter not validated",
+        "A10_2021_SSRF": "✅ GOOD: No logging of sensitive data visible in code"
+      }
+    },
+    "auditMetadata": {
+      "filesAnalyzed": 13,
+      "linesReviewed": 450,
+      "vulnerabilitiesFound": 7,
+      "criticalCount": 0,
+      "highCount": 2,
+      "mediumCount": 3,
+      "lowCount": 2,
+      "timestamp": "2026-03-20"
+    }
+  },
+  "durationMs": 54899,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T07:39:32.037Z",
+  "executionId": "audit_1773992317138_ycu3cv"
+}

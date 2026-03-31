@@ -12,8 +12,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from python.helpers.websocket import ConnectionNotFoundError, WebSocketHandler, WebSocketResult
-from python.helpers.websocket_manager import (
+from helpers.websocket import ConnectionNotFoundError, WebSocketHandler, WebSocketResult
+from helpers.websocket_manager import (
     WebSocketManager,
     BUFFER_TTL,
     DIAGNOSTIC_EVENT,

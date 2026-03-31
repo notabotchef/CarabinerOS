@@ -1,0 +1,347 @@
+================================================================================
+NotebookLM MCP Server - Quick Technical Reference
+================================================================================
+
+WHAT IS IT?
+-----------
+TypeScript/Node.js MCP server that automates browser-based interaction with
+Google NotebookLM (Gemini 2.5 knowledge base). Provides zero-hallucination
+answers from your documents via Claude, Cursor, Codex.
+
+HOW IT CONNECTS (Connection Mechanism)
+--------------------------------------
+1. Browser Automation: Patchright v1.48.2 (headless Chromium)
+2. NO API - uses DOM scraping: querySelector(".to-user-container .message-text-content")
+3. Simulates human typing into textarea.query-box-input (160-240 WPM)
+4. Polls for response, detects streaming via text hash comparison
+5. Extracts response, returns to Claude
+
+ARCHITECTURE
+------------
+Claude/Cursor
+    ↓
+MCP Tool: ask_question(question, notebook_url)
+    ↓
+NotebookLM MCP Server (Node.js)
+    ↓
+SessionManager → BrowserSession (Patchright)
+    ↓
+Chromium browser (headless)
+    ↓
+Google NotebookLM Web UI (notebooklm.google.com)
+    ↓
+Gemini 2.5 backend + Your uploaded docs
+    ↓
+Response (extracted from DOM, returned to Claude)
+
+AUTHENTICATION (Auth Method)
+---------------------------
+Browser-based Google OAuth + Cookie Persistence:
+
+ONE-TIME SETUP:
+1. Run: setup_auth tool
+2. Chrome opens (headful/visible)
+3. User logs in with Google credentials manually
+4. Server captures browser state (cookies + localStorage)
+5. Persists to ~/.local/share/notebooklm-mcp/browser_state/
+
+SUBSEQUENT QUERIES:
+1. Load saved state.json (cookies + localStorage)
+2. Create new context with pre-loaded cookies
+3. Validate cookie expiry (24h timeout)
+4. Navigate to notebook, ask question
+5. No re-login needed unless cookies expire
+
+CRITICAL COOKIES SAVED:
+- SID, HSID, SSID (Google session)
+- APISID, SAPISID (API auth)
+- OSID, __Secure-OSID (NotebookLM-specific)
+- __Secure-1PSID, __Secure-3PSID (secure variants)
+
+OPTIONAL AUTO-LOGIN (NOT RECOMMENDED):
+- Set: AUTO_LOGIN_ENABLED=true + LOGIN_EMAIL + LOGIN_PASSWORD
+- Only use for automation/dedicated account
+- Don't use on your primary Google account!
+
+SETUP REQUIREMENTS
+------------------
+System:
+- Node.js 18.0.0+
+- macOS, Linux, Windows supported
+- Chromium (bundled by Patchright)
+
+Installation:
+```bash
+claude mcp add notebooklm npx notebooklm-mcp@latest
+```
+
+Key Dependencies:
+- @modelcontextprotocol/sdk ^1.0.0
+- patchright ^1.48.2 (Chromium automation)
+- dotenv ^16.4.0
+- env-paths ^3.0.0
+
+Data Directories (created automatically):
+- Linux: ~/.local/share/notebooklm-mcp/
+- macOS: ~/Library/Application Support/notebooklm-mcp/
+- Windows: %APPDATA%\notebooklm-mcp\
+
+Subdirectories:
+- browser_state/ ← cookies, localStorage (THIS IS AUTH STATE!)
+- chrome_profile/ ← Chromium profile
+- Settings: ~/.config/notebooklm-mcp/settings.json
+
+Configuration (ENV Variables):
+- HEADLESS=true (default, hidden browser)
+- SESSION_TIMEOUT=900 (seconds, default 15 min)
+- STEALTH_ENABLED=true (humanized typing/delays)
+- TYPING_WPM_MIN=160, TYPING_WPM_MAX=240
+- NOTEBOOKLM_PROFILE=minimal|standard|full (tool set)
+- MAX_SESSIONS=10 (concurrent browser sessions)
+
+RATE LIMITS
+-----------
+Free Tier: 50 queries/day
+Google AI Pro: 250 queries/day ($50/month)
+Google AI Ultra: 500 queries/day ($500/month)
+
+If rate limit hit:
+- Error: "NotebookLM rate limit reached (50 queries/day for free accounts)"
+- Solution: re_auth tool to switch Google account, or upgrade tier
+
+RESPONSE EXTRACTION (How It Works)
+----------------------------------
+1. Submit question → press Enter
+2. Poll DOM every 1000ms for: .to-user-container .message-text-content
+3. Compare text hashes to detect streaming (text changing = still typing)
+4. Wait for stability: 3 consecutive polls with same hash = response complete
+5. Extract text, return to Claude
+6. Timeout: 120 seconds per question
+
+Fallback selectors tried in order:
+- .to-user-container .message-text-content (primary)
+- [data-message-author='bot']
+- [data-message-author='assistant']
+- [aria-live='polite']
+- ...11 more fallbacks
+
+STEALTH MODE (Detection Avoidance)
+----------------------------------
+Enabled by default to avoid Google detecting bot:
+- Human-like typing (160-240 WPM, random errors/corrections)
+- Random delays (100-400ms between actions)
+- Mouse movement simulation
+- Persistent browser fingerprint
+- Chromium flag: --disable-blink-features=AutomationControlled
+
+⚠️ STILL NOT 100% SAFE: Google could still detect and block.
+Recommendation: Use DEDICATED Google account (not primary!)
+
+KEY SELECTORS & TIMEOUTS
+------------------------
+Chat input: textarea.query-box-input (wait 10s for visible)
+Response: .to-user-container .message-text-content (wait 2min max)
+Thinking: div.thinking-message (indicates still processing)
+Browser timeout: 30s for page navigation
+
+MCP TOOLS PROVIDED
+------------------
+MINIMAL PROFILE (query-only):
+- ask_question: Query notebook
+- get_health: Server status
+- list_notebooks: Library
+- select_notebook: Set active
+- get_notebook: Get metadata
+
+STANDARD PROFILE (+ library management):
+- setup_auth: Interactive Google login
+- add_notebook: Save to library
+- search_notebooks: Find by tag
+- list_sessions: Active sessions
+- update_notebook: Modify metadata
+
+FULL PROFILE (+ maintenance):
+- cleanup_data: Deep clean browser state
+- re_auth: Switch Google account
+- remove_notebook: Delete from library
+- reset_session: Clear cache
+- close_session: End session
+- get_library_stats: Analytics
+
+EXAMPLE QUESTION FLOW
+---------------------
+User says: "Ask NotebookLM: How do I reduce food cost?"
+
+1. Claude calls: ask_question({
+     question: "How do I reduce food cost?",
+     notebook_url: "https://notebooklm.google.com/notebook/abc123"
+   })
+
+2. Server:
+   - Loads browser state (cookies) from ~/.local/share/...
+   - Launches Chromium (headless)
+   - Context loads pre-made cookies (instant auth!)
+   - Navigates to notebook URL
+   - Waits for textarea.query-box-input
+   - Types question slowly (realistic WPM)
+   - Presses Enter
+   - Polls for response (streaming detection)
+   - Extracts .to-user-container.message-text-content
+   - Returns answer to Claude
+
+3. Claude gets: {
+     success: true,
+     answer: "Based on your playbook: A) Reduce portion size, B) Negotiate supplier...",
+     session_id: "session-xyz789"
+   }
+
+SECURITY NOTES
+--------------
+✅ SECURE:
+- Browser runs locally (no credentials leave machine)
+- Cookies stored locally (~/.local/share/)
+- No third-party API access
+- No data transmission except to NotebookLM
+
+❌ RISKS:
+- Google may detect bot and block it
+- 2FA still requires user interaction
+- Credentials stored in plain ENV (if auto-login enabled)
+
+RECOMMENDATION: Use DEDICATED Google account for automation
+
+CARABINER OS INTEGRATION POINTS
+--------------------------------
+Frontend (Next.js 16 + React 19):
+- New module: /knowledge/ with notebook library + chat interface
+- Display answers as info cards (action-card pattern)
+
+Backend (Python/Flask):
+- NotebookLM MCP = separate Node.js service
+- Backend calls it via subprocess or HTTP
+- Add route: POST /api/knowledge/ask → calls MCP → returns answer
+- Socket.IO: Stream long responses in real-time
+
+Database (PostgreSQL):
+- Store notebook library metadata + usage stats
+- Optional: Cache answers with TTL
+- Context piggybacking: Fetch current inventory/invoices, prepend to question
+
+Deployment:
+- Docker: NotebookLM MCP as sidecar service
+- Volumes: Mount ~/.local/share/notebooklm-mcp for state persistence
+- Health checks: /api/knowledge/health endpoint
+
+BEST PRACTICES
+--------------
+1. Keep session alive: Don't let idle sessions timeout (refresh every 10 min)
+2. Cache answers: Don't re-ask same question within 1 hour
+3. Monitor rate limits: Track queries/day, alert at 40/50
+4. Batch research: Ask 3-5 related questions in sequence before implementing
+5. Use context: Prepend current state to questions for better synthesis
+6. Document assumptions: Log what questions were asked (audit trail)
+7. Dedicated account: Don't use your personal Google account
+8. Watch for auth expiry: Refresh session after 20 hours to avoid interruption
+
+TROUBLESHOOTING
+---------------
+Issue: "Context/Browser has been closed"
+Fix: Auto-recovers, just re-run the tool
+
+Issue: "ProcessSingleton errors"
+Fix: Set NOTEBOOK_PROFILE_STRATEGY=auto (uses isolated profiles)
+
+Issue: Rate limit reached
+Fix: run re_auth tool to switch accounts or upgrade tier
+
+Issue: Auth state expired
+Fix: run setup_auth to re-login (one-time per 24 hours)
+
+Issue: Typing too slow/fast
+Fix: Adjust TYPING_WPM_MIN/MAX or disable STEALTH_ENABLED
+
+COMPARISON TO ALTERNATIVES
+---------------------------
+Feed docs to Claude locally:
+- ❌ High token cost (re-reading files)
+- ❌ Subject to hallucinations
+- ❌ Manual copy-paste workflow
+
+Web search:
+- ❌ Unreliable sources
+- ❌ Hallucinations
+- 🟡 Medium token cost
+
+Local RAG (embeddings, vector DB):
+- 🟡 Hours of setup
+- 🟡 Still gets creative with gaps
+- 🟡 Requires tuning
+
+NotebookLM MCP:
+- ✅ Zero hallucinations (refuses if not in docs)
+- ✅ Pre-indexed by Gemini (you upload once)
+- ✅ Minimal token cost
+- ✅ 5-minute setup
+- ✅ Semantic understanding across 50+ documents
+
+WHY NOTEBOOKLM WINS FOR RESTAURANTS
+-----------------------------------
+1. Upload SOPs once, query forever
+2. Synthesizes across multiple doc sources
+3. Refuses to answer if info missing (no hallucinations!)
+4. Multi-source correlation (connects info across docs)
+5. Citation-backed answers
+6. Natural language Q&A (not just keyword search)
+7. Works offline (once indexed)
+8. No vector DB, embeddings, or chunking to maintain
+
+PERFECT USE CASES FOR CARABINER
+--------------------------------
+✅ Restaurant operation playbooks
+✅ Supplier integration guides (Toast, OpenTable, Square APIs)
+✅ Kitchen workflow reference (prep, timing, ingredients)
+✅ Cost analysis protocols (invoice interpretation)
+✅ Regulatory compliance (food safety, labor law)
+✅ Recipe historical data (costing, adjustments)
+✅ Staff training materials
+✅ Vendor negotiation history
+
+NOT IDEAL FOR
+-----------
+❌ Real-time data (order queue, inventory levels)
+❌ Data changing multiple times/hour
+❌ Large image/video processing
+❌ Live API responses (get fresh data instead)
+
+FILES CREATED FOR YOU
+---------------------
+1. NOTEBOOKLM_CONNECTION_RESEARCH.md (373 lines)
+   - Deep technical dive into connection mechanism, auth, architecture
+   - Best for: understanding how it works under the hood
+
+2. NOTEBOOKLM_INTEGRATION_CHECKLIST.md (419 lines)
+   - Implementation roadmap for Carabiner OS
+   - Phases, blockers, Docker setup, monitoring
+   - Best for: planning integration work
+
+3. NOTEBOOKLM_QUICK_REFERENCE.txt (THIS FILE)
+   - Quick lookup for key facts
+   - Best for: cheat sheet during development
+
+NEXT STEPS
+----------
+1. Read full docs: NOTEBOOKLM_CONNECTION_RESEARCH.md
+2. Week 1: PoC (test locally with Claude Code)
+3. Week 2: Design frontend Knowledge module
+4. Week 3: Integrate backend + Socket.IO
+5. Week 4: Add context piggybacking, monitoring
+
+LINKS
+-----
+GitHub: https://github.com/PleasePrompto/notebooklm-mcp
+NotebookLM: https://notebooklm.google.com
+MCP Spec: https://modelcontextprotocol.io
+
+================================================================================
+Questions? See NOTEBOOKLM_CONNECTION_RESEARCH.md for full details
+================================================================================

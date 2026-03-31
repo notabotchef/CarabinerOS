@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 import logging
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,6 @@ class ChefStatusAfter(Extension):
                 "tool": tool_name,
                 "text": "Heard.",
                 "active": False
-            }, namespace="/state_sync")
+            }, namespace="/ws")
         except Exception as e:
             logger.warning("Failed to emit chef_status: %s", e)

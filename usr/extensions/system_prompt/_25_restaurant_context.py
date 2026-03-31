@@ -7,7 +7,7 @@ the agent config and DB to provide context for every agent interaction.
 from __future__ import annotations
 
 from typing import Any
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 from agent import LoopData
 
 

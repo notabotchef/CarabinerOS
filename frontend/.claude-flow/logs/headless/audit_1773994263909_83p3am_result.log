@@ -1,0 +1,65 @@
+[2026-03-20T08:11:35.340Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 22,\n      \"description\": \"Query parameter injection vulnerability: locationId is not URL-encoded before insertion into query string. Attacker could inject additional parameters or manipulate the request. Example: locationId='1&admin=true' would inject the 'admin' parameter. Use URLSearchParams or encodeURIComponent().\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 12,\n      \"description\": \"CSRF token cached in global variable. While protected by SameSite=Strict, if an XSS vulnerability exists elsewhere in the codebase, the token is exposed to theft. Token lifetime and rotation policy should be enforced server-side.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"package.json\",\n      \"line\": 18,\n      \"description\": \"react-markdown@10.1.0 included as dependency but not visible in provided code. If used to render user-controlled content without sanitization, could enable XSS attacks. Verify usage includes proper sanitization (e.g., with DOMPurify or restricted markdown parsing).\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-socket.ts\",\n      \"line\": 33,\n      \"description\": \"Timezone information sent to backend in every state_request. While not directly a vulnerability, exposing timezone could be used for user fingerprinting or location inference. Consider whether this data is necessary.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": 3,\n      \"description\": \"A0_URL defaults to HTTP (localhost:5000). In production, ensure A0_URL environment variable uses HTTPS. Sending requests over HTTP exposes CSRF tokens and session cookies to network interception.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 28,\n      \"description\": \"Generic error message exposure: fetch errors are caught and user-facing error messages include raw HTTP status codes. While low severity, avoid leaking information about backend structure or availability.\"\n    }\n  ],\n  \"riskScore\": 42,\n  \"recommendations\": [\n    \"FIX IMMEDIATELY: Replace line 22 in use-workspace.ts with URLSearchParams: const url = locationId ? `${endpoint}?${new URLSearchParams({location_id: locationId}).toString()}` : endpoint;\",\n    \"Audit all uses of react-markdown to ensure user content is sanitized. If rendering agent/user messages, add DOMPurify or restrict markdown syntax to safe subset.\",\n    \"Implement Content Security Policy (CSP) headers on the backend to mitigate XSS impact. Restrict inline scripts and only allow same-origin resources.\",\n    \"Ensure backend validates CSRF tokens and enforces token rotation. Current frontend implementation is solid, but server-side validation is critical.\",\n    \"In production, set A0_URL to HTTPS only. Update CLAUDE.md or environment setup documentation to reflect this requirement.\",\n    \"Remove timezone from state_request if not necessary for functionality. If required, document the privacy implications.\",\n    \"Run npm audit and update dependencies. Check for known vulnerabilities in socket.io-client and react-markdown specifically.\",\n    \"Implement HTTP-only, Secure, SameSite=Strict flags on all session cookies server-side (currently SameSite=Strict is set, but verify Secure flag for HTTPS).\",\n    \"Add OWASP-compliant input validation on the backend for all parameters (contextId, endpoint params, locationId, etc.). Frontend validation is not sufficient.\",\n    \"Consider rotating CSRF tokens per-request or per-session to reduce token exposure window.\"\n  ]\n}\n```\n\n---\n\n### Key Findings\n\n**High Risk:** The `use-workspace` hook has a query injection vulnerability where `locationId` is directly interpolated without URL encoding. An attacker could inject additional query parameters.\n\n**Architecture Strengths:**\n- ✅ CSRF protection properly implemented with tokens + SameSite=Strict cookies\n- ✅ No hardcoded secrets or API keys\n- ✅ Uses `credentials: \"include\"` for session-based auth\n- ✅ Socket.IO auth callback pattern ensures fresh tokens on reconnect\n\n**Watch:** React-markdown dependency could enable XSS if user content is rendered unsanitized. Verify usage in components not shown here.\n\nThe overall security posture is **moderate-to-good** for frontend code, but backend validation is critical for all of these measures to be effective. Risk score reflects the query injection issue + potential markdown XSS exposure.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 22,
+        "description": "Query parameter injection vulnerability: locationId is not URL-encoded before insertion into query string. Attacker could inject additional parameters or manipulate the request. Example: locationId='1&admin=true' would inject the 'admin' parameter. Use URLSearchParams or encodeURIComponent()."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 12,
+        "description": "CSRF token cached in global variable. While protected by SameSite=Strict, if an XSS vulnerability exists elsewhere in the codebase, the token is exposed to theft. Token lifetime and rotation policy should be enforced server-side."
+      },
+      {
+        "severity": "medium",
+        "file": "package.json",
+        "line": 18,
+        "description": "react-markdown@10.1.0 included as dependency but not visible in provided code. If used to render user-controlled content without sanitization, could enable XSS attacks. Verify usage includes proper sanitization (e.g., with DOMPurify or restricted markdown parsing)."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-socket.ts",
+        "line": 33,
+        "description": "Timezone information sent to backend in every state_request. While not directly a vulnerability, exposing timezone could be used for user fingerprinting or location inference. Consider whether this data is necessary."
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": 3,
+        "description": "A0_URL defaults to HTTP (localhost:5000). In production, ensure A0_URL environment variable uses HTTPS. Sending requests over HTTP exposes CSRF tokens and session cookies to network interception."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 28,
+        "description": "Generic error message exposure: fetch errors are caught and user-facing error messages include raw HTTP status codes. While low severity, avoid leaking information about backend structure or availability."
+      }
+    ],
+    "riskScore": 42,
+    "recommendations": [
+      "FIX IMMEDIATELY: Replace line 22 in use-workspace.ts with URLSearchParams: const url = locationId ? `${endpoint}?${new URLSearchParams({location_id: locationId}).toString()}` : endpoint;",
+      "Audit all uses of react-markdown to ensure user content is sanitized. If rendering agent/user messages, add DOMPurify or restrict markdown syntax to safe subset.",
+      "Implement Content Security Policy (CSP) headers on the backend to mitigate XSS impact. Restrict inline scripts and only allow same-origin resources.",
+      "Ensure backend validates CSRF tokens and enforces token rotation. Current frontend implementation is solid, but server-side validation is critical.",
+      "In production, set A0_URL to HTTPS only. Update CLAUDE.md or environment setup documentation to reflect this requirement.",
+      "Remove timezone from state_request if not necessary for functionality. If required, document the privacy implications.",
+      "Run npm audit and update dependencies. Check for known vulnerabilities in socket.io-client and react-markdown specifically.",
+      "Implement HTTP-only, Secure, SameSite=Strict flags on all session cookies server-side (currently SameSite=Strict is set, but verify Secure flag for HTTPS).",
+      "Add OWASP-compliant input validation on the backend for all parameters (contextId, endpoint params, locationId, etc.). Frontend validation is not sufficient.",
+      "Consider rotating CSRF tokens per-request or per-session to reduce token exposure window."
+    ]
+  },
+  "durationMs": 31431,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T08:11:35.340Z",
+  "executionId": "audit_1773994263909_83p3am"
+}

@@ -1,0 +1,73 @@
+[2026-03-20T07:50:09.219Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 27,\n      \"description\": \"URL parameter injection risk. The locationId is concatenated directly into the query string without encoding. An attacker could inject additional parameters like '&__=malicious' to manipulate requests. Use URLSearchParams instead: new URLSearchParams({ location_id: locationId })\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 92,\n      \"description\": \"Potential XSS vulnerability. The log.content is stored directly from backend snapshot without validation/sanitization and later rendered. If the backend sends unsanitized HTML/scripts, they could execute. Ensure rendering components use text content only or validate/sanitize on ingestion.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 27,\n      \"description\": \"Potential XSS vulnerability. The kvps.item and log.content are stored without sanitization. If rendered with dangerouslySetInnerHTML or similar, could execute malicious scripts. Validate/sanitize external data on ingestion.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 156,\n      \"description\": \"Information disclosure in error message. The error message 'Make sure Agent Zero is running on port 5000' exposes internal server details and port number to the client. Use generic error messages and log details server-side only.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 30,\n      \"description\": \"Privacy concern. Timezone information is sent with every state request via 'timezone: Intl.DateTimeFormat().resolvedOptions().timeZone'. While not critical, this reveals user's general location. Consider if necessary.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/types.ts\",\n      \"line\": 11,\n      \"description\": \"Loose typing on kvps field (Record<string, unknown>). Backend data is cast to string without validation (e.g., String(kvps.action)). While TypeScript catches some issues, at runtime unknown values could cause unexpected behavior. Validate kvps structure on ingestion.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 31,\n      \"description\": \"Missing optional chaining/null checks. If kvps.item is null/undefined but accessed in rendering, could cause issues. Code assumes kvps.item is safely typed - validate structure.\"\n    }\n  ],\n  \"riskScore\": 28,\n  \"recommendations\": [\n    \"CRITICAL: Fix URL parameter injection in use-workspace.ts — use URLSearchParams instead of string concatenation\",\n    \"Implement input validation layer for all data from Agent Zero backend snapshot (A0Snapshot). Validate structure, types, and content length before use\",\n    \"Add DOMPurify or similar HTML sanitization for any user-facing log content if rendered as HTML\",\n    \"Replace detailed error messages with generic ones. Log infrastructure details server-side only\",\n    \"Ensure all components rendering log.content, kvps.item, etc. use text content only (not dangerouslySetInnerHTML)\",\n    \"Add Content-Security-Policy headers in next.config.ts to mitigate XSS if sanitization is missed\",\n    \"Review and tighten types for kvps field — consider discriminated union types instead of Record<string, unknown>\",\n    \"Evaluate necessity of timezone exposure — consider removing if not required for functionality\",\n    \"Add explicit HTTPS enforcement in production (headers, redirects)\",\n    \"Consider adding rate limiting for /csrf_token, /message_async endpoints to prevent abuse\",\n    \"Audit backend (Agent Zero) for CSRF token validation — ensure all state-changing operations require valid token\",\n    \"Review CORS configuration on Agent Zero backend — ensure it doesn't allow unauthorized origins\"\n  ]\n}\n```\n\n---\n\n## Key Findings\n\n**Risk Score: 28/100** (Low-to-moderate, primarily frontend input handling)\n\n### Critical Issues:\n1. **URL parameter injection** in `use-workspace.ts:27` — the most concrete vulnerability. This needs immediate fixing.\n\n### Attack Surface:\n- Backend sends untrusted data (`A0Snapshot`) which is rendered without validation\n- Error messages leak infrastructure details\n- Query parameters built unsafely\n\n### What's **Not** Vulnerable:\n✓ No hardcoded secrets  \n✓ CSRF token handling is solid (SameSite=Strict)  \n✓ Session cookie handling is correct  \n✓ No direct SQL injection (frontend-only)  \n✓ Dependencies look current  \n\n### Recommendation:\nStart with the **URL parameter injection fix**, then add a validation layer for all backend data before rendering. These are relatively low-effort, high-impact changes.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 27,
+        "description": "URL parameter injection risk. The locationId is concatenated directly into the query string without encoding. An attacker could inject additional parameters like '&__=malicious' to manipulate requests. Use URLSearchParams instead: new URLSearchParams({ location_id: locationId })"
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-chat.ts",
+        "line": 92,
+        "description": "Potential XSS vulnerability. The log.content is stored directly from backend snapshot without validation/sanitization and later rendered. If the backend sends unsanitized HTML/scripts, they could execute. Ensure rendering components use text content only or validate/sanitize on ingestion."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 27,
+        "description": "Potential XSS vulnerability. The kvps.item and log.content are stored without sanitization. If rendered with dangerouslySetInnerHTML or similar, could execute malicious scripts. Validate/sanitize external data on ingestion."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-chat.ts",
+        "line": 156,
+        "description": "Information disclosure in error message. The error message 'Make sure Agent Zero is running on port 5000' exposes internal server details and port number to the client. Use generic error messages and log details server-side only."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 30,
+        "description": "Privacy concern. Timezone information is sent with every state request via 'timezone: Intl.DateTimeFormat().resolvedOptions().timeZone'. While not critical, this reveals user's general location. Consider if necessary."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/types.ts",
+        "line": 11,
+        "description": "Loose typing on kvps field (Record<string, unknown>). Backend data is cast to string without validation (e.g., String(kvps.action)). While TypeScript catches some issues, at runtime unknown values could cause unexpected behavior. Validate kvps structure on ingestion."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 31,
+        "description": "Missing optional chaining/null checks. If kvps.item is null/undefined but accessed in rendering, could cause issues. Code assumes kvps.item is safely typed - validate structure."
+      }
+    ],
+    "riskScore": 28,
+    "recommendations": [
+      "CRITICAL: Fix URL parameter injection in use-workspace.ts — use URLSearchParams instead of string concatenation",
+      "Implement input validation layer for all data from Agent Zero backend snapshot (A0Snapshot). Validate structure, types, and content length before use",
+      "Add DOMPurify or similar HTML sanitization for any user-facing log content if rendered as HTML",
+      "Replace detailed error messages with generic ones. Log infrastructure details server-side only",
+      "Ensure all components rendering log.content, kvps.item, etc. use text content only (not dangerouslySetInnerHTML)",
+      "Add Content-Security-Policy headers in next.config.ts to mitigate XSS if sanitization is missed",
+      "Review and tighten types for kvps field — consider discriminated union types instead of Record<string, unknown>",
+      "Evaluate necessity of timezone exposure — consider removing if not required for functionality",
+      "Add explicit HTTPS enforcement in production (headers, redirects)",
+      "Consider adding rate limiting for /csrf_token, /message_async endpoints to prevent abuse",
+      "Audit backend (Agent Zero) for CSRF token validation — ensure all state-changing operations require valid token",
+      "Review CORS configuration on Agent Zero backend — ensure it doesn't allow unauthorized origins"
+    ]
+  },
+  "durationMs": 37173,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T07:50:09.219Z",
+  "executionId": "audit_1773992972046_wtj1xx"
+}

@@ -1,0 +1,70 @@
+[2026-03-20T06:13:43.944Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 13,\n      \"description\": \"Cookie value injection vulnerability: runtimeId and csrfToken are directly embedded in cookie string without escaping. If backend returns values containing '=' or ';', could break cookie parsing or inject additional attributes.\",\n      \"code\": \"document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 20,\n      \"description\": \"URL parameter injection: locationId is interpolated directly into query string without URL encoding or validation. Could allow query string injection if locationId is user-controlled.\",\n      \"code\": \"const url = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 1,\n      \"description\": \"Sensitive token caching: CSRF token stored in long-lived module-level variables. JavaScript global scope can be accessed by XSS payloads. While SameSite=Strict mitigates some risk, any XSS vulnerability could extract the token.\",\n      \"code\": \"let csrfToken: string | null = null; let runtimeId: string | null = null;\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": 3,\n      \"description\": \"Unvalidated environment variable: A0_URL from process.env is used without validation or whitelisting. In a compromised environment, could point to malicious backend.\",\n      \"code\": \"const A0_URL = process.env.A0_URL || 'http://localhost:5000';\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 10,\n      \"description\": \"Unvalidated environment variable for socket URL: A0_SOCKET_URL could be exploited to point to malicious WebSocket endpoint if environment is compromised.\",\n      \"code\": \"const A0_SOCKET_URL = process.env.NEXT_PUBLIC_A0_URL || '';\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": 0,\n      \"description\": \"Missing Content Security Policy headers: No CSP configuration in Next.js config. Reduces XSS protection and attack surface mitigation.\",\n      \"code\": \"// No CSP headers configured\"\n    }\n  ],\n  \"riskScore\": 35,\n  \"recommendations\": [\n    \"**High Priority**: Fix cookie value injection in csrf.ts. Use `encodeURIComponent()` for runtimeId and csrfToken, or use secure cookie library like 'js-cookie' that handles escaping.\",\n    \"**High Priority**: Add URL parameter validation in use-workspace.ts. Use `URLSearchParams` or `encodeURIComponent()` for locationId: `new URL(endpoint); url.searchParams.set('location_id', locationId);`\",\n    \"**High Priority**: Add Content Security Policy headers to next.config.ts to reduce XSS attack surface. Recommended: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';\",\n    \"**Medium Priority**: Validate/whitelist A0_URL and A0_SOCKET_URL environment variables at startup. Check they match expected domains and protocols (http/https only).\",\n    \"**Medium Priority**: Move CSRF token storage from global scope to secure cookie-only storage. Remove the module-level csrfToken variable and rely exclusively on httpOnly cookies where possible.\",\n    \"**Low Priority**: Add input validation helpers for all user-controlled parameters passed to fetch/API calls.\",\n    \"**Low Priority**: Run `npm audit` regularly to detect vulnerable dependencies. Current dependencies appear up-to-date but should be monitored.\",\n    \"**Defensive**: Consider adding request signing/integrity checks beyond CSRF tokens for critical operations.\",\n    \"**Defensive**: Implement rate limiting on the frontend to prevent abuse of message_async endpoint (no visible rate limiting in use-chat.ts).\"\n  ]\n}\n```\n\n**Summary Notes:**\n\n✅ **What's Done Right:**\n- CSRF protection properly implemented with token + cookie flow\n- React's default XSS escaping used throughout\n- Secure cookie attributes (`SameSite=Strict`) configured\n- No hardcoded secrets or API keys visible\n- HTTPS-ready architecture (credentials, secure cookies)\n- No SQL injection risk (REST API only, no raw queries visible)\n\n⚠️ **Main Concerns:**\n1. **Cookie injection** — most actionable finding; easy to fix with escaping\n2. **Parameter injection** — locationId needs URL encoding\n3. **Missing CSP** — low-hanging fruit for defense-in-depth\n4. **Token in global scope** — limits XSS impact but should improve\n\nThe codebase follows reasonable security practices overall. Most vulnerabilities are preventable with small fixes to validation and escaping logic.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 13,
+        "description": "Cookie value injection vulnerability: runtimeId and csrfToken are directly embedded in cookie string without escaping. If backend returns values containing '=' or ';', could break cookie parsing or inject additional attributes.",
+        "code": "document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;"
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 20,
+        "description": "URL parameter injection: locationId is interpolated directly into query string without URL encoding or validation. Could allow query string injection if locationId is user-controlled.",
+        "code": "const url = locationId ? `${endpoint}?location_id=${locationId}` : endpoint;"
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/csrf.ts",
+        "line": 1,
+        "description": "Sensitive token caching: CSRF token stored in long-lived module-level variables. JavaScript global scope can be accessed by XSS payloads. While SameSite=Strict mitigates some risk, any XSS vulnerability could extract the token.",
+        "code": "let csrfToken: string | null = null; let runtimeId: string | null = null;"
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": 3,
+        "description": "Unvalidated environment variable: A0_URL from process.env is used without validation or whitelisting. In a compromised environment, could point to malicious backend.",
+        "code": "const A0_URL = process.env.A0_URL || 'http://localhost:5000';"
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 10,
+        "description": "Unvalidated environment variable for socket URL: A0_SOCKET_URL could be exploited to point to malicious WebSocket endpoint if environment is compromised.",
+        "code": "const A0_SOCKET_URL = process.env.NEXT_PUBLIC_A0_URL || '';"
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": 0,
+        "description": "Missing Content Security Policy headers: No CSP configuration in Next.js config. Reduces XSS protection and attack surface mitigation.",
+        "code": "// No CSP headers configured"
+      }
+    ],
+    "riskScore": 35,
+    "recommendations": [
+      "**High Priority**: Fix cookie value injection in csrf.ts. Use `encodeURIComponent()` for runtimeId and csrfToken, or use secure cookie library like 'js-cookie' that handles escaping.",
+      "**High Priority**: Add URL parameter validation in use-workspace.ts. Use `URLSearchParams` or `encodeURIComponent()` for locationId: `new URL(endpoint); url.searchParams.set('location_id', locationId);`",
+      "**High Priority**: Add Content Security Policy headers to next.config.ts to reduce XSS attack surface. Recommended: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';",
+      "**Medium Priority**: Validate/whitelist A0_URL and A0_SOCKET_URL environment variables at startup. Check they match expected domains and protocols (http/https only).",
+      "**Medium Priority**: Move CSRF token storage from global scope to secure cookie-only storage. Remove the module-level csrfToken variable and rely exclusively on httpOnly cookies where possible.",
+      "**Low Priority**: Add input validation helpers for all user-controlled parameters passed to fetch/API calls.",
+      "**Low Priority**: Run `npm audit` regularly to detect vulnerable dependencies. Current dependencies appear up-to-date but should be monitored.",
+      "**Defensive**: Consider adding request signing/integrity checks beyond CSRF tokens for critical operations.",
+      "**Defensive**: Implement rate limiting on the frontend to prevent abuse of message_async endpoint (no visible rate limiting in use-chat.ts)."
+    ]
+  },
+  "durationMs": 39301,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T06:13:43.944Z",
+  "executionId": "audit_1773987184643_w87wia"
+}

@@ -8,7 +8,7 @@ recipe data with components, ingredients (weights/percentages), and steps
 from __future__ import annotations
 
 import json
-from python.helpers.tool import Response, Tool
+from helpers.tool import Response, Tool
 
 RECIPE_GENERATION_PROMPT = """\
 You are a Modernist Cuisine recipe expert. Convert the following recipe description

@@ -1,0 +1,84 @@
+[2026-03-20T05:52:33.790Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 63,\n      \"description\": \"Unvalidated content from backend rendered directly in chat messages. Backend-sourced `log.content` is not sanitized before inclusion in ChatMessage objects. Risk depends on frontend rendering implementation—if rendered as HTML without escaping, malicious backend could inject XSS.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 30,\n      \"description\": \"Arbitrary nested object stored as action card item. `kvps.item` is cast as `Record<string, unknown>` without validation. If rendered downstream without sanitization, could enable property-based XSS or code injection attacks.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 18,\n      \"description\": \"URL parameter not validated/escaped. `locationId` is interpolated directly into query string: `?location_id=${locationId}`. If derived from user input, enables parameter injection/cache poisoning. Use URLSearchParams instead.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 96,\n      \"description\": \"Information disclosure in error message. Error reveals internal port: 'Agent Zero is running on port 5000.' Exposes architecture. Use generic error message in production.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 17,\n      \"description\": \"CSRF cookie missing Secure flag. Cookie set without explicit Secure flag (must rely on backend). Over plain HTTP, cookie would transmit unencrypted. Verify backend sets Secure in production.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts, src/hooks/use-workspace.ts\",\n      \"line\": \"55, 27\",\n      \"description\": \"Fetch requests lack timeout handling. No timeout specified on fetch calls. Malicious or stalled backend could hang indefinitely, blocking user interaction or consuming resources.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": 1,\n      \"description\": \"Missing Content Security Policy configuration. No CSP headers configured. Increases XSS impact if upstream rendering has vulnerabilities.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-socket.ts\",\n      \"line\": 32,\n      \"description\": \"No validation of snapshot data structure. `A0StatePush` envelope is trusted without schema validation. Malformed backend response could crash the client.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 75,\n      \"description\": \"No user input sanitization on sendMessage. Message text sent directly without validation, length checks, or content filtering. Enables spam, DoS (queue overflow), and log pollution.\"\n    }\n  ],\n  \"riskScore\": 38,\n  \"recommendations\": [\n    \"**CRITICAL**: Add HTML sanitization library (e.g., `dompurify`, `sanitize-html`) and sanitize all backend-sourced content before rendering. Pipe `log.content`, `kvps.item`, and snapshot data through sanitizer.\",\n    \"Use `URLSearchParams` to safely construct query strings: `new URLSearchParams({location_id: locationId}).toString()`\",\n    \"Replace generic error messages in production: change 'port 5000' message to 'Unable to connect to the kitchen. Please try again.'\",\n    \"Add Content Security Policy header via Next.js: `headers()` in middleware or vercel.json with `default-src 'self'`, `script-src 'self'`, `connect-src 'self' ${A0_URL}`\",\n    \"Add timeout to all fetch calls (3-5s): `fetch(url, {signal: AbortSignal.timeout(5000), ...})`\",\n    \"Validate A0Snapshot structure on receipt: use zod or similar runtime schema validator to reject malformed data\",\n    \"Add client-side input validation: message length limits, rate limiting (max 10 messages/minute), content type checks\",\n    \"Verify backend sets `Secure` flag on CSRF token cookie and all others. Inspect `Set-Cookie` headers in production.\",\n    \"Add HSTS header: `Strict-Transport-Security: max-age=31536000; includeSubDomains`\",\n    \"Monitor Socket.IO reconnection for exponential backoff to prevent reconnection storms if backend is down\",\n    \"Review `react-markdown` usage if present—if rendering user/backend content, add `sanitizeHtml` plugin to prevent markdown-based XSS\"\n  ]\n}\n```\n\n---\n\n## Summary\n\n**Risk Level: MEDIUM (38/100)**\n\nThe frontend has **solid CSRF and session management** (SameSite cookies, CSRF tokens, credentials mode), but **XSS is the primary concern**. Backend-sourced content flows into chat and action cards without sanitization. If the backend is ever compromised or returns malicious data, the frontend has no defense.\n\n**Immediate actions:**\n1. Add HTML sanitizer (dompurify)\n2. Sanitize `log.content`, `kvps.item`, and all snapshot data\n3. Add CSP header to reject inline scripts\n4. Replace info-leaking error messages\n\nThe architecture itself is sound—auth is delegated to Agent Zero, API calls include credentials and CSRF tokens. The gaps are in defense-in-depth and input validation.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-chat.ts",
+        "line": 63,
+        "description": "Unvalidated content from backend rendered directly in chat messages. Backend-sourced `log.content` is not sanitized before inclusion in ChatMessage objects. Risk depends on frontend rendering implementation—if rendered as HTML without escaping, malicious backend could inject XSS."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 30,
+        "description": "Arbitrary nested object stored as action card item. `kvps.item` is cast as `Record<string, unknown>` without validation. If rendered downstream without sanitization, could enable property-based XSS or code injection attacks."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 18,
+        "description": "URL parameter not validated/escaped. `locationId` is interpolated directly into query string: `?location_id=${locationId}`. If derived from user input, enables parameter injection/cache poisoning. Use URLSearchParams instead."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 96,
+        "description": "Information disclosure in error message. Error reveals internal port: 'Agent Zero is running on port 5000.' Exposes architecture. Use generic error message in production."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/csrf.ts",
+        "line": 17,
+        "description": "CSRF cookie missing Secure flag. Cookie set without explicit Secure flag (must rely on backend). Over plain HTTP, cookie would transmit unencrypted. Verify backend sets Secure in production."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts, src/hooks/use-workspace.ts",
+        "line": "55, 27",
+        "description": "Fetch requests lack timeout handling. No timeout specified on fetch calls. Malicious or stalled backend could hang indefinitely, blocking user interaction or consuming resources."
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": 1,
+        "description": "Missing Content Security Policy configuration. No CSP headers configured. Increases XSS impact if upstream rendering has vulnerabilities."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-socket.ts",
+        "line": 32,
+        "description": "No validation of snapshot data structure. `A0StatePush` envelope is trusted without schema validation. Malformed backend response could crash the client."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 75,
+        "description": "No user input sanitization on sendMessage. Message text sent directly without validation, length checks, or content filtering. Enables spam, DoS (queue overflow), and log pollution."
+      }
+    ],
+    "riskScore": 38,
+    "recommendations": [
+      "**CRITICAL**: Add HTML sanitization library (e.g., `dompurify`, `sanitize-html`) and sanitize all backend-sourced content before rendering. Pipe `log.content`, `kvps.item`, and snapshot data through sanitizer.",
+      "Use `URLSearchParams` to safely construct query strings: `new URLSearchParams({location_id: locationId}).toString()`",
+      "Replace generic error messages in production: change 'port 5000' message to 'Unable to connect to the kitchen. Please try again.'",
+      "Add Content Security Policy header via Next.js: `headers()` in middleware or vercel.json with `default-src 'self'`, `script-src 'self'`, `connect-src 'self' ${A0_URL}`",
+      "Add timeout to all fetch calls (3-5s): `fetch(url, {signal: AbortSignal.timeout(5000), ...})`",
+      "Validate A0Snapshot structure on receipt: use zod or similar runtime schema validator to reject malformed data",
+      "Add client-side input validation: message length limits, rate limiting (max 10 messages/minute), content type checks",
+      "Verify backend sets `Secure` flag on CSRF token cookie and all others. Inspect `Set-Cookie` headers in production.",
+      "Add HSTS header: `Strict-Transport-Security: max-age=31536000; includeSubDomains`",
+      "Monitor Socket.IO reconnection for exponential backoff to prevent reconnection storms if backend is down",
+      "Review `react-markdown` usage if present—if rendering user/backend content, add `sanitizeHtml` plugin to prevent markdown-based XSS"
+    ]
+  },
+  "durationMs": 34734,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T05:52:33.790Z",
+  "executionId": "audit_1773985919056_pzv993"
+}

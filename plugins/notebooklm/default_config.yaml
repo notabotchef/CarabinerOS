@@ -1,0 +1,26 @@
+# NotebookLM Plugin — default configuration
+# These values are used unless overridden in the A0 plugin settings UI.
+
+enabled: true
+
+# Remote auth — Chrome DevTools port exposed for host-browser login
+remote_debug_port: 9222
+
+# Path inside the container where browser state is persisted.
+# Relative to the plugin directory; survives container restarts
+# if usr/ is volume-mounted.
+browser_state_dir: data/browser_state
+chrome_profile_dir: data/chrome_profile
+
+# NotebookLM MCP server binary (npx resolves on first run)
+mcp_command: npx
+mcp_args:
+  - -y
+  - notebooklm-mcp@latest
+
+# Session limits
+max_sessions: 5
+session_timeout_seconds: 900
+
+# Auth state expiry (hours). After this the user must re-auth.
+auth_expiry_hours: 24

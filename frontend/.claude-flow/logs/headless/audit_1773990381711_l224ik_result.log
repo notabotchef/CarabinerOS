@@ -1,0 +1,57 @@
+[2026-03-20T07:06:58.709Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 18,\n      \"description\": \"URL parameter injection risk: locationId is not URL-encoded when building query string. Attacker could inject query parameters or fragments if locationId comes from user input or URL params. Use encodeURIComponent(locationId) to fix.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"package.json\",\n      \"line\": 16,\n      \"description\": \"react-markdown dependency included but not used in provided code. If used elsewhere with dangerously set to true or improper configuration, could enable XSS. Verify usage patterns and ensure sanitization is properly configured.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 12,\n      \"description\": \"CSRF token stored in module-level variable csrfToken. While acceptable for frontend, ensure runtimeId is truly random/cryptographic from backend and that token expiration is enforced server-side.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": 3,\n      \"description\": \"Configuration risk: A0_URL defaults to localhost if not set. In production without A0_URL env var, all API rewrites will fail. Add validation or throw error if env var missing in prod.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-socket.ts\",\n      \"line\": 50,\n      \"description\": \"contextId parameter in subscribe() is not validated before emitting to socket. While backend should validate, add client-side type checking or nullability guards for defense in depth.\"\n    }\n  ],\n  \"riskScore\": 32,\n  \"recommendations\": [\n    \"**URGENT**: Fix URL parameter encoding in use-workspace.ts — replace `${endpoint}?location_id=${locationId}` with `${endpoint}?location_id=${encodeURIComponent(locationId)}`\",\n    \"Verify all user-controlled data passed to useWorkspace is validated at the component level before being used as locationId\",\n    \"Audit react-markdown usage — confirm it's not included unnecessarily or used with dangerouslySetInnerHTML-equivalent patterns\",\n    \"Add environment variable validation in next.config.ts to fail fast if A0_URL is missing in production\",\n    \"Implement input validation on socket emit parameters (contextId, locationId, etc.) even though backend validates, for defense in depth\",\n    \"Verify Agent Zero backend properly validates and sanitizes all data in A0LogEntry.content before sending to frontend\",\n    \"Ensure CSRF token has appropriate server-side TTL and rotation policy\",\n    \"Review dependency versions: socket.io-client@4.8.3 should be monitored for updates; consider adding npm audit to CI/CD\"\n  ]\n}\n```\n\n### Key Findings\n\n**Critical Issue:** The `useWorkspace` hook builds URLs without encoding the `locationId` parameter. This could allow query parameter injection if user-controlled data reaches this hook.\n\n**Good security practices observed:**\n- ✅ CSRF token properly fetched and included in requests\n- ✅ Socket.IO configured with `withCredentials: true` and polling-first transport (handles Safari cookie issues)\n- ✅ React JSX auto-escapes string content by default (protects against XSS in display)\n- ✅ SameSite=Strict cookie flags set correctly\n- ✅ Uses `credentials: \"include\"` appropriately for cookie-based auth\n- ✅ CSRF tokens refreshed on reconnect via auth callback\n\n**Risk Score: 32/100** — Mostly low-risk frontend code, but URL encoding issue in useWorkspace is actionable and should be fixed immediately.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 18,
+        "description": "URL parameter injection risk: locationId is not URL-encoded when building query string. Attacker could inject query parameters or fragments if locationId comes from user input or URL params. Use encodeURIComponent(locationId) to fix."
+      },
+      {
+        "severity": "medium",
+        "file": "package.json",
+        "line": 16,
+        "description": "react-markdown dependency included but not used in provided code. If used elsewhere with dangerously set to true or improper configuration, could enable XSS. Verify usage patterns and ensure sanitization is properly configured."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 12,
+        "description": "CSRF token stored in module-level variable csrfToken. While acceptable for frontend, ensure runtimeId is truly random/cryptographic from backend and that token expiration is enforced server-side."
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": 3,
+        "description": "Configuration risk: A0_URL defaults to localhost if not set. In production without A0_URL env var, all API rewrites will fail. Add validation or throw error if env var missing in prod."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-socket.ts",
+        "line": 50,
+        "description": "contextId parameter in subscribe() is not validated before emitting to socket. While backend should validate, add client-side type checking or nullability guards for defense in depth."
+      }
+    ],
+    "riskScore": 32,
+    "recommendations": [
+      "**URGENT**: Fix URL parameter encoding in use-workspace.ts — replace `${endpoint}?location_id=${locationId}` with `${endpoint}?location_id=${encodeURIComponent(locationId)}`",
+      "Verify all user-controlled data passed to useWorkspace is validated at the component level before being used as locationId",
+      "Audit react-markdown usage — confirm it's not included unnecessarily or used with dangerouslySetInnerHTML-equivalent patterns",
+      "Add environment variable validation in next.config.ts to fail fast if A0_URL is missing in production",
+      "Implement input validation on socket emit parameters (contextId, locationId, etc.) even though backend validates, for defense in depth",
+      "Verify Agent Zero backend properly validates and sanitizes all data in A0LogEntry.content before sending to frontend",
+      "Ensure CSRF token has appropriate server-side TTL and rotation policy",
+      "Review dependency versions: socket.io-client@4.8.3 should be monitored for updates; consider adding npm audit to CI/CD"
+    ]
+  },
+  "durationMs": 36998,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T07:06:58.709Z",
+  "executionId": "audit_1773990381711_l224ik"
+}

@@ -1,0 +1,147 @@
+[2026-03-20T07:18:00.381Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "Now I'll perform a comprehensive security audit of this Next.js frontend codebase. Let me analyze each file systematically for secrets, authentication issues, XSS, injection risks, and dependency vulnerabilities.\n\n## Security Analysis Report\n\n```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 15,\n      \"description\": \"CSRF token stored in global module-scoped variable. Vulnerable to theft via XSS since token is maintained in JavaScript memory. Should use httpOnly cookie only.\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 16,\n      \"description\": \"URL parameter injection risk: locationId directly interpolated into URL without encoding. Malicious locationId could inject URL parameters or fragments. Use URLSearchParams or proper encoding.\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"package.json\",\n      \"line\": 20,\n      \"description\": \"react-markdown ^10.1.0 included but not used in provided code. If used to render log content, requires skipHtml: true and sanitization to prevent XSS from Agent Zero logs.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 37,\n      \"description\": \"Socket auth callback has silent failure: cb({}) sent on CSRF fetch error. Connection proceeds without auth token. Should fail closed or retry with exponential backoff.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 78,\n      \"description\": \"Log content rendered without sanitization (log.content directly assigned to ChatMessage.content). If Agent Zero logs contain HTML/scripts, XSS is possible.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 25,\n      \"description\": \"Action card data (kvps.item) cast to Record<string, unknown> and stored without validation. Could contain malicious objects if Agent Zero log is compromised.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 18,\n      \"description\": \"CSRF token set in document.cookie as plain JavaScript. Should be httpOnly (backend-set) to prevent JavaScript access via XSS. Path=/ allows any subdomain to access.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": 5,\n      \"description\": \"A0_URL fallback to localhost:5000 in production if env var unset. Should require explicit NEXT_PUBLIC_A0_URL in production to prevent connection to wrong backend.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 60,\n      \"description\": \"Error messages include HTTP status codes and 'Agent Zero' service name, leaking infrastructure details. Should use generic user-facing messages.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-socket.ts\",\n      \"line\": 21,\n      \"description\": \"Console.warn in state_push handler logs envelope structure including potentially sensitive fields. Should suppress in production or use debug flag.\"\n    }\n  ],\n  \"riskScore\": 72,\n  \"recommendations\": [\n    {\n      \"priority\": \"critical\",\n      \"action\": \"Remove CSRF token from JavaScript storage\",\n      \"details\": \"Move to httpOnly, Secure, SameSite=Strict cookie set by backend. Remove manual document.cookie assignment. This eliminates XSS-based token theft.\"\n    },\n    {\n      \"priority\": \"critical\",\n      \"action\": \"Validate and encode URL parameters\",\n      \"details\": \"In useWorkspace hook, use URLSearchParams for query string construction: new URLSearchParams({location_id: locationId}).toString(). Prevents URL injection.\"\n    },\n    {\n      \"priority\": \"critical\",\n      \"action\": \"Sanitize or validate Agent Zero log content\",\n      \"details\": \"If rendering log.content as HTML, use DOMPurify or sanitize-html. If react-markdown is used, set skipHtml: true. Validate that kvps.item doesn't contain executable code.\"\n    },\n    {\n      \"priority\": \"high\",\n      \"action\": \"Implement Content Security Policy (CSP)\",\n      \"details\": \"Add CSP header in next.config.ts: script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' <A0_URL>. Prevents XSS execution and data exfiltration.\"\n    },\n    {\n      \"priority\": \"high\",\n      \"action\": \"Fail closed on auth errors\",\n      \"details\": \"In socket-client.ts, don't call cb({}) on CSRF failure. Instead, reject the promise or retry with exponential backoff. Close socket if auth consistently fails.\"\n    },\n    {\n      \"priority\": \"high\",\n      \"action\": \"Require explicit A0_URL in production\",\n      \"details\": \"Remove localhost fallback in next.config.ts and socket-client.ts. Throw error if NEXT_PUBLIC_A0_URL is unset in production. Use build-time validation.\"\n    },\n    {\n      \"priority\": \"medium\",\n      \"action\": \"Remove or configure react-markdown safely\",\n      \"details\": \"If not used, remove from package.json. If used, pass {skipHtml: true, disallowedElements: ['script', 'iframe']} and wrap with DOMPurify.\"\n    },\n    {\n      \"priority\": \"medium\",\n      \"action\": \"Suppress sensitive console logs in production\",\n      \"details\": \"Wrap console.warn/log calls with if (process.env.NODE_ENV === 'development'). Prevents infrastructure details leaking to users.\"\n    },\n    {\n      \"priority\": \"medium\",\n      \"action\": \"Generic error messages for users\",\n      \"details\": \"Replace specific HTTP status codes in error messages with 'Unable to reach the service. Please try again.' Hide service names and technical details.\"\n    },\n    {\n      \"priority\": \"low\",\n      \"action\": \"Audit Agent Zero's socket.io-client version\",\n      \"details\": \"Ensure socket.io-client 4.8.3 has no known CVEs. Pin exact version in package.json and run 'npm audit' regularly.\"\n    }\n  ],\n  \"auditSummary\": {\n    \"filesScanned\": 11,\n    \"secretsFound\": 0,\n    \"authFlaws\": 2,\n    \"xssRisks\": 3,\n    \"injectionRisks\": 1,\n    \"dependencyIssues\": 1,\n    \"configIssues\": 1,\n    \"infoDisclosure\": 2\n  },\n  \"nextSteps\": [\n    \"1. Implement httpOnly CSRF cookie (critical — prevents token theft)\",\n    \"2. Add URL parameter sanitization in useWorkspace (critical — prevents injection)\",\n    \"3. Add Content Security Policy header (high — defense in depth against XSS)\",\n    \"4. Validate log content rendering (high — depends on downstream components)\",\n    \"5. Fail closed on socket auth errors (high — prevents unauthenticated access)\",\n    \"6. Run `npm audit` and update dependencies, especially react-markdown\"\n  ]\n}\n```\n\n---\n\n## Summary\n\n**Risk Score: 72/100** — Elevated risk due to CSRF token exposure, URL injection, and potential XSS from unvalidated log content.\n\n**Critical Issues:**\n1. **CSRF token in JS memory** — Steal-able via XSS\n2. **URL parameter injection** — locationId not encoded\n3. **Log content XSS** — Agent Zero logs rendered without sanitization\n\n**Key Strengths:**\n- Uses SameSite=Strict and credentials: \"include\" properly\n- Socket.IO auth callback (with minor flaw)\n- No hardcoded secrets detected\n- Reasonable dependency choices\n\n**Recommended First Steps:**\n1. Move CSRF token to httpOnly cookie (backend-set)\n2. Use `URLSearchParams` for query construction\n3. Add CSP header to block inline scripts\n4. Sanitize or validate all Agent Zero log output before rendering\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/lib/csrf.ts",
+        "line": 15,
+        "description": "CSRF token stored in global module-scoped variable. Vulnerable to theft via XSS since token is maintained in JavaScript memory. Should use httpOnly cookie only."
+      },
+      {
+        "severity": "high",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 16,
+        "description": "URL parameter injection risk: locationId directly interpolated into URL without encoding. Malicious locationId could inject URL parameters or fragments. Use URLSearchParams or proper encoding."
+      },
+      {
+        "severity": "high",
+        "file": "package.json",
+        "line": 20,
+        "description": "react-markdown ^10.1.0 included but not used in provided code. If used to render log content, requires skipHtml: true and sanitization to prevent XSS from Agent Zero logs."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/socket-client.ts",
+        "line": 37,
+        "description": "Socket auth callback has silent failure: cb({}) sent on CSRF fetch error. Connection proceeds without auth token. Should fail closed or retry with exponential backoff."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-chat.ts",
+        "line": 78,
+        "description": "Log content rendered without sanitization (log.content directly assigned to ChatMessage.content). If Agent Zero logs contain HTML/scripts, XSS is possible."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 25,
+        "description": "Action card data (kvps.item) cast to Record<string, unknown> and stored without validation. Could contain malicious objects if Agent Zero log is compromised."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 18,
+        "description": "CSRF token set in document.cookie as plain JavaScript. Should be httpOnly (backend-set) to prevent JavaScript access via XSS. Path=/ allows any subdomain to access."
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": 5,
+        "description": "A0_URL fallback to localhost:5000 in production if env var unset. Should require explicit NEXT_PUBLIC_A0_URL in production to prevent connection to wrong backend."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 60,
+        "description": "Error messages include HTTP status codes and 'Agent Zero' service name, leaking infrastructure details. Should use generic user-facing messages."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-socket.ts",
+        "line": 21,
+        "description": "Console.warn in state_push handler logs envelope structure including potentially sensitive fields. Should suppress in production or use debug flag."
+      }
+    ],
+    "riskScore": 72,
+    "recommendations": [
+      {
+        "priority": "critical",
+        "action": "Remove CSRF token from JavaScript storage",
+        "details": "Move to httpOnly, Secure, SameSite=Strict cookie set by backend. Remove manual document.cookie assignment. This eliminates XSS-based token theft."
+      },
+      {
+        "priority": "critical",
+        "action": "Validate and encode URL parameters",
+        "details": "In useWorkspace hook, use URLSearchParams for query string construction: new URLSearchParams({location_id: locationId}).toString(). Prevents URL injection."
+      },
+      {
+        "priority": "critical",
+        "action": "Sanitize or validate Agent Zero log content",
+        "details": "If rendering log.content as HTML, use DOMPurify or sanitize-html. If react-markdown is used, set skipHtml: true. Validate that kvps.item doesn't contain executable code."
+      },
+      {
+        "priority": "high",
+        "action": "Implement Content Security Policy (CSP)",
+        "details": "Add CSP header in next.config.ts: script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' <A0_URL>. Prevents XSS execution and data exfiltration."
+      },
+      {
+        "priority": "high",
+        "action": "Fail closed on auth errors",
+        "details": "In socket-client.ts, don't call cb({}) on CSRF failure. Instead, reject the promise or retry with exponential backoff. Close socket if auth consistently fails."
+      },
+      {
+        "priority": "high",
+        "action": "Require explicit A0_URL in production",
+        "details": "Remove localhost fallback in next.config.ts and socket-client.ts. Throw error if NEXT_PUBLIC_A0_URL is unset in production. Use build-time validation."
+      },
+      {
+        "priority": "medium",
+        "action": "Remove or configure react-markdown safely",
+        "details": "If not used, remove from package.json. If used, pass {skipHtml: true, disallowedElements: ['script', 'iframe']} and wrap with DOMPurify."
+      },
+      {
+        "priority": "medium",
+        "action": "Suppress sensitive console logs in production",
+        "details": "Wrap console.warn/log calls with if (process.env.NODE_ENV === 'development'). Prevents infrastructure details leaking to users."
+      },
+      {
+        "priority": "medium",
+        "action": "Generic error messages for users",
+        "details": "Replace specific HTTP status codes in error messages with 'Unable to reach the service. Please try again.' Hide service names and technical details."
+      },
+      {
+        "priority": "low",
+        "action": "Audit Agent Zero's socket.io-client version",
+        "details": "Ensure socket.io-client 4.8.3 has no known CVEs. Pin exact version in package.json and run 'npm audit' regularly."
+      }
+    ],
+    "auditSummary": {
+      "filesScanned": 11,
+      "secretsFound": 0,
+      "authFlaws": 2,
+      "xssRisks": 3,
+      "injectionRisks": 1,
+      "dependencyIssues": 1,
+      "configIssues": 1,
+      "infoDisclosure": 2
+    },
+    "nextSteps": [
+      "1. Implement httpOnly CSRF cookie (critical — prevents token theft)",
+      "2. Add URL parameter sanitization in useWorkspace (critical — prevents injection)",
+      "3. Add Content Security Policy header (high — defense in depth against XSS)",
+      "4. Validate log content rendering (high — depends on downstream components)",
+      "5. Fail closed on socket auth errors (high — prevents unauthenticated access)",
+      "6. Run `npm audit` and update dependencies, especially react-markdown"
+    ]
+  },
+  "durationMs": 61674,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T07:18:00.381Z",
+  "executionId": "audit_1773991018707_lz38jf"
+}

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 
-from python.helpers.tool import Response, Tool
+from helpers.tool import Response, Tool
 
 
 class PingTool(Tool):

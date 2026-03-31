@@ -1,0 +1,64 @@
+[2026-03-20T06:03:04.633Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "# Security Analysis Report\n\n```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 9,\n      \"description\": \"URL parameter not encoded. The `locationId` parameter is directly interpolated into the query string without URL encoding. If `locationId` contains special characters or malicious payloads, it could cause unexpected behavior. Use `URLSearchParams` or `encodeURIComponent()` to properly encode query parameters.\",\n      \"code\": \"`${endpoint}?location_id=${locationId}`\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"next.config.ts\",\n      \"line\": 3,\n      \"description\": \"Environment variable `A0_URL` is not validated. In production, if misconfigured to point to an external/malicious server, the app would proxy traffic there. Add validation to ensure A0_URL is a valid same-origin URL or safe hostname.\",\n      \"code\": \"const A0_URL = process.env.A0_URL || 'http://localhost:5000';\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 14,\n      \"description\": \"CSRF token stored in JavaScript global variable without HttpOnly flag. While this matches Agent Zero's existing pattern (api.js), tokens in JavaScript-accessible storage are vulnerable to XSS attacks. Mitigate with strong Content-Security-Policy headers.\",\n      \"code\": \"document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 11,\n      \"description\": \"Broad error exposure. Error messages from fetch failures are captured directly from the server. While currently only status codes are shown, ensure the backend never returns sensitive information in error responses.\",\n      \"code\": \".catch((err) => { setError(err.message); ...\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 82,\n      \"description\": \"Infrastructure details leaked in user-facing error message. The message 'Make sure Agent Zero is running on port 5000' reveals backend technology and port. Use a generic error message in production.\",\n      \"code\": \"content: \\\"Can't reach the kitchen right now. Make sure Agent Zero is running on port 5000.\\\",\"\n    }\n  ],\n  \"riskScore\": 28,\n  \"recommendations\": [\n    \"Fix URL parameter encoding in `use-workspace.ts`: use `URLSearchParams` or `encodeURIComponent(locationId)` before adding to query string\",\n    \"Add validation for `A0_URL` environment variable in `next.config.ts` — whitelist safe hostnames and reject external URLs\",\n    \"Configure Content-Security-Policy (CSP) headers in Next.js `next.config.ts` to mitigate XSS risks and constrain token exposure\",\n    \"Remove infrastructure details from user-facing error messages — use generic fallback text in production\",\n    \"Document the CSRF token storage pattern and ensure backend validates tokens correctly (verify this is in Agent Zero implementation)\",\n    \"Add error boundary in components that call `useWorkspace()` to gracefully handle API failures\",\n    \"Consider using Next.js API routes (instead of rewrites) to centralize backend communication and add server-side validation\",\n    \"No hardcoded secrets found ✓ — good practice maintained across all files\",\n    \"Verify all dependencies in `package.json` are from official npm registry and have no known CVEs (run `npm audit`)\",\n    \"Add NEXT_PUBLIC_A0_URL validation in socket-client.ts to prevent connecting to untrusted domains\"\n  ]\n}\n```\n\n## Key Findings\n\n**Good Security Practices:**\n- ✅ CSRF protection properly implemented with token rotation\n- ✅ No hardcoded secrets in source code\n- ✅ Credentials flag set correctly for cookie-based auth\n- ✅ SameSite=Strict cookie attribute used\n- ✅ Socket.IO polling-first transport for cookie handling\n- ✅ React's built-in XSS protection (auto-escaping)\n\n**Action Items:**\n1. **Priority 1**: Fix URL parameter encoding (use-workspace.ts) — prevents potential injection attacks\n2. **Priority 2**: Validate A0_URL environment variable — prevent misconfiguration in production\n3. **Priority 3**: Add CSP headers — defense-in-depth for XSS\n4. **Priority 4**: Sanitize error messages — remove infrastructure details\n\nThis is a **low-to-medium risk frontend** with good foundational security practices. The main concerns are environment configuration and parameter encoding rather than systemic vulnerabilities.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 9,
+        "description": "URL parameter not encoded. The `locationId` parameter is directly interpolated into the query string without URL encoding. If `locationId` contains special characters or malicious payloads, it could cause unexpected behavior. Use `URLSearchParams` or `encodeURIComponent()` to properly encode query parameters.",
+        "code": "`${endpoint}?location_id=${locationId}`"
+      },
+      {
+        "severity": "medium",
+        "file": "next.config.ts",
+        "line": 3,
+        "description": "Environment variable `A0_URL` is not validated. In production, if misconfigured to point to an external/malicious server, the app would proxy traffic there. Add validation to ensure A0_URL is a valid same-origin URL or safe hostname.",
+        "code": "const A0_URL = process.env.A0_URL || 'http://localhost:5000';"
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/csrf.ts",
+        "line": 14,
+        "description": "CSRF token stored in JavaScript global variable without HttpOnly flag. While this matches Agent Zero's existing pattern (api.js), tokens in JavaScript-accessible storage are vulnerable to XSS attacks. Mitigate with strong Content-Security-Policy headers.",
+        "code": "document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;"
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 11,
+        "description": "Broad error exposure. Error messages from fetch failures are captured directly from the server. While currently only status codes are shown, ensure the backend never returns sensitive information in error responses.",
+        "code": ".catch((err) => { setError(err.message); ..."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 82,
+        "description": "Infrastructure details leaked in user-facing error message. The message 'Make sure Agent Zero is running on port 5000' reveals backend technology and port. Use a generic error message in production.",
+        "code": "content: \"Can't reach the kitchen right now. Make sure Agent Zero is running on port 5000.\","
+      }
+    ],
+    "riskScore": 28,
+    "recommendations": [
+      "Fix URL parameter encoding in `use-workspace.ts`: use `URLSearchParams` or `encodeURIComponent(locationId)` before adding to query string",
+      "Add validation for `A0_URL` environment variable in `next.config.ts` — whitelist safe hostnames and reject external URLs",
+      "Configure Content-Security-Policy (CSP) headers in Next.js `next.config.ts` to mitigate XSS risks and constrain token exposure",
+      "Remove infrastructure details from user-facing error messages — use generic fallback text in production",
+      "Document the CSRF token storage pattern and ensure backend validates tokens correctly (verify this is in Agent Zero implementation)",
+      "Add error boundary in components that call `useWorkspace()` to gracefully handle API failures",
+      "Consider using Next.js API routes (instead of rewrites) to centralize backend communication and add server-side validation",
+      "No hardcoded secrets found ✓ — good practice maintained across all files",
+      "Verify all dependencies in `package.json` are from official npm registry and have no known CVEs (run `npm audit`)",
+      "Add NEXT_PUBLIC_A0_URL validation in socket-client.ts to prevent connecting to untrusted domains"
+    ]
+  },
+  "durationMs": 30833,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T06:03:04.633Z",
+  "executionId": "audit_1773986553800_3jevkp"
+}

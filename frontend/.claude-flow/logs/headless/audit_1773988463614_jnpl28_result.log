@@ -1,0 +1,85 @@
+[2026-03-20T06:34:59.059Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 1,\n      \"description\": \"Module-level CSRF token storage persists across page loads. In multi-user environments, this could leak tokens between sessions. The token should be cleared on logout or after timeout.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 13,\n      \"description\": \"CSRF token stored in document.cookie is accessible to JavaScript. While SameSite=Strict mitigates CSRF, any XSS vulnerability could still steal the token from this cookie.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 18,\n      \"description\": \"URL construction with locationId parameter lacks encoding. If locationId contains special characters (?, &, #), it could break query string parsing or enable parameter pollution attacks.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": 5,\n      \"description\": \"A0_URL environment variable is used directly in rewrites without validation. Misconfigured or compromised env vars could redirect requests to malicious servers.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-socket.ts\",\n      \"line\": 39,\n      \"description\": \"Socket.IO reconnects automatically without exponential backoff rate limiting. Could be abused for resource exhaustion or DoS if the connection is repeatedly interrupted.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 25,\n      \"description\": \"Transports ordered as ['polling', 'websocket'] means initial connection uses HTTP polling. Verify backend correctly validates CSRF token on polling requests.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"next.config.ts\",\n      \"line\": 1,\n      \"description\": \"No Content-Security-Policy headers configured. Allows inline scripts, external script loading, and other XSS vectors. Add CSP headers to next.config.ts.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"package.json\",\n      \"line\": 17,\n      \"description\": \"react-markdown@10.1.0 used but no HTML sanitizer configured. If user-generated content is rendered with markdown, could enable XSS. Verify react-markdown is used only with safe content or add remark-gfm + sanitization plugin.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 50,\n      \"description\": \"Snapshot logs are directly displayed without sanitization. If any log.content contains HTML/scripts, could enable XSS. Verify Agent Zero sanitizes log content server-side.\"\n    }\n  ],\n  \"riskScore\": 38,\n  \"recommendations\": [\n    \"Add Content-Security-Policy header in next.config.ts: `{ key: 'Content-Security-Policy', value: \\\"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; img-src 'self' data: https:;\\\" }`\",\n    \"Implement CSRF token rotation: clear and re-fetch token on logout and after 1-hour idle timeout\",\n    \"Move CSRF token to HTTP-only cookie (requires backend change): remove JavaScript access via document.cookie, rely only on automatic cookie inclusion\",\n    \"Add URL encoding to workspace endpoint: use `new URLSearchParams({ location_id: locationId }).toString()` instead of string concatenation\",\n    \"Validate A0_URL in next.config.ts: ensure it matches expected host/origin, reject localhost/127.0.0.1 in production\",\n    \"Add exponential backoff to Socket.IO reconnection attempts via clientOptions: `{ reconnection: true, reconnectionDelay: 1000, reconnectionDelayMax: 5000, reconnectionAttempts: 10 }`\",\n    \"Add HTML sanitization for log content: install `sanitize-html` and sanitize `log.content` before rendering if it could contain user input\",\n    \"If using react-markdown for user content, add: `import rehypeSanitize from 'rehype-sanitize'; <ReactMarkdown rehypePlugins={[rehypeSanitize]} />`\",\n    \"Implement secure session management: add logout endpoint that clears CSRF token and invalidates backend session\",\n    \"Add CORS validation headers check: verify backend returns correct Access-Control headers matching frontend origin\",\n    \"Implement request signing for sensitive operations: add request signature header beyond CSRF token for POST/PUT/DELETE\",\n    \"Monitor and log security events: add error boundary around Socket.IO to capture and log auth failures, CSRF failures\"\n  ]\n}\n```\n\n## Summary\n\n**Risk Score: 38/100** (Low-Medium Risk)\n\nThis is a well-structured Next.js frontend with generally good security practices. However, there are **3 medium-severity issues** that should be addressed before production:\n\n1. **CSRF Token Exposure** — Currently stored in JavaScript-accessible cookies. Should move to HTTP-only cookies (requires backend coordination with Agent Zero).\n\n2. **Missing CSP Headers** — No Content-Security-Policy configured. Add one immediately to prevent inline script injection.\n\n3. **URL Parameter Injection** — The `useWorkspace` hook constructs URLs without encoding, risking parameter pollution if `locationId` contains special characters.\n\n**Good practices observed:**\n- ✅ Proper CSRF token validation (X-CSRF-Token header)\n- ✅ Credentials included correctly for CORS requests\n- ✅ SameSite=Strict on CSRF token cookie\n- ✅ No hardcoded secrets in code\n- ✅ Secure Socket.IO configuration with credentials\n- ✅ No direct database access from frontend\n\n**For production deployment**, prioritize the CSP header, CSRF token rotation, and URL encoding fixes. The token storage issue requires coordination with Agent Zero's Flask backend to move the token to an HTTP-only, backend-accessible cookie.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 1,
+        "description": "Module-level CSRF token storage persists across page loads. In multi-user environments, this could leak tokens between sessions. The token should be cleared on logout or after timeout."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 13,
+        "description": "CSRF token stored in document.cookie is accessible to JavaScript. While SameSite=Strict mitigates CSRF, any XSS vulnerability could still steal the token from this cookie."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 18,
+        "description": "URL construction with locationId parameter lacks encoding. If locationId contains special characters (?, &, #), it could break query string parsing or enable parameter pollution attacks."
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": 5,
+        "description": "A0_URL environment variable is used directly in rewrites without validation. Misconfigured or compromised env vars could redirect requests to malicious servers."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-socket.ts",
+        "line": 39,
+        "description": "Socket.IO reconnects automatically without exponential backoff rate limiting. Could be abused for resource exhaustion or DoS if the connection is repeatedly interrupted."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 25,
+        "description": "Transports ordered as ['polling', 'websocket'] means initial connection uses HTTP polling. Verify backend correctly validates CSRF token on polling requests."
+      },
+      {
+        "severity": "medium",
+        "file": "next.config.ts",
+        "line": 1,
+        "description": "No Content-Security-Policy headers configured. Allows inline scripts, external script loading, and other XSS vectors. Add CSP headers to next.config.ts."
+      },
+      {
+        "severity": "low",
+        "file": "package.json",
+        "line": 17,
+        "description": "react-markdown@10.1.0 used but no HTML sanitizer configured. If user-generated content is rendered with markdown, could enable XSS. Verify react-markdown is used only with safe content or add remark-gfm + sanitization plugin."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 50,
+        "description": "Snapshot logs are directly displayed without sanitization. If any log.content contains HTML/scripts, could enable XSS. Verify Agent Zero sanitizes log content server-side."
+      }
+    ],
+    "riskScore": 38,
+    "recommendations": [
+      "Add Content-Security-Policy header in next.config.ts: `{ key: 'Content-Security-Policy', value: \"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; img-src 'self' data: https:;\" }`",
+      "Implement CSRF token rotation: clear and re-fetch token on logout and after 1-hour idle timeout",
+      "Move CSRF token to HTTP-only cookie (requires backend change): remove JavaScript access via document.cookie, rely only on automatic cookie inclusion",
+      "Add URL encoding to workspace endpoint: use `new URLSearchParams({ location_id: locationId }).toString()` instead of string concatenation",
+      "Validate A0_URL in next.config.ts: ensure it matches expected host/origin, reject localhost/127.0.0.1 in production",
+      "Add exponential backoff to Socket.IO reconnection attempts via clientOptions: `{ reconnection: true, reconnectionDelay: 1000, reconnectionDelayMax: 5000, reconnectionAttempts: 10 }`",
+      "Add HTML sanitization for log content: install `sanitize-html` and sanitize `log.content` before rendering if it could contain user input",
+      "If using react-markdown for user content, add: `import rehypeSanitize from 'rehype-sanitize'; <ReactMarkdown rehypePlugins={[rehypeSanitize]} />`",
+      "Implement secure session management: add logout endpoint that clears CSRF token and invalidates backend session",
+      "Add CORS validation headers check: verify backend returns correct Access-Control headers matching frontend origin",
+      "Implement request signing for sensitive operations: add request signature header beyond CSRF token for POST/PUT/DELETE",
+      "Monitor and log security events: add error boundary around Socket.IO to capture and log auth failures, CSRF failures"
+    ]
+  },
+  "durationMs": 35445,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T06:34:59.059Z",
+  "executionId": "audit_1773988463614_jnpl28"
+}

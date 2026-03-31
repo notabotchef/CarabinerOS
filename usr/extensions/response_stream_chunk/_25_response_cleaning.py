@@ -7,7 +7,7 @@ Agent Zero artifacts so the operator sees clean output.
 from __future__ import annotations
 
 import re
-from python.helpers.extension import Extension
+from helpers.extension import Extension
 
 
 class ResponseCleaning(Extension):

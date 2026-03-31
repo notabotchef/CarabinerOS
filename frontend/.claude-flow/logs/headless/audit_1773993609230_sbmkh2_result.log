@@ -1,0 +1,77 @@
+[2026-03-20T08:01:03.900Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 25,\n      \"description\": \"Query parameter `locationId` is directly concatenated into URL without encoding. Should use URLSearchParams or encodeURIComponent() to prevent query string injection.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 22,\n      \"description\": \"The `endpoint` parameter is user-controlled and used directly in fetch URL without validation. Could allow open redirect or request smuggling if endpoint is unsanitized.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"next.config.ts\",\n      \"line\": null,\n      \"description\": \"No Content Security Policy (CSP) headers configured. Missing CSP allows XSS attacks to execute arbitrary scripts. Add `headers()` middleware to set CSP directives.\"\n    },\n    {\n      \"severity\": \"low-medium\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 28,\n      \"description\": \"Log content (`log.content`) is displayed as summary without sanitization. If Agent Zero backend is compromised, malicious content could execute as XSS. Depends on backend input validation.\"\n    },\n    {\n      \"severity\": \"low-medium\",\n      \"file\": \"src/hooks/use-expo-stream.ts\",\n      \"line\": 75,\n      \"description\": \"Agent log fields (headline, step, thoughts) are displayed without sanitization. Relies entirely on Agent Zero backend validation. Should sanitize if rendering as HTML.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 10,\n      \"description\": \"CSRF token stored in module-scoped `csrfToken` variable. While CSRF token theft is lower risk than session cookies, storing it in memory makes it accessible to XSS payloads. Prefer HTTPOnly cookies where possible.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 65,\n      \"description\": \"Generic error message to user. Error handling could be improved to avoid leaking Agent Zero internal details or stack traces to frontend.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 30,\n      \"description\": \"Socket connection falls back to empty auth callback if CSRF token fetch fails (`cb({})`). While graceful, this could silently allow connection without authentication in edge cases.\"\n    }\n  ],\n  \"riskScore\": 38,\n  \"recommendations\": [\n    \"**Fix query parameter encoding**: Use `URLSearchParams` for `locationId` in use-workspace.ts. Change line 24-26 to use proper URL encoding.\",\n    \"**Validate endpoint parameter**: Whitelist allowed endpoints or validate against expected API routes. Prevent open redirects.\",\n    \"**Add Content Security Policy**: Configure CSP headers in next.config.ts to restrict script sources. Example: `default-src 'self'; script-src 'self' 'unsafe-inline' socket.io; style-src 'self' 'unsafe-inline'`\",\n    \"**Sanitize log content before rendering**: If Agent Zero logs could contain untrusted HTML, use a sanitizer like `DOMPurify` or `sanitize-html` before rendering in components.\",\n    \"**Run npm audit regularly**: Check for transitive dependency vulnerabilities. Current package.json versions look recent but should be scanned.\",\n    \"**Implement request signing**: Beyond CSRF tokens, consider signing critical requests (like workspace fetch) with timestamps to prevent replay attacks.\",\n    \"**Add HTTP Security Headers**: Configure `strict-transport-security`, `x-content-type-options: nosniff`, `x-frame-options: DENY` in next.config.ts.\",\n    \"**Improve error handling**: Don't expose internal error details to users. Log full errors server-side, return generic messages to frontend.\",\n    \"**Validate Agent Zero responses**: Don't assume all data from Agent Zero is safe. Type-check and sanitize critical fields.\",\n    \"**Use HTTPOnly cookies for CSRF token**: If possible, have Agent Zero set CSRF token as HTTPOnly cookie instead of returning it to JavaScript.\"\n  ]\n}\n```\n\n## Key Findings\n\n**No critical vulnerabilities**, but several **moderate issues**:\n\n1. **Query parameter injection** (use-workspace.ts:25) — Most actionable fix. Encode `locationId` with `encodeURIComponent()`.\n2. **Missing CSP headers** — Add Content Security Policy to mitigate XSS impact.\n3. **Unvalidated endpoint parameter** — Whitelist allowed endpoints or validate them.\n\n**Low-risk areas:**\n- CSRF protection is properly implemented (token in header, SameSite cookies)\n- No hardcoded secrets or database queries in frontend\n- Socket.IO auth flow is sound (CSRF on every reconnect)\n- Dependencies are recent (no obvious EOL packages)\n\n**Trust assumption:** The entire security model depends on Agent Zero (backend) being trustworthy. All log data, responses, and workspace data flow from there. Ensure the backend validates and sanitizes all user input before sending to frontend.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 25,
+        "description": "Query parameter `locationId` is directly concatenated into URL without encoding. Should use URLSearchParams or encodeURIComponent() to prevent query string injection."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 22,
+        "description": "The `endpoint` parameter is user-controlled and used directly in fetch URL without validation. Could allow open redirect or request smuggling if endpoint is unsanitized."
+      },
+      {
+        "severity": "medium",
+        "file": "next.config.ts",
+        "line": null,
+        "description": "No Content Security Policy (CSP) headers configured. Missing CSP allows XSS attacks to execute arbitrary scripts. Add `headers()` middleware to set CSP directives."
+      },
+      {
+        "severity": "low-medium",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 28,
+        "description": "Log content (`log.content`) is displayed as summary without sanitization. If Agent Zero backend is compromised, malicious content could execute as XSS. Depends on backend input validation."
+      },
+      {
+        "severity": "low-medium",
+        "file": "src/hooks/use-expo-stream.ts",
+        "line": 75,
+        "description": "Agent log fields (headline, step, thoughts) are displayed without sanitization. Relies entirely on Agent Zero backend validation. Should sanitize if rendering as HTML."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/csrf.ts",
+        "line": 10,
+        "description": "CSRF token stored in module-scoped `csrfToken` variable. While CSRF token theft is lower risk than session cookies, storing it in memory makes it accessible to XSS payloads. Prefer HTTPOnly cookies where possible."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 65,
+        "description": "Generic error message to user. Error handling could be improved to avoid leaking Agent Zero internal details or stack traces to frontend."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 30,
+        "description": "Socket connection falls back to empty auth callback if CSRF token fetch fails (`cb({})`). While graceful, this could silently allow connection without authentication in edge cases."
+      }
+    ],
+    "riskScore": 38,
+    "recommendations": [
+      "**Fix query parameter encoding**: Use `URLSearchParams` for `locationId` in use-workspace.ts. Change line 24-26 to use proper URL encoding.",
+      "**Validate endpoint parameter**: Whitelist allowed endpoints or validate against expected API routes. Prevent open redirects.",
+      "**Add Content Security Policy**: Configure CSP headers in next.config.ts to restrict script sources. Example: `default-src 'self'; script-src 'self' 'unsafe-inline' socket.io; style-src 'self' 'unsafe-inline'`",
+      "**Sanitize log content before rendering**: If Agent Zero logs could contain untrusted HTML, use a sanitizer like `DOMPurify` or `sanitize-html` before rendering in components.",
+      "**Run npm audit regularly**: Check for transitive dependency vulnerabilities. Current package.json versions look recent but should be scanned.",
+      "**Implement request signing**: Beyond CSRF tokens, consider signing critical requests (like workspace fetch) with timestamps to prevent replay attacks.",
+      "**Add HTTP Security Headers**: Configure `strict-transport-security`, `x-content-type-options: nosniff`, `x-frame-options: DENY` in next.config.ts.",
+      "**Improve error handling**: Don't expose internal error details to users. Log full errors server-side, return generic messages to frontend.",
+      "**Validate Agent Zero responses**: Don't assume all data from Agent Zero is safe. Type-check and sanitize critical fields.",
+      "**Use HTTPOnly cookies for CSRF token**: If possible, have Agent Zero set CSRF token as HTTPOnly cookie instead of returning it to JavaScript."
+    ]
+  },
+  "durationMs": 54669,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T08:01:03.899Z",
+  "executionId": "audit_1773993609230_sbmkh2"
+}

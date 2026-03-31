@@ -1,0 +1,77 @@
+[2026-03-20T07:28:37.081Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 22,\n      \"description\": \"Query string parameter injection vulnerability. The `locationId` parameter is directly interpolated into the URL without encoding. An attacker controlling this value could inject additional query parameters. Use URLSearchParams instead.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"package.json\",\n      \"line\": 16,\n      \"description\": \"XSS risk: react-markdown ^10.1.0 is included but not visible in provided code. If log content from Agent Zero is rendered with markdown without sanitization, malicious markdown could execute scripts. Ensure markdown is sanitized or disable dangerous features.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 58,\n      \"description\": \"Missing input validation. User message text is sent to Agent Zero without client-side length limits, format validation, or content checks. Add validation before submission (e.g., max length, reject control characters).\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"next.config.ts\",\n      \"line\": 1,\n      \"description\": \"Missing Content Security Policy headers. No CSP directive visible in Next.js config. Add CSP to prevent inline script execution and restrict resource loading origins.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/workspace-config.ts\",\n      \"line\": 1,\n      \"description\": \"Hardcoded endpoints configuration. While not secrets, these API routes should be validated and versioned. Add runtime validation of module routes.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 12,\n      \"description\": \"CSRF token cached in global memory. The token persists in JavaScript memory, which could be leaked via memory access or XSS. Consider storing only in secure, httpOnly cookies (though current SameSite=Strict helps).\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 29,\n      \"description\": \"Raw error message exposure. Error messages are displayed to the user without sanitization (e.g., `setError(err.message)`). Could leak sensitive stack traces or system details.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 13,\n      \"description\": \"Empty A0_SOCKET_URL fallback. The Socket.IO connection defaults to empty string, which connects to current origin. If A0_URL is not set in production, this could cause unexpected behavior or cross-origin issues.\"\n    }\n  ],\n  \"riskScore\": 31,\n  \"recommendations\": [\n    \"Fix query string injection: Replace string concatenation with URLSearchParams in use-workspace.ts line 22\",\n    \"Add CSP headers to next.config.ts: Set `Content-Security-Policy: script-src 'self'; object-src 'none'; base-uri 'self'`\",\n    \"Audit react-markdown usage: Find all uses and ensure content is sanitized or use `allowedElements` to restrict tags\",\n    \"Add client-side input validation: Validate message length (max 5000 chars), reject control characters, trim whitespace\",\n    \"Implement httpOnly CSRF cookies: Move token persistence from memory to httpOnly cookie only (already using SameSite=Strict, which is good)\",\n    \"Add error boundary: Wrap error messages with sanitization before display to prevent info leakage\",\n    \"Validate A0_URL: Add runtime check that A0_URL is set and is a valid same-origin URL in production\",\n    \"Add request signing: Include request timestamp + signature for /message_async to prevent replay attacks\",\n    \"Audit Agent Zero API contract: Ensure logs from Agent Zero are validated before rendering (type-check kvps and content fields)\",\n    \"Pin dependency versions: Use exact versions (remove ^) for socket.io-client and react-markdown to prevent unexpected updates\"\n  ]\n}\n```\n\n## Summary\n\n**Risk Level: MEDIUM (31/100)**\n\nThis Next.js frontend has solid foundational security (proper CSRF handling, SameSite cookies, credentials-included requests) but has several edge-case vulnerabilities:\n\n### Critical findings:\n1. **Query injection** in workspace hook — `locationId` needs URL encoding\n2. **XSS from markdown** — react-markdown is included but usage unknown; needs sanitization audit\n3. **Missing CSP** — add Content-Security-Policy headers to prevent inline script injection\n\n### Quick wins:\n- Replace URL string concat with `URLSearchParams` (1 line fix)\n- Add input validation to chat messages (length + format checks)\n- Add CSP directive to next.config.ts\n\nThe codebase properly handles CSRF tokens, uses secure cookies, and validates authentication against Agent Zero. The Agent Zero → frontend data pipeline appears to be trusted, but should still validate/sanitize log content before rendering.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 22,
+        "description": "Query string parameter injection vulnerability. The `locationId` parameter is directly interpolated into the URL without encoding. An attacker controlling this value could inject additional query parameters. Use URLSearchParams instead."
+      },
+      {
+        "severity": "medium",
+        "file": "package.json",
+        "line": 16,
+        "description": "XSS risk: react-markdown ^10.1.0 is included but not visible in provided code. If log content from Agent Zero is rendered with markdown without sanitization, malicious markdown could execute scripts. Ensure markdown is sanitized or disable dangerous features."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-chat.ts",
+        "line": 58,
+        "description": "Missing input validation. User message text is sent to Agent Zero without client-side length limits, format validation, or content checks. Add validation before submission (e.g., max length, reject control characters)."
+      },
+      {
+        "severity": "medium",
+        "file": "next.config.ts",
+        "line": 1,
+        "description": "Missing Content Security Policy headers. No CSP directive visible in Next.js config. Add CSP to prevent inline script execution and restrict resource loading origins."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/workspace-config.ts",
+        "line": 1,
+        "description": "Hardcoded endpoints configuration. While not secrets, these API routes should be validated and versioned. Add runtime validation of module routes."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/csrf.ts",
+        "line": 12,
+        "description": "CSRF token cached in global memory. The token persists in JavaScript memory, which could be leaked via memory access or XSS. Consider storing only in secure, httpOnly cookies (though current SameSite=Strict helps)."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 29,
+        "description": "Raw error message exposure. Error messages are displayed to the user without sanitization (e.g., `setError(err.message)`). Could leak sensitive stack traces or system details."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 13,
+        "description": "Empty A0_SOCKET_URL fallback. The Socket.IO connection defaults to empty string, which connects to current origin. If A0_URL is not set in production, this could cause unexpected behavior or cross-origin issues."
+      }
+    ],
+    "riskScore": 31,
+    "recommendations": [
+      "Fix query string injection: Replace string concatenation with URLSearchParams in use-workspace.ts line 22",
+      "Add CSP headers to next.config.ts: Set `Content-Security-Policy: script-src 'self'; object-src 'none'; base-uri 'self'`",
+      "Audit react-markdown usage: Find all uses and ensure content is sanitized or use `allowedElements` to restrict tags",
+      "Add client-side input validation: Validate message length (max 5000 chars), reject control characters, trim whitespace",
+      "Implement httpOnly CSRF cookies: Move token persistence from memory to httpOnly cookie only (already using SameSite=Strict, which is good)",
+      "Add error boundary: Wrap error messages with sanitization before display to prevent info leakage",
+      "Validate A0_URL: Add runtime check that A0_URL is set and is a valid same-origin URL in production",
+      "Add request signing: Include request timestamp + signature for /message_async to prevent replay attacks",
+      "Audit Agent Zero API contract: Ensure logs from Agent Zero are validated before rendering (type-check kvps and content fields)",
+      "Pin dependency versions: Use exact versions (remove ^) for socket.io-client and react-markdown to prevent unexpected updates"
+    ]
+  },
+  "durationMs": 36701,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T07:28:37.081Z",
+  "executionId": "audit_1773991680380_9n2vgo"
+}

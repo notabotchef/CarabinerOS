@@ -20,7 +20,7 @@ export function initStateSyncSocket(): Socket {
   // the CSRF flow when websocket is the initial transport.  Once the
   // polling connection is established, Socket.IO auto-upgrades to
   // websocket for better performance.
-  stateSyncSocket = io(`${A0_SOCKET_URL}/state_sync`, {
+  stateSyncSocket = io(`${A0_SOCKET_URL}/ws`, {
     autoConnect: false,
     transports: ["polling", "websocket"],
     withCredentials: true,

@@ -1,0 +1,59 @@
+[2026-03-20T06:56:21.706Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 20,\n      \"description\": \"Missing URL encoding for locationId parameter. The query string is constructed without encodeURIComponent(), allowing special characters to potentially inject or bypass URL parsing. Should use URLSearchParams or encodeURIComponent().\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 29,\n      \"description\": \"Silent failure in auth callback. If CSRF token fetch fails, the connection continues with empty auth (cb({})). This could allow unauthenticated WebSocket connections if backend doesn't reject them. Should either retry or reject the connection.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 12,\n      \"description\": \"CSRF token is cached indefinitely in module scope. If the backend invalidates a token for security reasons, the frontend won't request a fresh one until a connection error occurs. Consider adding token expiration or periodic refresh.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 17,\n      \"description\": \"Cookie value constructed directly from server response without validation. If runtimeId contains special characters, it could malform the cookie. Although server-generated data should be safe, consider using `document.cookie` with proper escaping or a utility library.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 95,\n      \"description\": \"User input (text parameter) is sent to /message_async without visible sanitization. Relies entirely on backend validation. Frontend should validate message length/type to prevent abuse.\"\n    }\n  ],\n  \"riskScore\": 28,\n  \"recommendations\": [\n    \"Use URLSearchParams to encode all URL query parameters (use-workspace.ts:20)\",\n    \"Implement proper error handling in socket auth callback—reject connection on CSRF fetch failure instead of continuing with empty auth\",\n    \"Add CSRF token expiration tracking and implement periodic refresh or validation before use\",\n    \"Validate and sanitize user input on the frontend before sending (message length, type checks)\",\n    \"If react-markdown is rendering user-generated or API content, ensure markdown is sanitized with a library like DOMPurify\",\n    \"Verify Content-Security-Policy headers are configured on the backend to mitigate XSS\",\n    \"Audit backend endpoint validation—ensure all query parameters (locationId, contextId) are validated and constrained\",\n    \"Consider moving CSRF token to httpOnly cookie (set by backend) instead of JavaScript-accessible cookie to prevent XSS token theft\",\n    \"Add request timeout handling for all fetch calls to prevent hanging connections\",\n    \"Verify NEXT_PUBLIC_* environment variables contain no sensitive data (appears clean in current code)\"\n  ]\n}\n```\n\n## Summary\n\n**Overall Risk: Low-Medium**\n\nThis is a frontend codebase with **no critical vulnerabilities**, but several **defensive improvements** would strengthen security:\n\n### Key Findings:\n\n1. **URL Encoding Gap** — The only direct vulnerability is missing `encodeURIComponent()` when building query strings. This is fixable in one line.\n\n2. **Auth Resilience** — The socket auth callback silently continues on CSRF fetch failure. Should reject instead.\n\n3. **Token Caching** — CSRF token is cached without expiration. If backend revokes it, frontend won't know until errors occur.\n\n4. **Dependency Security** — No obvious vulnerable packages, but package versions should be audited with `npm audit`.\n\n5. **Input Validation** — Frontend relies heavily on backend validation (expected for a frontend app), but should add basic client-side checks.\n\n### What's Done Well:\n✅ No hardcoded secrets  \n✅ CSRF protection implemented  \n✅ SameSite=Strict cookies  \n✅ React auto-escaping for XSS  \n✅ withCredentials for session handling\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 20,
+        "description": "Missing URL encoding for locationId parameter. The query string is constructed without encodeURIComponent(), allowing special characters to potentially inject or bypass URL parsing. Should use URLSearchParams or encodeURIComponent()."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/socket-client.ts",
+        "line": 29,
+        "description": "Silent failure in auth callback. If CSRF token fetch fails, the connection continues with empty auth (cb({})). This could allow unauthenticated WebSocket connections if backend doesn't reject them. Should either retry or reject the connection."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 12,
+        "description": "CSRF token is cached indefinitely in module scope. If the backend invalidates a token for security reasons, the frontend won't request a fresh one until a connection error occurs. Consider adding token expiration or periodic refresh."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/csrf.ts",
+        "line": 17,
+        "description": "Cookie value constructed directly from server response without validation. If runtimeId contains special characters, it could malform the cookie. Although server-generated data should be safe, consider using `document.cookie` with proper escaping or a utility library."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 95,
+        "description": "User input (text parameter) is sent to /message_async without visible sanitization. Relies entirely on backend validation. Frontend should validate message length/type to prevent abuse."
+      }
+    ],
+    "riskScore": 28,
+    "recommendations": [
+      "Use URLSearchParams to encode all URL query parameters (use-workspace.ts:20)",
+      "Implement proper error handling in socket auth callback—reject connection on CSRF fetch failure instead of continuing with empty auth",
+      "Add CSRF token expiration tracking and implement periodic refresh or validation before use",
+      "Validate and sanitize user input on the frontend before sending (message length, type checks)",
+      "If react-markdown is rendering user-generated or API content, ensure markdown is sanitized with a library like DOMPurify",
+      "Verify Content-Security-Policy headers are configured on the backend to mitigate XSS",
+      "Audit backend endpoint validation—ensure all query parameters (locationId, contextId) are validated and constrained",
+      "Consider moving CSRF token to httpOnly cookie (set by backend) instead of JavaScript-accessible cookie to prevent XSS token theft",
+      "Add request timeout handling for all fetch calls to prevent hanging connections",
+      "Verify NEXT_PUBLIC_* environment variables contain no sensitive data (appears clean in current code)"
+    ]
+  },
+  "durationMs": 31565,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T06:56:21.706Z",
+  "executionId": "audit_1773989750141_snnk9s"
+}

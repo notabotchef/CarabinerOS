@@ -1,0 +1,319 @@
+================================================================================
+ANDREJ KARPATHY'S AUTORESEARCH: RESEARCH SUMMARY
+CarabinerOS Fleet Mesh Learning Integration
+================================================================================
+
+Research Date: 2026-03-25
+Repository: https://github.com/karpathy/autoresearch.git
+Analysis Focus: Architecture, local model support, fleet integration patterns
+
+================================================================================
+KEY FINDINGS
+================================================================================
+
+1. WHAT IT DOES
+   ✓ Autonomous AI-driven LLM pretraining optimization on single NVIDIA GPU
+   ✓ Agent modifies code, trains model, evaluates against metric
+   ✓ ~12 experiments/hour → ~100 overnight (8 hours)
+   ✓ Fixed 5-minute wall-clock time budget per experiment
+   ✓ Primary metric: val_bpb (bits per byte, lower is better)
+   ✓ Results tracked as git commits (reviewable, reproducible)
+
+2. ARCHITECTURE: 3-FILE SYSTEM (STEAL THIS PATTERN)
+
+   prepare.py (389 lines, READ-ONLY)
+   ├─ Data download + preparation
+   ├─ BPE tokenizer training (rustbpe → tiktoken)
+   ├─ Dataloader with best-fit packing (100% token utilization)
+   ├─ Fixed evaluation: evaluate_bpb()
+   └─ Constants: MAX_SEQ_LEN=2048, TIME_BUDGET=300s
+
+   train.py (630 lines, AGENT-MODIFIABLE)
+   ├─ Model: GPT with rotary embeddings, value embeddings, sliding window
+   ├─ Optimizer: Hybrid (Muon for 2D matrices, AdamW for others)
+   ├─ Hyperparameters (all tunable):
+   │  ├─ DEPTH=8 (layers)
+   │  ├─ MATRIX_LR=0.04, EMBEDDING_LR=0.6
+   │  ├─ TOTAL_BATCH_SIZE=2**19 (~524K tokens)
+   │  └─ WINDOW_PATTERN="SSSL" (sliding window attention)
+   ├─ Training loop with gradient accumulation, dynamic scheduling
+   └─ Early abort on NaN/exploding loss
+
+   program.md (115 lines, MARKDOWN INSTRUCTIONS)
+   ├─ Setup phase: create branch, initialize results.tsv
+   ├─ Experimentation loop (prose instructions)
+   ├─ Constraints: what agent CAN and CANNOT do
+   ├─ Autonomy rule: "NEVER STOP" (keep looping until human stops)
+   └─ **Reusable pattern for A0 plugins**
+
+3. EXPERIMENT LOOP
+
+   Agent autonomous loop (no human in the loop):
+
+   while True:
+     1. Idea: "increase EMBEDDING_LR to 0.7"
+     2. Modify train.py
+     3. git commit
+     4. Run: uv run train.py > run.log 2>&1  (5 min + overhead)
+     5. Parse val_bpb from log
+     6. If improved (lower):
+          Record to results.tsv with status=keep
+          Branch advances (git head moves forward)
+     7. If not improved:
+          Record to results.tsv with status=discard
+          git reset --hard HEAD~1 (discard, try again)
+     8. If crash (OOM, NaN):
+          Record with status=crash
+          git reset --hard HEAD~1
+          Understand & fix or skip
+     9. Sleep ~10s
+     10. Loop back
+
+   Result after 8 hours: ~100 commits on autoresearch/tag branch
+   Leaderboard: results.tsv shows all experiments, val_bpb progression
+
+4. LOCAL MODEL SUPPORT: THE HARD LIMITATION
+
+   ✗ AUTORESEARCH TRAINING: GPU-ONLY (NVIDIA REQUIRED)
+     Reason: Requires backpropagation + parameter updates
+     Not feasible with Ollama/llama.cpp (inference-only)
+
+   ✓ ALTERNATIVE: Build autoresearch-inference-agent
+     Use Ollama for local LLM inference (no training)
+     Autonomous research loop (modifies strategy, not weights)
+     Results: findings/insights in git, shared across fleet
+     Cost: $0, CPU-only
+
+5. OUTPUT FORMAT
+
+   Per experiment:
+   ├─ Git commit with modified train.py
+   ├─ run.log (temporary, full training output)
+   └─ results.tsv entry (git-tracked leaderboard)
+
+   Example results.tsv:
+   commit    val_bpb    memory_gb  status   description
+   a1b2c3d   0.997900   44.0       keep     baseline
+   b2c3d4e   0.993200   44.2       keep     increase LR to 0.04
+   c3d4e5f   1.005000   44.0       discard  switch to GeLU activation
+
+6. CODE QUALITY
+
+   Strengths:
+   ✓ Elegant: 3 files, ~1K lines, single responsibility
+   ✓ Production-ready: timing, memory tracking, error handling
+   ✓ Research-friendly: metric isolation, reproducibility, ablation-clear
+   ✓ Git-native: results are commits, not logs
+   ✓ Autonomy-first: agent doesn't ask for approval
+
+   Weaknesses (for CarabinerOS):
+   ✗ GPU-only (no CPU/MPS/local models)
+   ✗ Data-heavy (50GB+ per location for climbmix dataset)
+   ✗ 5-minute fixed (can't customize for different hardwares)
+   ✗ Single-GPU only (no distributed)
+   ✗ No checkpointing (if interrupted, restart)
+
+================================================================================
+INTEGRATION ROADMAP FOR CARABINEROS
+================================================================================
+
+PHASE 1: PROOF-OF-CONCEPT (Week 1-2)
+├─ Fork autoresearch for restaurant ops domain
+│  ├─ prepare_restaurant.py (domain-specific data)
+│  ├─ train_restaurant.py (tuned hyperparameters)
+│  └─ program_restaurant.md (restaurant instructions)
+├─ Run on single restaurant with GPU
+├─ Goal: 1 full loop, 10+ experiments, validate workflow
+
+PHASE 2: FLEET MESH LEARNING (Week 3-4)
+├─ Deploy to GPU-equipped restaurants
+├─ Weekly fleet sync:
+│  ├─ Each A0 runs autonomously 1-2 nights/week
+│  ├─ Best models pushed to fleet registry (git)
+│  ├─ All restaurants pull improved models (GitAgent)
+│  ├─ Leaderboard tracked (val_bpb across locations)
+│  └─ Next week: all start from new baseline
+├─ Goal: $0 cost LLM optimization, fleet-wide gains
+
+PHASE 3: INFERENCE-FIRST (Week 5-6)
+├─ Build autoresearch-inference-agent
+│  ├─ Runs Ollama for local LLM (CPU-only)
+│  ├─ Modifies research.md (hypotheses, findings)
+│  ├─ No GPU required, $0 cost
+│  └─ Results aggregated via git
+├─ Deploy to CPU-only restaurants
+├─ Goal: all locations contribute (training OR inference)
+
+HYBRID DEPLOYMENT:
+├─ 5 GPU restaurants → train nightly (100 experiments = 8h)
+├─ 15 CPU restaurants → run inference research (24/7 if wanted)
+├─ Weekly fleet aggregation (git-based)
+└─ Total cost: $0, uses owned hardware
+
+================================================================================
+KEY METRICS & MONITORING
+================================================================================
+
+val_bpb (Validation Bits Per Byte)
+├─ Lower is better
+├─ Vocab-size-independent (fair comparison)
+├─ Fixed evaluation on 20M tokens
+├─ Baseline: ~0.99, excellent: <0.90, poor: >1.1
+
+Other metrics from log:
+├─ training_seconds: always ~5 min (fixed budget)
+├─ total_seconds: includes startup/eval overhead
+├─ peak_vram_mb: memory footprint
+├─ mfu_percent: model FLOPs utilization (target: >30%)
+├─ total_tokens_M: tokens seen
+├─ num_steps: optimizer steps
+├─ num_params_M: model size
+└─ depth: current hyperparameter
+
+================================================================================
+HYPERPARAMETER TUNING LEVERS
+================================================================================
+
+Quick Scaling (for smaller compute):
+
+DEPTH = 4 (instead of 8)                    # Fewer layers
+MAX_SEQ_LEN = 256 (instead of 2048)         # Shorter context
+TOTAL_BATCH_SIZE = 2**14 (instead of 2**19) # 16K tokens
+WINDOW_PATTERN = "L" (instead of "SSSL")    # No sliding window
+
+High-Impact Levers:
+
+DEPTH (4-16)              → Model capacity
+MATRIX_LR (0.01-0.1)      → Optimizer stability (high sensitivity)
+EMBEDDING_LR (0.2-1.0)    → Token embedding learning
+WARMDOWN_RATIO (0.0-0.7)  → LR decay schedule
+WEIGHT_DECAY (0.0-0.4)    → Regularization
+WINDOW_PATTERN            → Attention pattern (speed vs. capacity)
+
+Example progression:
+├─ Baseline (DEPTH=8): val_bpb=0.9979
+├─ DEPTH=10: val_bpb=0.9950 ✓ (keep)
+├─ DEPTH=12: val_bpb=0.9945 ✓ (keep)
+├─ DEPTH=14: OOM (discard)
+├─ DEPTH=12, MATRIX_LR=0.05: val_bpb=0.9948 ✗ (worse, discard)
+└─ DEPTH=12, WARMDOWN=0.3: val_bpb=0.9944 ✓ (keep)
+
+================================================================================
+CRITICAL CONSTRAINTS (DON'T VIOLATE)
+================================================================================
+
+✗ Don't modify prepare.py
+  Reason: Read-only infrastructure; eval becomes unreliable
+
+✗ Don't add new dependencies
+  Reason: Keeps scope tight, reproducible; uv sync fails
+
+✗ Don't change TIME_BUDGET (300s)
+  Reason: Fixed 5 min enables fleet scheduling; breaks comparability
+
+✗ Don't change evaluation metric (val_bpb)
+  Reason: Ground truth for improvement; changing it loses objectivity
+
+✗ Don't distribute training
+  Reason: Single GPU by design; breaks autonomy
+
+✗ Don't modify train.py outside the loop
+  Reason: Changes aren't tracked; reproducibility lost
+
+================================================================================
+FOR CARABINEROS FORK: RESTAURANT-SPECIFIC ADAPTATIONS
+================================================================================
+
+prepare_restaurant.py:
+├─ Replace climbmix-400b with restaurant ops data
+│  ├─ Synthetic: generated recipes, orders, inventory, labor
+│  └─ Real: anonymized data from participating restaurants
+├─ Keep structure: MAX_SEQ_LEN, TIME_BUDGET, EVAL_TOKENS, Tokenizer
+└─ Adjust for domain: smaller vocab if more specialized
+
+program_restaurant.md:
+├─ Domain: Kitchen operations
+│  ├─ Recipe representations
+│  ├─ Order processing
+│  ├─ Inventory tracking
+│  └─ Labor scheduling
+├─ Adjusted baseline: DEPTH=6 (smaller), WINDOW_PATTERN="L"
+├─ Domain-specific success metrics (e.g., val_bpb < 0.8)
+└─ Simplicity rules (prioritize clean over marginal gains)
+
+train_restaurant.py:
+├─ Start from train.py, keep structure
+├─ Tune hyperparameters for domain:
+│  ├─ DEPTH = 6 (not 8; restaurant ops simpler)
+│  ├─ VOCAB_SIZE = 4096 (smaller; domain-specific tokens)
+│  ├─ WINDOW_PATTERN = "L" (no sliding; orders are short)
+│  └─ Other params: start with defaults, adjust from there
+└─ Monitor for crashes (OOM, divergence)
+
+================================================================================
+RESOURCES & REFERENCES
+================================================================================
+
+Clone location: /tmp/autoresearch (from research session)
+
+Key files:
+├─ train.py (630 lines, model + optimizer + training)
+├─ prepare.py (389 lines, data + evaluation)
+├─ program.md (115 lines, agent instructions)
+├─ README.md (full setup + design rationale)
+└─ pyproject.toml (torch==2.9.1, rustbpe, tiktoken)
+
+External repos:
+├─ Parent project: https://github.com/karpathy/nanochat (inference utils)
+├─ Muon optimizer: https://github.com/kyegomez/muon
+├─ Flash Attention 3: kernels library (Hopper GPUs)
+├─ BPE tokenizer: rustbpe + tiktoken
+└─ MacOS forks:
+   ├─ miolini/autoresearch-macos (MLX backend)
+   ├─ trevin-creator/autoresearch-mlx
+   └─ jsegov/autoresearch-win-rtx (Windows RTX)
+
+================================================================================
+IMPLEMENTATION CHECKLIST
+================================================================================
+
+Before integrating into CarabinerOS:
+
+□ Clone autoresearch, run baseline locally
+□ Understand 3-file pattern thoroughly
+□ Read program.md, internalize "NEVER STOP" rule
+□ Design restaurant-specific fork (prepare, train, program)
+□ Create program_restaurant.md with domain instructions
+□ Test 1 full loop: setup → 10 experiments → review results.tsv
+□ Measure end-to-end time (startup + 5 experiments + eval)
+□ Document platform-specific values (H100 baseline ≠ RTX 4090)
+□ Plan fleet distribution (GPU vs CPU restaurants)
+□ Design git-native result sharing (branches → PRs → aggregation)
+□ Prototype inference-only variant (Ollama) for CPU restaurants
+□ Write A0 plugin interface (async, scheduling, monitoring)
+
+================================================================================
+CONCLUSION
+================================================================================
+
+Autoresearch is a MASTERCLASS in autonomous AI research automation.
+Its elegance: ruthless simplification (1 GPU, 1 file, 1 metric).
+
+For CarabinerOS:
+✓ Pattern: Adopt 3-file system + Markdown-driven instructions
+✓ Pattern: Git-native results for fleet mesh sharing
+✓ Pattern: Autonomous loops ("NEVER STOP")
+✓ Implementation: Fork for restaurant ops domain
+✓ Scaling: Hybrid (GPU restaurants train, CPU restaurants research)
+✗ Direct use: Requires NVIDIA GPU; CPU needs different approach
+✓ Cost: $0 (uses owned hardware, no API keys)
+
+Next step: Build autoresearch-restaurant + autoresearch-inference
+Deployment: Nightly training on GPU, continuous inference on CPU
+Fleet sync: Weekly aggregation, shared leaderboards, fleet-wide gains
+
+================================================================================
+Generated: 2026-03-25
+Status: Ready for implementation
+Questions: See autoresearch-analysis.md and autoresearch-implementation-quickstart.md
+================================================================================

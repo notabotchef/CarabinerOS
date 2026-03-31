@@ -1,0 +1,1960 @@
+[2026-03-20T09:40:53.555Z] PROMPT
+============================================================
+Analyze this codebase for performance optimizations:
+- Identify N+1 query patterns
+- Find unnecessary re-renders in React
+- Suggest caching opportunities
+- Identify memory leaks
+- Find redundant computations
+
+Provide actionable suggestions with code examples.
+
+## Codebase Context
+
+--- src/hooks/use-action-cards.ts ---
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import type { A0Snapshot, ActionCard } from "@/lib/types";
+
+interface UseActionCardsReturn {
+  cards: ActionCard[];
+  unreadCount: number;
+  markRead: (id: string) => void;
+  markAllRead: () => void;
+}
+
+export function useActionCards(snapshot: A0Snapshot | null): UseActionCardsReturn {
+  const [cards, setCards] = useState<ActionCard[]>([]);
+  const processedIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!snapshot) return;
+
+    for (const log of snapshot.logs) {
+      if (processedIds.current.has(log.id)) continue;
+      if (log.type !== "tool") continue;
+
+      const kvps = log.kvps || {};
+      if (kvps.module && kvps.action) {
+        const card: ActionCard = {
+          id: log.id,
+          type: String(kvps.action),
+          module: String(kvps.module),
+          action: String(kvps.action),
+          itemId: kvps.item_id ? String(kvps.item_id) : undefined,
+          item: kvps.item as Record<string, unknown> | undefined,
+          summary: log.content.slice(0, 120),
+          timestamp: log.timestamp,
+          read: false,
+        };
+        setCards(prev => [...prev, card]);
+        processedIds.current.add(log.id);
+      }
+    }
+  }, [snapshot]);
+
+  const unreadCount = cards.filter(c => !c.read).length;
+
+  const markRead = (id: string) => {
+    setCards(prev => prev.map(c => c.id === id ? { ...c, read: true } : c));
+  };
+
+  const markAllRead = () => {
+    setCards(prev => prev.map(c => ({ ...c, read: true })));
+  };
+
+  return { cards, unreadCount, markRead, markAllRead };
+}
+
+
+--- src/hooks/use-chat.ts (truncated) ---
+"use client";
+
+import { useState, useCallback, useEffect, useRef } from "react";
+import type { A0Snapshot, A0LogEntry, ChatMessage, InlineStep, StepLabel } from "@/lib/types";
+import { getCsrfToken } from "@/lib/csrf";
+
+// --- Step extraction helpers ---
+
+const STEP_LOG_TYPES = new Set(["agent", "tool", "subagent", "response"]);
+
+const LABEL_MAP: Record<string, StepLabel> = {
+  agent: "GEN",
+  tool: "USE",
+  subagent: "SUB",
+  response: "RES",
+};
+
+const THINKING_MESSAGES = [
+  "Checking if Rene Redzepi already paid the interns",
+  "Cross-referencing your wine list with last night\u2019s dreams",
+  "Consulting the mise en place oracle",
+  "Running the numbers through the pasta machine",
+  "Asking the walk-in for its opinion",
+  "Debating butter quantities with the saucier",
+  "Checking the reservation book for ghosts",
+  "Calibrating the flavor compass",
+];
+
+function cleanHeading(raw: string): string {
+  // Strip icon:// prefixes and >>> markers, then map agent numbers to kitchen roles
+  return raw
+    .replace(/icon:\/\/\S+\s*/g, "")
+    .replace(/^>>>\s*/, "")
+    .trim()
+    .replace(/^A0:\s*/, "GM: ")
+    .replace(/^A1:\s*/, "AGM: ")
+    .replace(/^A(\d+):\s*/, "Team: ");
+}
+
+interface CollectedSteps {
+  steps: InlineStep[];
+  stepTitle: string | undefined;
+  stepDuration: number | undefined;
+}
+
+function collectSteps(logs: A0LogEntry[], responseIndex: number): CollectedSteps {
+  const steps: InlineStep[] = [];
+  let lastAgentHeading: string | undefined;
+  let firstTimestamp: number | undefined;
+
+  // Walk backwards from just before the response to find preceding steps
+  for (let i = responseIndex - 1; i >= 0; i--) {
+    const log = logs[i];
+    // Stop at previous user message
+    if (log.type === "user") break;
+    // Stop at previous agent-0 response (but include sub-agent responses)
+    if (log.type === "response" && log.agentno === 0) break;
+    if (!STEP_LOG_TYPES.has(log.type)) continue;
+
+    const heading = cleanHeading(log.heading || "");
+    if (!heading) continue;
+
+    const isFiller = THINKING_MESSAGES.includes(heading);
+    steps.unshift({
+      type: log.type as InlineStep["type"],
+      label: LABEL_MAP[log.type] ?? "GEN",
+      heading,
+      isFiller,
+    });
+
+    // Track first timestamp (earliest step)
+    if (log.timestamp && (firstTimestamp === undefined || log.timestamp < firstTimestamp)) {
+      firstTimestamp = log.timestamp;
+    }
+  }
+
+  // Find the last "agent" type heading for the ticket title
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (steps[i].type === "agent") {
+      // Strip kitchen role prefix for the title (heading already has GM:/AGM:/Team:)
+      lastAgentHeading = steps[i].heading.replace(/^(GM|AGM|Sous Chef|Team):\s*/g, "").trim();
+      break;
+    }
+  }
+
+  // Calculate duration
+  const responseLog = logs[responseIndex];
+  const stepDuration =
+    firstTimestamp !== undefined && responseLog?.timestamp
+      ? responseLog.timestamp - firstTimestamp
+      : undefined;
+
+  return {
+    steps,
+    stepTitle: lastAgentHeading,
+    stepDuration: stepDuration && stepDuration > 0 ? stepDuration : undefined,
+  };
+}
+
+interface UseChatReturn {
+  messages: ChatMessage[];
+  sendMessage: (text: string) => Promise<string>;
+  contextId: string | null;
+  loading: boolean;
+  queuedMessages: string[];
+  resetChat: () => void;
+  createNewChat: () => Promise<string | null>;
+}
+
+export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [contextId, setContextId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+  const processedLogIds = useRef(new Set<string>());
+  const contextIdRef = useRef<string | null>(null);
+  const isProcessingRef = useRef(false);
+  const freshChatRef = useRef(false); // true after resetChat, cleared on first send
+
+  // Keep contextIdRef in sync
+  useEffect(() => {
+    contextIdRef.current = contextId;
+  }, [contextId]);
+
+  useEffect(() => {
+    if (!snapshot) return;
+
+    // After resetChat, ignore snapshot logs until the user sends a new message.
+    // This prevents stale logs from a previous context from being re-ingested.
+    if (freshChatRef.current) {
+      setLoading(false);
+      return;
+    }
+
+    const newMessages: ChatMessage[] = [];
+
+    for (let idx = 0; idx < snapshot.logs.length; idx++) {
+      const log = snapshot.logs[idx];
+      // Use log.no as the dedup key — log.id can be null
+      const logKey = log.id ?? `no-${log.no}`;
+      if (processedLogIds.current.has(logKey)) continue;
+
+      if (log.type === "user") {
+        newMessages.push({
+          id: logKey,
+          role: "user",
+          content: log.content,
+          timestamp: log.timestamp,
+        });
+        processedLogIds.current.add(logKey);
+      }
+
+      if (log.type === "response" && log.content.trim() && log.agentno === 0) {
+        const { steps, stepTitle, stepDuration } = collectStep
+
+--- src/hooks/use-expo-stream.ts (truncated) ---
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import type { A0Snapshot, ChefStatus } from "@/lib/types";
+
+// --- Type guard for agent log kvps ---
+
+interface AgentKvps {
+  thoughts?: string[];
+  headline?: string;
+  step?: string;
+  tool_name?: string;
+}
+
+function getAgentKvps(kvps: Record<string, unknown>): AgentKvps {
+  return {
+    thoughts: Array.isArray(kvps.thoughts) ? (kvps.thoughts as string[]) : undefined,
+    headline: typeof kvps.headline === "string" ? kvps.headline : undefined,
+    step: typeof kvps.step === "string" ? kvps.step : undefined,
+    tool_name: typeof kvps.tool_name === "string" ? kvps.tool_name : undefined,
+  };
+}
+
+// --- ExpoTicketStep ---
+
+export interface ExpoTicketStep {
+  type: "agent" | "tool" | "subagent" | "response";
+  heading: string;
+  isFiller: boolean;
+  durationMs?: number;
+}
+
+// --- ExpoState ---
+
+export interface ExpoState {
+  text: string | null;
+  thoughts: string[];
+  active: boolean;
+  ticketSteps: ExpoTicketStep[];
+}
+
+// --- Kitchen joke fallback ---
+
+const THINKING_MESSAGES = [
+  "Checking if Rene Redzepi already paid the interns",
+  "Cross-referencing your wine list with last night\u2019s dreams",
+  "Consulting the mise en place oracle",
+  "Running the numbers through the pasta machine",
+  "Asking the walk-in for its opinion",
+  "Debating butter quantities with the saucier",
+  "Checking the reservation book for ghosts",
+  "Calibrating the flavor compass",
+];
+
+function getRandomJoke(): string {
+  return THINKING_MESSAGES[Math.floor(Math.random() * THINKING_MESSAGES.length)];
+}
+
+// --- Heading cleanup ---
+
+function cleanHeading(raw: string): string {
+  return raw
+    .replace(/icon:\/\/\S+\s*/g, "")
+    .replace(/A\d+:\s*/g, "")
+    .replace(/^>>>\s*/, "")
+    .trim();
+}
+
+// --- Snapshot logs into ticket steps ---
+
+const TICKET_LOG_TYPES = new Set(["agent", "tool", "subagent", "response"]);
+
+function snapshotTicketSteps(snapshot: A0Snapshot | null): ExpoTicketStep[] {
+  if (!snapshot?.logs?.length) return [];
+
+  const steps: ExpoTicketStep[] = [];
+  for (const log of snapshot.logs) {
+    if (!TICKET_LOG_TYPES.has(log.type)) continue;
+
+    const heading = cleanHeading(log.heading || "");
+    if (!heading) continue;
+
+    const isFiller = THINKING_MESSAGES.includes(heading);
+    const stepType = log.type as ExpoTicketStep["type"];
+
+    steps.push({
+      type: stepType,
+      heading,
+      isFiller,
+    });
+  }
+  return steps;
+}
+
+// --- Extract thoughts and status from snapshot ---
+
+function extractFromLogs(snapshot: A0Snapshot | null): {
+  thoughts: string[];
+  headline: string | null;
+  step: string | null;
+} {
+  if (!snapshot?.logs?.length) return { thoughts: [], headline: null, step: null };
+
+  for (let i = snapshot.logs.length - 1; i >= 0; i--) {
+    const log = snapshot.logs[i];
+    if (log.type !== "agent" || !log.kvps) continue;
+
+    const kvps = getAgentKvps(log.kvps);
+    if (kvps.thoughts?.length || kvps.headline || kvps.step) {
+      return {
+        thoughts: kvps.thoughts ?? [],
+        headline: kvps.headline ?? null,
+        step: kvps.step ?? null,
+      };
+    }
+  }
+
+  return { thoughts: [], headline: null, step: null };
+}
+
+// --- Hook ---
+
+export function useExpoStream(
+  snapshot: A0Snapshot | null,
+  chefStatus: ChefStatus | null,
+): ExpoState {
+  const [expo, setExpo] = useState<ExpoState>({
+    text: null,
+    thoughts: [],
+    active: false,
+    ticketSteps: [],
+  });
+  const jokeRef = useRef(getRandomJoke());
+  const stickyTextRef = useRef<string | null>(null);
+  const prevActiveRef = useRef(false);
+
+  // Extract thoughts + headline/step from snapshot logs
+  useEffect(() => {
+    if (!snapshot) return;
+
+    const isActive = snapshot.log_progress_active;
+    const { thoughts, headline, step } = extractFromLogs(snapshot);
+
+    if (isActive) {
+      // Resolve ExpoBar text: headline > step > chefStatus > sticky > joke
+      const realText = headline ?? step ?? null;
+      if (realText) stickyTextRef.current = realText;
+
+      const displayText =
+        realText ??
+        chefStatus?.text ??
+        stickyTextRef.current ??
+        jokeRef.current;
+
+      prevActiveRef.current = true;
+      setExpo({ text: displayText, thoughts, active: true, ticketSteps: [] });
+    } else if (prevActiveRef.current) {
+      // Transition from active -> inactive: snapshot ticket steps
+      prevActiveRef.current = false;
+      const steps = snapshotTicketSteps(snapshot);
+      setExpo((prev) => ({ ...prev, ticketSteps: steps }));
+    }
+  }, [snapshot, chefStatus]);
+
+  // Chef status updates (completion state)
+  useEffect(() => {
+    if (!chefStatus) return;
+
+    if (!chefStatus.active) {
+      stickyTextRef.current = null;
+      setExpo((prev) => ({ ...prev, text: chefStatus.text, thoughts: [], active: false }));
+      const timer = setTimeout(() => {
+        setExpo((prev) =>
+          prev.active || prev.ticketSteps.length > 0
+            ? prev
+            : { text: null, thoughts: [], active: false, ticketSteps: [] },
+        );
+   
+
+--- src/hooks/use-mobile.ts ---
+import * as React from "react"
+
+const MOBILE_BREAKPOINT = 768
+
+export function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    const onChange = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    }
+    mql.addEventListener("change", onChange)
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
+
+  return !!isMobile
+}
+
+
+--- src/hooks/use-socket.ts ---
+"use client";
+
+import { useEffect, useState, useCallback, useRef } from "react";
+import { initStateSyncSocket, getStateSyncSocket } from "@/lib/socket-client";
+import { getCsrfToken } from "@/lib/csrf";
+import type { A0StatePush, A0Snapshot, ChefStatus } from "@/lib/types";
+import type { Socket } from "socket.io-client";
+
+interface UseSocketReturn {
+  connected: boolean;
+  snapshot: A0Snapshot | null;
+  chefStatus: ChefStatus | null;
+  subscribe: (contextId: string | null) => void;
+}
+
+export function useSocket(): UseSocketReturn {
+  const [connected, setConnected] = useState(false);
+  const [snapshot, setSnapshot] = useState<A0Snapshot | null>(null);
+  const [chefStatus, setChefStatus] = useState<ChefStatus | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const logFromRef = useRef(0);
+  const pendingContextRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    const socket = initStateSyncSocket();
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      setConnected(true);
+      // If a subscribe was called before connection, use that context
+      const ctx = pendingContextRef.current !== undefined ? pendingContextRef.current : null;
+      pendingContextRef.current = undefined;
+      socket.emit("state_request", {
+        context: ctx,
+        log_from: 0,
+        notifications_from: 0,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        ts: new Date().toISOString(),
+        correlationId: crypto.randomUUID(),
+      });
+    });
+    socket.on("disconnect", () => setConnected(false));
+
+    socket.on("state_push", (envelope: A0StatePush) => {
+      const data = envelope?.data;
+      const snap = data?.snapshot;
+      if (!snap) {
+        console.warn("[state_push] no snapshot in envelope", Object.keys(envelope || {}));
+        return;
+      }
+      const respLogs = snap.logs?.filter((l: { type: string }) => l.type === "response") ?? [];
+      if (respLogs.length > 0) {
+        console.log(`[state_push] ${snap.logs.length} logs, ${respLogs.length} responses, progress_active=${snap.log_progress_active}`);
+      }
+      setSnapshot(snap);
+      if (snap.logs?.length > 0) {
+        logFromRef.current = snap.logs[snap.logs.length - 1].no + 1;
+      }
+    });
+
+    socket.on("chef_status", (status: ChefStatus) => {
+      setChefStatus(status);
+    });
+
+    // Fetch CSRF token FIRST to establish the Flask session cookie,
+    // THEN connect the socket. The WebSocket upgrade request will
+    // carry the session cookie so Agent Zero can validate CSRF.
+    getCsrfToken()
+      .then(() => socket.connect())
+      .catch(() => socket.connect()); // connect anyway, auth callback will retry
+
+    return () => {
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("state_push");
+      socket.off("chef_status");
+      socket.disconnect();
+    };
+  }, []);
+
+  const subscribe = useCallback((contextId: string | null) => {
+    const socket = getStateSyncSocket();
+    logFromRef.current = 0;
+
+    if (!socket?.connected) {
+      // Socket not connected yet — queue the context for when it connects
+      pendingContextRef.current = contextId;
+      return;
+    }
+
+    socket.emit("state_request", {
+      context: contextId,
+      log_from: 0,
+      notifications_from: 0,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      ts: new Date().toISOString(),
+      correlationId: crypto.randomUUID(),
+    });
+  }, []);
+
+  return { connected, snapshot, chefStatus, subscribe };
+}
+
+
+--- src/hooks/use-workspace.ts ---
+"use client";
+
+import { useState, useEffect } from "react";
+
+interface UseWorkspaceReturn<T> {
+  data: T[];
+  loading: boolean;
+  error: string | null;
+  refresh: () => void;
+}
+
+export function useWorkspace<T = Record<string, unknown>>(
+  endpoint: string,
+  locationId?: string,
+): UseWorkspaceReturn<T> {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const url = locationId
+      ? `${endpoint}?location_id=${locationId}`
+      : endpoint;
+
+    setLoading(true);
+    fetch(url, { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`${res.status}`);
+        const json = await res.json();
+        setData(Array.isArray(json) ? json : json.items ?? json.data ?? []);
+        setError(null);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setData([]);
+      })
+      .finally(() => setLoading(false));
+  }, [endpoint, locationId, refreshKey]);
+
+  return { data, loading, error, refresh: () => setRefreshKey((k) => k + 1) };
+}
+
+
+--- src/lib/csrf.ts ---
+let csrfToken: string | null = null;
+let runtimeId: string | null = null;
+let csrfPromise: Promise<string> | null = null;
+
+export async function getCsrfToken(): Promise<string> {
+  if (csrfToken) return csrfToken;
+  if (csrfPromise) return csrfPromise;
+
+  csrfPromise = fetch("/csrf_token", { credentials: "include" })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.ok) {
+        csrfToken = data.token;
+        runtimeId = data.runtime_id;
+
+        // Agent Zero's WebSocket handler checks for this cookie by name
+        // Its own frontend (api.js) sets it the same way
+        document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;
+
+        return data.token;
+      }
+      throw new Error(data.error || "Failed to get CSRF token");
+    })
+    .finally(() => {
+      csrfPromise = null;
+    });
+
+  return csrfPromise;
+}
+
+export function getRuntimeId(): string | null {
+  return runtimeId;
+}
+
+export function clearCsrfToken() {
+  csrfToken = null;
+  runtimeId = null;
+}
+
+
+--- src/lib/expo-messages.ts ---
+import type { A0LogEntry } from "@/lib/types";
+
+const QUIRKY_MESSAGES: Record<string, string[]> = {
+  food_cost_tool: [
+    "Crunching the numbers on that produce order...",
+    "Checking if the avocado market crashed yet...",
+  ],
+  inventory_tool: [
+    "Checking the walk-in...",
+    "Counting what's left after brunch service...",
+  ],
+  prep_tool: [
+    "Asking the sous chef about tomorrow's prep...",
+    "Making sure mise en place is actually en place...",
+  ],
+  order_tool: [
+    "Drafting that PO, hang tight...",
+    "Negotiating with the vendor rep...",
+  ],
+  recipe_tool: [
+    "Pulling up the recipe book...",
+    "Cross-referencing Chef's secret notes...",
+  ],
+  reporting_tool: [
+    "Pulling last week's covers from the reservation book...",
+    "Running the numbers for the morning briefing...",
+  ],
+  invoice_tool: [
+    "Scanning that invoice...",
+    "Making sure they didn't overcharge us again...",
+  ],
+  marketing_tool: [
+    "Drafting something Instagram-worthy...",
+    "Thinking about what would make foodies stop scrolling...",
+  ],
+  menu_tool: [
+    "Checking the menu matrix...",
+    "Looking at what's selling and what's sitting...",
+  ],
+  default: [
+    "Working on it...",
+    "One moment...",
+    "On it, Chef...",
+  ],
+};
+
+const COMPLETION_MESSAGES = [
+  "Heard.",
+  "Service.",
+  "All set.",
+  "Done, Chef.",
+];
+
+export function getExpoMessage(log: A0LogEntry): string | null {
+  if (log.type === "tool" && log.heading) {
+    const toolName = log.heading.replace("Using ", "").replace("...", "").trim();
+    const messages = QUIRKY_MESSAGES[toolName] || QUIRKY_MESSAGES.default;
+    return messages[Math.floor(Math.random() * messages.length)];
+  }
+
+  if (log.type === "agent" || log.type === "subagent") {
+    return `Delegating to ${log.heading || "a specialist"}...`;
+  }
+
+  if (log.type === "progress" && log.content) {
+    return log.content;
+  }
+
+  return null;
+}
+
+export function getCompletionMessage(): string {
+  return COMPLETION_MESSAGES[Math.floor(Math.random() * COMPLETION_MESSAGES.length)];
+}
+
+
+--- src/lib/socket-client.ts ---
+import { io, Socket } from "socket.io-client";
+import { getCsrfToken, clearCsrfToken } from "@/lib/csrf";
+
+let stateSyncSocket: Socket | null = null;
+
+// In dev mode, Next.js rewrites only handle REST endpoints — Socket.IO
+// must connect directly to Agent Zero.  In production (behind nginx),
+// the same-origin default works because nginx proxies /socket.io/.
+const A0_SOCKET_URL = process.env.NEXT_PUBLIC_A0_URL || "";
+
+export function initStateSyncSocket(): Socket {
+  if (stateSyncSocket) return stateSyncSocket;
+
+  // auth callback is called on every connect attempt (including reconnect),
+  // ensuring the CSRF token and session cookie are always fresh.
+  // This matches Agent Zero's own webui pattern (webui/js/websocket.js).
+  // Start with polling so the Engine.IO handshake uses regular HTTP
+  // requests that always carry session cookies.  Safari does not send
+  // SameSite=Strict cookies on WebSocket upgrade requests, which breaks
+  // the CSRF flow when websocket is the initial transport.  Once the
+  // polling connection is established, Socket.IO auto-upgrades to
+  // websocket for better performance.
+  stateSyncSocket = io(`${A0_SOCKET_URL}/state_sync`, {
+    autoConnect: false,
+    transports: ["polling", "websocket"],
+    withCredentials: true,
+    auth: (cb) => {
+      getCsrfToken()
+        .then((token) => cb({ csrf_token: token }))
+        .catch((err) => {
+          console.error("[socket] CSRF token fetch failed for connect:", err);
+          cb({});
+        });
+    },
+  });
+
+  // On connect_error, invalidate the cached CSRF token so the next
+  // reconnect attempt fetches a fresh one (and re-establishes the session).
+  stateSyncSocket.on("connect_error", () => {
+    clearCsrfToken();
+  });
+
+  return stateSyncSocket;
+}
+
+export function getStateSyncSocket(): Socket | null {
+  return stateSyncSocket;
+}
+
+export function disconnectAll() {
+  if (stateSyncSocket) {
+    stateSyncSocket.disconnect();
+    stateSyncSocket = null;
+  }
+}
+
+
+--- src/lib/types.ts ---
+// Agent Zero Socket.IO protocol types
+
+export interface A0LogEntry {
+  no: number;
+  id: string;
+  type: "user" | "agent" | "response" | "tool" | "code_exe" | "browser" |
+        "progress" | "mcp" | "subagent" | "warning" | "rate_limit" |
+        "error" | "info" | "util" | "hint";
+  heading: string;
+  content: string;
+  kvps: Record<string, unknown>;
+  timestamp: number;
+  agentno: number;
+}
+
+export interface A0Context {
+  id: string;
+  name: string;
+  last_message: string;
+  log_version: number;
+}
+
+export interface A0Snapshot {
+  deselect_chat: boolean;
+  context: string;
+  contexts: A0Context[];
+  tasks: unknown[];
+  logs: A0LogEntry[];
+  log_guid: string;
+  log_version: number;
+  log_progress: string | number;
+  log_progress_active: boolean;
+  paused: boolean;
+  notifications: A0Notification[];
+  notifications_guid: string;
+  notifications_version: number;
+}
+
+export interface A0Notification {
+  id: string;
+  type: string;
+  message: string;
+}
+
+// WebSocketManager wraps all emitted payloads in an envelope
+export interface A0StatePush {
+  handlerId: string;
+  eventId: string;
+  correlationId: string;
+  ts: string;
+  data: {
+    runtime_epoch: string;
+    seq: number;
+    snapshot: A0Snapshot;
+  };
+}
+
+export interface A0StateRequestResponse {
+  ok: boolean;
+  data: {
+    runtime_epoch: string;
+    seq_base: number;
+  };
+  correlationId: string;
+}
+
+export type StepLabel = "GEN" | "USE" | "SUB" | "RES";
+
+export interface InlineStep {
+  type: "agent" | "tool" | "subagent" | "response";
+  label: StepLabel;
+  heading: string;
+  isFiller: boolean;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number;
+  steps?: InlineStep[];
+  stepTitle?: string;
+  stepDuration?: number;
+}
+
+export interface ActionCard {
+  id: string;
+  type: string;
+  module: string;
+  action: string;
+  itemId?: string;
+  item?: Record<string, unknown>;
+  summary: string;
+  timestamp: number;
+  read: boolean;
+}
+
+export interface ChefStatus {
+  status: "working" | "completed" | "idle";
+  tool?: string;
+  text: string;
+  active: boolean;
+}
+
+
+--- src/lib/utils.ts ---
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+
+--- src/lib/workspace-config.ts ---
+import {
+  Home, ShoppingCart, Warehouse, ChefHat, DollarSign,
+  UtensilsCrossed, BookOpen, Receipt, Megaphone, BarChart3,
+  type LucideIcon,
+} from "lucide-react";
+
+export interface ModuleConfig {
+  id: string;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  description: string;
+}
+
+export const MODULES: ModuleConfig[] = [
+  { id: "home", label: "Home", href: "/", icon: Home, description: "Chat & briefing" },
+  { id: "orders", label: "Orders", href: "/orders", icon: ShoppingCart, description: "Purchase orders" },
+  { id: "inventory", label: "Inventory", href: "/inventory", icon: Warehouse, description: "Stock levels & par" },
+  { id: "prep", label: "Prep", href: "/prep", icon: ChefHat, description: "Prep lists" },
+  { id: "food-cost", label: "Food Cost", href: "/food-cost", icon: DollarSign, description: "Cost tracking" },
+  { id: "menu", label: "Menu", href: "/menu", icon: UtensilsCrossed, description: "Menu engineering" },
+  { id: "recipes", label: "Recipes", href: "/recipes", icon: BookOpen, description: "Recipe management" },
+  { id: "invoices", label: "Invoices", href: "/invoices", icon: Receipt, description: "Invoice processing" },
+  { id: "marketing", label: "Marketing", href: "/marketing", icon: Megaphone, description: "Campaigns" },
+  { id: "reporting", label: "Reporting", href: "/reporting", icon: BarChart3, description: "P&L & reports" },
+];
+
+
+--- src/app/chat/[contextId]/page.tsx ---
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useSocketContext } from "@/components/socket-provider";
+import { useChat } from "@/hooks/use-chat";
+import { useExpoStream } from "@/hooks/use-expo-stream";
+import { useActionCards } from "@/hooks/use-action-cards";
+import { TopBar } from "@/components/top-bar";
+import { ChatView } from "@/components/chat-view";
+import { NotificationPanel } from "@/components/notification-panel";
+export default function ChatPage() {
+  const params = useParams();
+  const router = useRouter();
+  const contextId = params.contextId as string;
+  const { snapshot, chefStatus, connected, subscribe } = useSocketContext();
+  const { messages, sendMessage, loading, queuedMessages } = useChat(snapshot);
+  const expo = useExpoStream(snapshot, chefStatus);
+  const { cards, unreadCount } = useActionCards(snapshot);
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  useEffect(() => {
+    subscribe(contextId);
+  }, [contextId, subscribe]);
+
+  const handleSend = async (text: string) => {
+    const newCtx = await sendMessage(text);
+    if (newCtx) subscribe(newCtx);
+  };
+
+  // If socket connected but no messages arrived yet, show loading
+  const waitingForHistory = connected && messages.length === 0 && !loading;
+
+  return (
+    <div className="flex flex-col h-dvh bg-background">
+      <TopBar
+        unreadCount={unreadCount}
+        onBellClick={() => setNotifOpen(true)}
+      />
+
+      {waitingForHistory ? (
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-sm text-muted-foreground/50">Loading conversation...</p>
+        </div>
+      ) : (
+        <ChatView
+          messages={messages}
+          expo={expo}
+          onSend={handleSend}
+          loading={loading}
+          queueCount={queuedMessages.length}
+        />
+      )}
+
+      <NotificationPanel open={notifOpen} onOpenChange={setNotifOpen} cards={cards} />
+    </div>
+  );
+}
+
+
+--- src/app/food-cost/page.tsx (truncated) ---
+"use client";
+
+import { useState, useMemo } from "react";
+import {
+  DollarSign,
+  TrendingUp,
+  AlertTriangle,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  Flame,
+} from "lucide-react";
+import { MenuButton } from "@/components/menu-button";
+import { motion, AnimatePresence } from "framer-motion";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+type PressureLevel = "High" | "Medium" | "Low";
+
+type FoodCostItem = {
+  [key: string]: unknown;
+  id: string;
+  location_id: string;
+  menu_item_name: string;
+  pressure: PressureLevel;
+  current_cost_pct: string;
+  action: string;
+  summary: string | null;
+  detail_points: string[] | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type FilterTab = "All" | PressureLevel;
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
+const FILTER_TABS: FilterTab[] = ["All", "High", "Medium", "Low"];
+
+const PRESSURE_CFG: Record<PressureLevel, {
+  dot: string; badge: string; glow: string; label: string;
+}> = {
+  High: {
+    dot: "bg-red-500", glow: "shadow-red-500/40 shadow-sm",
+    badge: "bg-red-500/12 text-red-400 border-red-500/25 ring-1 ring-red-500/10",
+    label: "High",
+  },
+  Medium: {
+    dot: "bg-amber-500", glow: "",
+    badge: "bg-amber-500/12 text-amber-400 border-amber-500/25 ring-1 ring-amber-500/10",
+    label: "Medium",
+  },
+  Low: {
+    dot: "bg-emerald-500", glow: "",
+    badge: "bg-emerald-500/12 text-emerald-400 border-emerald-500/25 ring-1 ring-emerald-500/10",
+    label: "Low",
+  },
+};
+
+const TAB_COLORS: Record<FilterTab, { on: string; off: string }> = {
+  All:    { on: "bg-white/10 text-foreground border-white/10", off: "text-muted-foreground hover:text-foreground hover:bg-white/5" },
+  High:   { on: "bg-red-500/15 text-red-400 border-red-500/20", off: "text-muted-foreground hover:text-red-400 hover:bg-red-500/8" },
+  Medium: { on: "bg-amber-500/15 text-amber-400 border-amber-500/20", off: "text-muted-foreground hover:text-amber-400 hover:bg-amber-500/8" },
+  Low:    { on: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20", off: "text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/8" },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function parseCost(raw: string): number {
+  const n = parseFloat(raw.replace("%", ""));
+  return isNaN(n) ? 0 : n;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sub-components                                                     */
+/* ------------------------------------------------------------------ */
+
+function CostTrend({ value }: { value: number }) {
+  if (value > 32) return <ArrowUpRight className="inline h-3.5 w-3.5 text-red-400" />;
+  if (value < 28) return <ArrowDownRight className="inline h-3.5 w-3.5 text-emerald-400" />;
+  return <Minus className="inline h-3.5 w-3.5 text-muted-foreground/50" />;
+}
+
+function normalizePressure(raw: string): PressureLevel {
+  const l = raw.toLowerCase();
+  if (l === "high" || l.includes("+3") || l.includes("+4") || l.includes("+5")) return "High";
+  if (l === "low" || l.includes("-") || l.includes("0.")) return "Low";
+  return "Medium";
+}
+
+function PressureBadge({ pressure }: { pressure: string }) {
+  const level = normalizePressure(pressure);
+  const c = PRESSURE_CFG[level];
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase ${c.badge}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${c.dot} ${c.glow}`} />
+      {c.label}
+    </span>
+  );
+}
+
+function KpiCard({
+  label, value, icon: Icon, accent, bar, delay,
+}: {
+  label: string; value: string; icon: React.ElementType;
+  accent?: string; bar?: string; delay: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+      className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-5"
+    >
+      {bar && (
+        <div className={`absolute inset-x-0 top-0 h-[2px] ${bar}`} />
+      )}
+      <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </div>
+      <span className={`text-3xl
+
+--- src/app/inventory/page.tsx (truncated) ---
+"use client";
+
+import { useMemo, useState } from "react";
+import { Package, AlertTriangle, TrendingUp, Search } from "lucide-react";
+import { MenuButton } from "@/components/menu-button";
+import { motion } from "framer-motion";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { WorkspaceTable } from "@/components/workspace-table";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+interface InventoryItem {
+  [key: string]: unknown;
+  id: string;
+  location_id: string;
+  item_name: string;
+  on_hand: string;
+  par: string;
+  variance: string;
+  summary: string | null;
+  detail_points: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function parseNum(v: unknown): number {
+  if (v == null) return 0;
+  const s = String(v).trim();
+  const match = s.match(/^[+-]?\d+(\.\d+)?/);
+  return match ? Number(match[0]) : 0;
+}
+
+function parseDisplay(v: unknown): string {
+  if (v == null) return "0";
+  const s = String(v).trim();
+  const match = s.match(/^([+-]?\d+(?:\.\d+)?)\s*(.*)/);
+  if (!match) return s;
+  const [, num, unit] = match;
+  return unit ? `${num} ${unit}` : num;
+}
+
+function formatDate(v: unknown): string {
+  if (!v || typeof v !== "string") return "\u2014";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return "\u2014";
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Motion variants                                                    */
+/* ------------------------------------------------------------------ */
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.08, duration: 0.35, ease: [0, 0, 0.58, 1] as [number, number, number, number] },
+  }),
+};
+
+/* ------------------------------------------------------------------ */
+/*  KPI Card                                                           */
+/* ------------------------------------------------------------------ */
+
+function KpiCard({
+  label,
+  value,
+  icon: Icon,
+  tint,
+  index,
+}: {
+  label: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+  tint?: "destructive" | "positive";
+  index: number;
+}) {
+  const tintBg =
+    tint === "destructive"
+      ? "bg-destructive/10"
+      : tint === "positive"
+        ? "bg-emerald-500/10 dark:bg-emerald-500/15"
+        : "bg-muted";
+
+  const tintIcon =
+    tint === "destructive"
+      ? "text-destructive"
+      : tint === "positive"
+        ? "text-emerald-600 dark:text-emerald-400"
+        : "text-muted-foreground";
+
+  const valueTint =
+    tint === "destructive" && value > 0
+      ? "text-destructive"
+      : tint === "positive" && value > 0
+        ? "text-emerald-600 dark:text-emerald-400"
+        : "text-foreground";
+
+  return (
+    <motion.div
+      custom={index}
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      className="rounded-lg border border-border bg-card p-5 flex items-center gap-4"
+    >
+      <div className={`rounded-md p-2.5 ${tintBg}`}>
+        <Icon className={`h-5 w-5 ${tintIcon}`} />
+      </div>
+      <div className="flex flex-col">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+        <span className={`text-3xl font-bold tabular-nums leading-tight ${valueTint}`}>
+          {value}
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
+function KpiSkeleton() {
+  return (
+    <div className="rounded-lg border border-border bg-card p-5 flex items-center gap-4">
+      <Skeleton className="h-10 w-10 rounded-md" />
+      <div className="flex flex-col gap-1.5">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-8 w-12" />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Variance bar — visual distribution indicator                       */
+/* ------------------------------------------------------------------ */
+
+function VarianceBar({
+  below,
+  at,
+  above,
+}: {
+  below: number;
+  at: number;
+  above: number;
+}) {
+  const total = below + at + above || 1;
+  const pctBelow = Math.round((below / total) * 100);
+  const pctAt = Math.round((at / total) * 100);
+  const pctAbove = 100 - pctBelow - pctAt;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scaleX: 0.6 }}
+    
+
+--- src/app/invoices/page.tsx (truncated) ---
+/*
+ * INVOICES WORKSPACE — CarabinerOS
+ *
+ * Design direction: PROCESSING CENTER
+ *
+ * Purpose: AP automation — invoices flow through a visible pipeline from
+ *   upload to approval. OCR extraction, PO matching, and approval all
+ *   tracked in one view. P1 competitive gap closer (MarginEdge, xtraCHEF).
+ * Audience: GM or bookkeeper processing vendor invoices daily. Speed matters.
+ * Tone: Processing center — efficient, clear, every invoice accounted for.
+ *   Pipeline stages use a color gradient that intensifies as invoices advance.
+ * Differentiation: Visual pipeline bar shows flow + counts per stage.
+ *   Source icons distinguish upload/email/scan. Staggered row animations.
+ */
+
+"use client";
+
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FileText,
+  Upload,
+  Mail,
+  ScanLine,
+  ChevronRight,
+  Plus,
+  Search,
+} from "lucide-react";
+import { MenuButton } from "@/components/menu-button";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+type InvoiceStatus =
+  | "Uploaded"
+  | "Processing"
+  | "Extracted"
+  | "Matched"
+  | "Approved"
+  | "Paid"
+  | "Rejected";
+
+interface Invoice {
+  [key: string]: unknown;
+  id: string;
+  location_id: string;
+  vendor: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null;
+  due_date: string | null;
+  status: InvoiceStatus;
+  file_path: string | null;
+  source: string | null;
+  total: string | null;
+  line_items: unknown;
+  summary: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
+const PIPELINE_STAGES: { key: InvoiceStatus; label: string }[] = [
+  { key: "Uploaded", label: "Uploaded" },
+  { key: "Processing", label: "Processing" },
+  { key: "Matched", label: "Matched" },
+  { key: "Approved", label: "Approved" },
+  { key: "Paid", label: "Paid" },
+];
+
+const FILTER_TABS: { key: InvoiceStatus | "all"; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "Uploaded", label: "Uploaded" },
+  { key: "Processing", label: "Processing" },
+  { key: "Matched", label: "Matched" },
+  { key: "Approved", label: "Approved" },
+  { key: "Paid", label: "Paid" },
+  { key: "Rejected", label: "Rejected" },
+];
+
+const STATUS_STYLES: Record<InvoiceStatus, string> = {
+  Uploaded: "bg-muted text-muted-foreground",
+  Processing: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  Extracted: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
+  Matched: "bg-green-500/15 text-green-700 dark:text-green-400",
+  Approved: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  Paid: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 opacity-70",
+  Rejected: "bg-red-500/15 text-red-700 dark:text-red-400",
+};
+
+const STAGE_ACCENT: Record<string, string> = {
+  Uploaded: "border-muted-foreground/20",
+  Processing: "border-amber-500/30",
+  Matched: "border-green-500/30",
+  Approved: "border-emerald-500/30",
+  Paid: "border-emerald-500/20",
+};
+
+const SOURCE_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
+  upload: Upload,
+  email: Mail,
+  scan: ScanLine,
+};
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function formatCurrency(v: unknown): string {
+  if (v == null || v === "") return "\u2014";
+  const s = String(v).replace(/[$,]/g, "").trim();
+  const n = Number(s);
+  if (isNaN(n)) return String(v);
+  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(v: unknown): string {
+  if (!v || typeof v !== "string") return "\u2014";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return "\u2014";
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Motion                                                             */
+/* ------------------------------------------------------------------ */
+
+const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
+
+const stageVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { ...spr
+
+--- src/app/layout.tsx ---
+import type { Metadata } from "next";
+import { DM_Sans, Geist_Mono } from "next/font/google";
+import { SocketProvider } from "@/components/socket-provider";
+import { Shell } from "@/components/shell";
+import "./globals.css";
+
+const dmSans = DM_Sans({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "CarabinerOS",
+  description: "AI-powered restaurant operations",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html
+      lang="en"
+      className={`dark ${dmSans.variable} ${geistMono.variable} h-full`}
+    >
+      <body className="min-h-full flex">
+        <SocketProvider>
+          <Shell>
+            {children}
+          </Shell>
+        </SocketProvider>
+      </body>
+    </html>
+  );
+}
+
+
+--- src/app/marketing/page.tsx (truncated) ---
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  Megaphone,
+  Plus,
+  Instagram,
+  Facebook,
+  Mail,
+  Music2,
+  CalendarDays,
+  Sparkles,
+} from "lucide-react";
+import { MenuButton } from "@/components/menu-button";
+import { motion, AnimatePresence } from "framer-motion";
+import type { Variants } from "framer-motion";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+interface Campaign {
+  [key: string]: unknown;
+  id: string;
+  location_id: string;
+  campaign_name: string;
+  channel: string;
+  stage: string;
+  deliverable: string;
+  summary: string | null;
+  detail_points: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
+const STAGES = [
+  "Research",
+  "Drafting",
+  "Review",
+  "Live",
+  "Completed",
+] as const;
+type Stage = (typeof STAGES)[number];
+
+const CHANNELS = [
+  "All",
+  "Instagram",
+  "Facebook",
+  "Email",
+  "TikTok",
+  "Event",
+] as const;
+type Channel = (typeof CHANNELS)[number];
+
+const STAGE_STYLES: Record<
+  Stage,
+  { dot: string; badge: string; bar: string }
+> = {
+  Research: {
+    dot: "bg-muted-foreground/50",
+    badge: "bg-muted text-muted-foreground",
+    bar: "bg-muted-foreground/30",
+  },
+  Drafting: {
+    dot: "bg-amber-500",
+    badge:
+      "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20",
+    bar: "bg-amber-500/60",
+  },
+  Review: {
+    dot: "bg-blue-500",
+    badge:
+      "bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20",
+    bar: "bg-blue-500/60",
+  },
+  Live: {
+    dot: "bg-emerald-500",
+    badge:
+      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20",
+    bar: "bg-emerald-500/60",
+  },
+  Completed: {
+    dot: "bg-muted-foreground/40",
+    badge: "bg-muted text-muted-foreground",
+    bar: "bg-muted-foreground/20",
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Motion variants                                                    */
+/* ------------------------------------------------------------------ */
+
+const EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
+
+const staggerContainer: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+  },
+};
+
+const cardItem: Variants = {
+  hidden: { opacity: 0, y: 16, scale: 0.97 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.35, ease: EASE },
+  },
+  exit: { opacity: 0, y: -8, scale: 0.97, transition: { duration: 0.2 } },
+};
+
+const pipelineSegment: Variants = {
+  hidden: { scaleX: 0 },
+  visible: (i: number) => ({
+    scaleX: 1,
+    transition: { delay: 0.2 + i * 0.1, duration: 0.5, ease: EASE },
+  }),
+};
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: EASE } },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function channelIcon(channel: string) {
+  switch (channel.toLowerCase()) {
+    case "instagram":
+      return Instagram;
+    case "facebook":
+      return Facebook;
+    case "email":
+      return Mail;
+    case "tiktok":
+      return Music2;
+    case "event":
+      return CalendarDays;
+    default:
+      return Megaphone;
+  }
+}
+
+function formatDate(v: unknown): string {
+  if (!v || typeof v !== "string") return "\u2014";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return "\u2014";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function normalizeStage(s: string): Stage {
+  const match = STAGES.find(
+    (st) => st.toLowerCase() === s.trim().toLowerCase(),
+  );
+  return match ?? "Research";
+}
+
+/* ------------------------------------------------------------------ */
+/*  Stage Pipeline                                                     */
+/* ------------------------------------------------------------------ */
+
+function StagePipeline({ campaigns }: { campaigns: Campaign[] }) {
+  const counts = useMemo(() => {
+    const map: Record<Stage, number> = {
+      Research: 0,
+      Drafting: 0,
+      Review: 0,
+      Live: 0,
+      Completed: 0,
+    };
+    campaigns.forEach((c) => {
+      map[normalizeStage(c.stage)]++;
+    });
+    return map;
+  }, [campaigns]);
+
+  const total = campaigns.length || 1;
+
+  return (
+    <mo
+
+--- src/app/menu/page.tsx (truncated) ---
+"use client";
+
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Star,
+  Puzzle,
+  Tractor,
+  CircleOff,
+  UtensilsCrossed,
+} from "lucide-react";
+import { MenuButton } from "@/components/menu-button";
+import { useWorkspace } from "@/hooks/use-workspace";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+interface MenuItem {
+  id: string;
+  location_id: string;
+  item_name: string;
+  category: string;
+  performance: "Star" | "Puzzle" | "Plowhorse" | "Dog";
+  margin_pct: string;
+  recommendation: string;
+  recipe_id: string | null;
+  summary: string | null;
+  detail_points: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+type Performance = MenuItem["performance"];
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
+
+const CATEGORIES = ["All", "Appetizer", "Entree", "Dessert", "Beverage"] as const;
+
+const PERF_CFG: Record<
+  Performance,
+  {
+    label: string;
+    icon: typeof Star;
+    bg: string;
+    text: string;
+    ring: string;
+    dot: string;
+    gradient: string;
+    desc: string;
+  }
+> = {
+  Star: {
+    label: "Star",
+    icon: Star,
+    bg: "bg-amber-500/10",
+    text: "text-amber-400",
+    ring: "ring-amber-500/20",
+    dot: "bg-amber-400",
+    gradient: "from-amber-500/20 to-amber-500/5",
+    desc: "High profit, high popularity",
+  },
+  Puzzle: {
+    label: "Puzzle",
+    icon: Puzzle,
+    bg: "bg-violet-500/10",
+    text: "text-violet-400",
+    ring: "ring-violet-500/20",
+    dot: "bg-violet-400",
+    gradient: "from-violet-500/20 to-violet-500/5",
+    desc: "High profit, low popularity",
+  },
+  Plowhorse: {
+    label: "Plowhorse",
+    icon: Tractor,
+    bg: "bg-blue-500/10",
+    text: "text-blue-400",
+    ring: "ring-blue-500/20",
+    dot: "bg-blue-400",
+    gradient: "from-blue-500/20 to-blue-500/5",
+    desc: "Low profit, high popularity",
+  },
+  Dog: {
+    label: "Dog",
+    icon: CircleOff,
+    bg: "bg-zinc-500/10",
+    text: "text-zinc-500",
+    ring: "ring-zinc-500/20",
+    dot: "bg-zinc-500",
+    gradient: "from-zinc-500/15 to-zinc-500/5",
+    desc: "Low profit, low popularity",
+  },
+};
+
+const PERF_ORDER: Performance[] = ["Star", "Puzzle", "Plowhorse", "Dog"];
+
+/* ------------------------------------------------------------------ */
+/*  Animation variants                                                 */
+/* ------------------------------------------------------------------ */
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 12, scale: 0.97 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { delay: i * 0.08, duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
+  }),
+};
+
+const tableRowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  visible: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: { delay: i * 0.03, duration: 0.25 },
+  }),
+  exit: { opacity: 0, x: 8, transition: { duration: 0.15 } },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Sub-components                                                     */
+/* ------------------------------------------------------------------ */
+
+function PerformanceBadge({ performance }: { performance: Performance }) {
+  const cfg = PERF_CFG[performance];
+  const Icon = cfg.icon;
+  return (
+    <motion.span
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ring-1 ${cfg.bg} ${cfg.text} ${cfg.ring}`}
+    >
+      <Icon className="h-3 w-3" />
+      {cfg.label}
+    </motion.span>
+  );
+}
+
+function KpiCard({ perf, count, index }: { perf: Performance; count: number; index: number }) {
+  const cfg = PERF_CFG[perf];
+  const Icon = cfg.icon;
+  return (
+    <motion.div
+      custom={index}
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      className={`relative overflow-hidden rounded-xl border border-border bg-card p-4`}
+    >
+      {/* Subtle gradient background */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${cfg.gradient} pointer-events-none`} />
+      <div className="relative flex items-center justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {cfg.label}s
+          </p>
+          <p className="mt-1 text-3xl font-bold tabular-nums text-foreground">{count}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">{
+
+--- src/app/orders/page.tsx (truncated) ---
+/*
+ * ORDERS WORKSPACE — CarabinerOS
+ *
+ * Design direction: EDITORIAL / MAGAZINE
+ *
+ * Purpose: Restaurant managers need a single view to track purchase orders
+ *   across vendors — what's drafting, submitted, confirmed, delivered.
+ * Audience: Busy operators who want glanceable status, not spreadsheet noise.
+ * Tone: Clean editorial — generous whitespace, bold type hierarchy, subtle
+ *   motion. Feels like a well-designed newspaper finance section, not CRUD.
+ * Differentiation: Conversational empty state invites AI interaction.
+ *   Status pipeline is a visual KPI strip, not just filter tabs.
+ *   Rows animate in with staggered spring physics.
+ */
+
+"use client";
+
+import { useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Search, ShoppingCart, ChevronRight } from "lucide-react";
+import { MenuButton } from "@/components/menu-button";
+import { useWorkspace } from "@/hooks/use-workspace";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+type OrderStatus = "Drafting" | "Ready to send" | "Awaiting approval" | "Submitted" | "Confirmed" | "Delivered";
+
+interface Order {
+  [key: string]: unknown;
+  id: string;
+  vendor: string;
+  channel: string;
+  status: OrderStatus;
+  total: string;
+  eta: string | null;
+  line_items: unknown;
+  summary: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const STATUSES = ["All", "Drafting", "Ready to send", "Awaiting approval", "Submitted", "Confirmed", "Delivered"] as const;
+type StatusFilter = (typeof STATUSES)[number];
+
+const PIPELINE_STAGES: { key: OrderStatus; label: string }[] = [
+  { key: "Drafting", label: "Drafting" },
+  { key: "Ready to send", label: "Ready" },
+  { key: "Awaiting approval", label: "Pending" },
+  { key: "Submitted", label: "Submitted" },
+  { key: "Confirmed", label: "Confirmed" },
+  { key: "Delivered", label: "Delivered" },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Status styles                                                      */
+/* ------------------------------------------------------------------ */
+
+const STATUS_STYLES: Record<OrderStatus, string> = {
+  Drafting: "bg-muted text-muted-foreground",
+  "Ready to send": "bg-blue-500/15 text-blue-700 dark:text-blue-400",
+  "Awaiting approval": "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  Submitted: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  Confirmed: "bg-green-500/15 text-green-700 dark:text-green-400",
+  Delivered: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 opacity-70",
+};
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function formatCurrency(v: unknown): string {
+  if (v == null || v === "") return "\u2014";
+  const s = String(v).replace(/[$,]/g, "").trim();
+  const n = Number(s);
+  if (isNaN(n)) return String(v);
+  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(v: unknown): string {
+  if (!v || typeof v !== "string") return "\u2014";
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return "\u2014";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Animations                                                         */
+/* ------------------------------------------------------------------ */
+
+const spring = { type: "spring" as const, stiffness: 300, damping: 30 };
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: (i: number) => ({
+    opacity: 1, y: 0,
+    transition: { ...spring, delay: i * 0.04 },
+  }),
+};
+
+/* ------------------------------------------------------------------ */
+/*  Pipeline strip                                                     */
+/* ------------------------------------------------------------------ */
+
+function PipelineStrip({ counts, loading }: { counts: Record<OrderStatus, number>; loading: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      {PIPELINE_STAGES.map((stage, i) => (
+        <div key={stage.key} className="flex items-center gap-2 flex-1">
+          <div className="flex-1 rounded-lg border border-border bg-card p-3">
+            {loading ? (
+              <>
+                <Skeleton className="h-3 w-14 mb-1.5" />
+                <Skeleton className="h-7 w-8" />
+              </>
+            ) : (
+              <>
+  
+
+## Instructions
+
+Analyze the above codebase context and provide your response following the format specified in the task.

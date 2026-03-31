@@ -7,7 +7,7 @@ from typing import Optional
 from unittest.mock import patch
 
 import pytest
-from python.helpers.websocket import validate_ws_origin
+from helpers.websocket import validate_ws_origin
 
 
 def _make_environ(origin: str, host: str, forwarded_host: Optional[str] = None) -> dict:

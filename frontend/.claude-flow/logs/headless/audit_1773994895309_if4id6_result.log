@@ -1,0 +1,77 @@
+[2026-03-20T08:22:10.186Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 67,\n      \"description\": \"XSS: User-controlled content from Agent Zero logs (log.content) is directly rendered in ChatMessage without sanitization. An agent returning malicious HTML/JavaScript could execute arbitrary code in the user's browser.\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 30,\n      \"description\": \"XSS: The `kvps.item` field (arbitrary object from logs) is stored and potentially rendered without validation. If Agent Zero returns JavaScript objects with exploitable string representations, they could be rendered unsafely.\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"package.json\",\n      \"line\": 20,\n      \"description\": \"Dependency Risk: `react-markdown` v10.1.0 is installed. If used with `rehypeRaw` or similar unsafe HTML rendering, it could create XSS vectors. Verify markdown rendering is configured safely in components using this library.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 19,\n      \"description\": \"Missing URL Encoding: `locationId` parameter is directly interpolated into query string without URL encoding: `${endpoint}?location_id=${locationId}`. Unencoded special characters could break parsing or enable injection attacks.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 18,\n      \"description\": \"DOM Mutation Risk: CSRF token is set via `document.cookie` string concatenation. While SameSite=Strict mitigates CSRF, this pattern is vulnerable to DOM-based XSS. If any XSS exists in the app, cookies can be manipulated.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-expo-stream.ts\",\n      \"line\": 35,\n      \"description\": \"Type Safety: `kvps` object is assumed to have safe structure but comes from untrusted Agent Zero logs. No deep validation ensures headline/step are safe strings—could contain console injection or other attacks if backend is compromised.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 22,\n      \"description\": \"Hardcoded Dev URL: `A0_SOCKET_URL` defaults to empty string, relying on NEXT_PUBLIC env var. In dev, this could silently connect to wrong endpoint if env var is unset. Add explicit fallback validation.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 89,\n      \"description\": \"Credential Leakage Risk: All fetch requests include `credentials: 'include'` without strict origin checks. If frontend is served over HTTP in dev or proxied through compromised intermediary, cookies could be leaked.\"\n    }\n  ],\n  \"riskScore\": 68,\n  \"recommendations\": [\n    \"**Immediate (Critical):** Sanitize all content from Agent Zero logs before rendering. Use a library like `DOMPurify` or `xss` to sanitize `log.content` and `kvps.item` in chat/action-card hooks.\",\n    \"**Immediate:** Verify `react-markdown` configuration. Disable `rehypeRaw`, `rehypePlugins`, and unsafe HTML rendering. Render markdown as safe HTML only.\",\n    \"**High Priority:** URL-encode query parameters. Use `URLSearchParams` or `encodeURIComponent()`: `new URLSearchParams({ location_id: locationId }).toString()`\",\n    \"**High Priority:** Add Content Security Policy (CSP) headers in `next.config.ts` to restrict inline scripts, style-src, and script-src origins. Prevents XSS blast radius.\",\n    \"**Medium:** Validate all incoming snapshot/log data against a strict schema (use `zod` or similar). Reject unexpected fields or types before processing.\",\n    \"**Medium:** Move CSRF token to HttpOnly cookie (if backend supports it). Avoid JavaScript access to security tokens where possible.\",\n    \"**Medium:** Add input validation/sanitization at component level. Sanitize chat messages before adding to state, not just at render time.\",\n    \"**Low:** Add explicit fallback for `A0_SOCKET_URL`: `const url = process.env.NEXT_PUBLIC_A0_URL ?? 'http://localhost:5000'; validate(url);`\",\n    \"**Low:** Audit Agent Zero backend (`usr/`, `carabiner/`) for injection vulnerabilities. Frontend sanitization is defense-in-depth; backend must never emit executable content.\",\n    \"**Low:** Review CORS and same-origin policies on Agent Zero. Ensure `credentials: 'include'` is only sent to trusted same-origin endpoints.\"\n  ]\n}\n```\n\n---\n\n### Summary\n\n**Risk Level: Medium-High (68/100)**\n\nThe primary vulnerabilities stem from **untrusted data flowing from Agent Zero directly into React components without sanitization**. While the CSRF/auth mechanisms are sound, the chat, action cards, and expo stream hooks render log content that could contain malicious payloads if the Agent Zero backend is compromised or misconfigured.\n\n**Most Critical Issues:**\n1. Chat messages rendered without sanitization\n2. `react-markdown` could be unsafe if misconfigured\n3. URL parameters not encoded\n\n**Defense Layers to Add:**\n- DOMPurify/xss library for all Agent Zero log output\n- CSP headers to limit injection blast radius\n- Input validation schema for all snapshot data\n- Markdown safety audit\n\nThe codebase has **good CSRF/auth hygiene**, but **assumes Agent Zero output is safe**—which is a trust boundary that needs validation.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/hooks/use-chat.ts",
+        "line": 67,
+        "description": "XSS: User-controlled content from Agent Zero logs (log.content) is directly rendered in ChatMessage without sanitization. An agent returning malicious HTML/JavaScript could execute arbitrary code in the user's browser."
+      },
+      {
+        "severity": "high",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 30,
+        "description": "XSS: The `kvps.item` field (arbitrary object from logs) is stored and potentially rendered without validation. If Agent Zero returns JavaScript objects with exploitable string representations, they could be rendered unsafely."
+      },
+      {
+        "severity": "high",
+        "file": "package.json",
+        "line": 20,
+        "description": "Dependency Risk: `react-markdown` v10.1.0 is installed. If used with `rehypeRaw` or similar unsafe HTML rendering, it could create XSS vectors. Verify markdown rendering is configured safely in components using this library."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 19,
+        "description": "Missing URL Encoding: `locationId` parameter is directly interpolated into query string without URL encoding: `${endpoint}?location_id=${locationId}`. Unencoded special characters could break parsing or enable injection attacks."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 18,
+        "description": "DOM Mutation Risk: CSRF token is set via `document.cookie` string concatenation. While SameSite=Strict mitigates CSRF, this pattern is vulnerable to DOM-based XSS. If any XSS exists in the app, cookies can be manipulated."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-expo-stream.ts",
+        "line": 35,
+        "description": "Type Safety: `kvps` object is assumed to have safe structure but comes from untrusted Agent Zero logs. No deep validation ensures headline/step are safe strings—could contain console injection or other attacks if backend is compromised."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 22,
+        "description": "Hardcoded Dev URL: `A0_SOCKET_URL` defaults to empty string, relying on NEXT_PUBLIC env var. In dev, this could silently connect to wrong endpoint if env var is unset. Add explicit fallback validation."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 89,
+        "description": "Credential Leakage Risk: All fetch requests include `credentials: 'include'` without strict origin checks. If frontend is served over HTTP in dev or proxied through compromised intermediary, cookies could be leaked."
+      }
+    ],
+    "riskScore": 68,
+    "recommendations": [
+      "**Immediate (Critical):** Sanitize all content from Agent Zero logs before rendering. Use a library like `DOMPurify` or `xss` to sanitize `log.content` and `kvps.item` in chat/action-card hooks.",
+      "**Immediate:** Verify `react-markdown` configuration. Disable `rehypeRaw`, `rehypePlugins`, and unsafe HTML rendering. Render markdown as safe HTML only.",
+      "**High Priority:** URL-encode query parameters. Use `URLSearchParams` or `encodeURIComponent()`: `new URLSearchParams({ location_id: locationId }).toString()`",
+      "**High Priority:** Add Content Security Policy (CSP) headers in `next.config.ts` to restrict inline scripts, style-src, and script-src origins. Prevents XSS blast radius.",
+      "**Medium:** Validate all incoming snapshot/log data against a strict schema (use `zod` or similar). Reject unexpected fields or types before processing.",
+      "**Medium:** Move CSRF token to HttpOnly cookie (if backend supports it). Avoid JavaScript access to security tokens where possible.",
+      "**Medium:** Add input validation/sanitization at component level. Sanitize chat messages before adding to state, not just at render time.",
+      "**Low:** Add explicit fallback for `A0_SOCKET_URL`: `const url = process.env.NEXT_PUBLIC_A0_URL ?? 'http://localhost:5000'; validate(url);`",
+      "**Low:** Audit Agent Zero backend (`usr/`, `carabiner/`) for injection vulnerabilities. Frontend sanitization is defense-in-depth; backend must never emit executable content.",
+      "**Low:** Review CORS and same-origin policies on Agent Zero. Ensure `credentials: 'include'` is only sent to trusted same-origin endpoints."
+    ]
+  },
+  "durationMs": 34877,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T08:22:10.186Z",
+  "executionId": "audit_1773994895309_if4id6"
+}

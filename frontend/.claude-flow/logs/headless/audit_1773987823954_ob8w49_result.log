@@ -1,0 +1,85 @@
+[2026-03-20T06:24:23.616Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 19,\n      \"description\": \"URL parameter injection: locationId is not URL-encoded. If locationId contains special characters (e.g., '&param=value'), it could inject additional query parameters. Should use URLSearchParams or encodeURIComponent().\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 23,\n      \"description\": \"Socket.IO connects without CSRF token on auth failure. The auth callback catches errors and calls cb({}) with empty auth object, allowing connection to proceed without proper CSRF token validation. This bypasses authentication on network failures.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 14,\n      \"description\": \"CSRF token stored in JS-set cookie: document.cookie assignment creates an XSS vector. While SameSite=Strict helps, an XSS attacker can still steal the token from memory or the DOM. Consider HTTPOnly flag (requires server-side setting).\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"next.config.ts\",\n      \"line\": 3,\n      \"description\": \"No validation of A0_URL environment variable. If compromised or misconfigured, could point to attacker-controlled server. Should validate URL format and allow-list domains.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 34,\n      \"description\": \"Untrusted data from A0Snapshot: kvps.item is cast as Record<string, unknown> without validation. If rendered in UI without sanitization, could lead to XSS. Item data should be validated against schema.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 75,\n      \"description\": \"No validation on incoming snapshot.logs data before processing. Log content and headers are displayed without sanitization checks. Risk of XSS if agent responses contain malicious scripts.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 16,\n      \"description\": \"Console error logging leaks envelope structure: Object.keys(envelope) exposes internal data structure in browser console. Can aid reconnaissance.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 8,\n      \"description\": \"No CSRF token expiration mechanism. Token is cached indefinitely. Should refresh periodically or implement token rotation for long-lived sessions.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"package.json\",\n      \"line\": 16,\n      \"description\": \"Caret dependency pinning (^1.3.0, ^4.8.3) allows automatic minor/patch updates. While beneficial for patches, could introduce breaking changes. Consider using ~(tilde) for patch-only or exact versions for sensitive dependencies.\"\n    }\n  ],\n  \"riskScore\": 58,\n  \"recommendations\": [\n    \"**CRITICAL (Do First):** Fix URL parameter injection in use-workspace.ts line 19. Replace string concatenation with URLSearchParams: `new URLSearchParams({location_id: locationId}).toString()`\",\n    \"**CRITICAL:** Modify Socket.IO auth callback to reject connection if CSRF fetch fails. Don't call cb({}) on error — instead reject or require retry.\",\n    \"**HIGH:** Implement Content Security Policy headers in next.config.ts or via headers middleware. Restrict script-src, style-src to prevent XSS.\",\n    \"**HIGH:** Add input validation for A0_URL. Validate it's a valid URL and matches allowed domains (use URL constructor and whitelist check).\",\n    \"**HIGH:** Add schema validation for incoming A0Snapshot data before processing. Use zod, yup, or io-ts to validate snapshot.logs, kvps, and item objects.\",\n    \"**MEDIUM:** Sanitize all rendered content from logs and snapshots. If rendering user-controlled HTML (e.g., via react-markdown), use rehype-sanitize plugin.\",\n    \"**MEDIUM:** Move CSRF token handling to HTTPOnly cookie (server-side only). Remove document.cookie assignment. Rely on automatic cookie transmission.\",\n    \"**MEDIUM:** Implement CSRF token refresh. Re-fetch token on socket reconnect and before expiration (add timestamp to token data).\",\n    \"**LOW:** Remove or minimize console logging of sensitive data. Replace console.warn/error with structured logging to server-side only.\",\n    \"**LOW:** Add SECURITY.md documenting: CORS policy, CSRF protection, XSS mitigation, CSP headers, and authentication flow.\",\n    \"**LOW:** Review package.json for known vulnerabilities. Run `npm audit` and address high/critical findings. Use npm ci with lock file for reproducible builds.\",\n    \"**PROCESS:** Add pre-commit hook to prevent committing .env files or secrets. Use .gitignore and git secrets scanning.\"\n  ]\n}\n```\n\n---\n\n## Key Findings Summary\n\n**Risk Score: 58/100** (Moderate-to-High Risk)\n\n### Critical Issues\n1. **URL injection in workspace hook** — `locationId` parameter is unencoded in query string construction\n2. **Socket.IO auth bypass** — Connection proceeds without CSRF token if fetch fails\n\n### Missing Security Controls\n- No Content Security Policy headers\n- No input validation on snapshot data\n- CSRF token stored in JavaScript-accessible cookie\n- Long-lived CSRF tokens with no refresh mechanism\n\n### Recommendations for Immediate Action\n1. URL-encode `locationId` using `encodeURIComponent()`\n2. Reject socket connections when CSRF auth fails\n3. Add CSP headers and input validation middleware\n4. Validate incoming snapshot data against schema before rendering\n\nThese are frontend-only issues. Backend validation on Agent Zero side (not analyzed here) is critical — never trust client-side validation alone.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 19,
+        "description": "URL parameter injection: locationId is not URL-encoded. If locationId contains special characters (e.g., '&param=value'), it could inject additional query parameters. Should use URLSearchParams or encodeURIComponent()."
+      },
+      {
+        "severity": "high",
+        "file": "src/lib/socket-client.ts",
+        "line": 23,
+        "description": "Socket.IO connects without CSRF token on auth failure. The auth callback catches errors and calls cb({}) with empty auth object, allowing connection to proceed without proper CSRF token validation. This bypasses authentication on network failures."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 14,
+        "description": "CSRF token stored in JS-set cookie: document.cookie assignment creates an XSS vector. While SameSite=Strict helps, an XSS attacker can still steal the token from memory or the DOM. Consider HTTPOnly flag (requires server-side setting)."
+      },
+      {
+        "severity": "medium",
+        "file": "next.config.ts",
+        "line": 3,
+        "description": "No validation of A0_URL environment variable. If compromised or misconfigured, could point to attacker-controlled server. Should validate URL format and allow-list domains."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 34,
+        "description": "Untrusted data from A0Snapshot: kvps.item is cast as Record<string, unknown> without validation. If rendered in UI without sanitization, could lead to XSS. Item data should be validated against schema."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-chat.ts",
+        "line": 75,
+        "description": "No validation on incoming snapshot.logs data before processing. Log content and headers are displayed without sanitization checks. Risk of XSS if agent responses contain malicious scripts."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 16,
+        "description": "Console error logging leaks envelope structure: Object.keys(envelope) exposes internal data structure in browser console. Can aid reconnaissance."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/csrf.ts",
+        "line": 8,
+        "description": "No CSRF token expiration mechanism. Token is cached indefinitely. Should refresh periodically or implement token rotation for long-lived sessions."
+      },
+      {
+        "severity": "low",
+        "file": "package.json",
+        "line": 16,
+        "description": "Caret dependency pinning (^1.3.0, ^4.8.3) allows automatic minor/patch updates. While beneficial for patches, could introduce breaking changes. Consider using ~(tilde) for patch-only or exact versions for sensitive dependencies."
+      }
+    ],
+    "riskScore": 58,
+    "recommendations": [
+      "**CRITICAL (Do First):** Fix URL parameter injection in use-workspace.ts line 19. Replace string concatenation with URLSearchParams: `new URLSearchParams({location_id: locationId}).toString()`",
+      "**CRITICAL:** Modify Socket.IO auth callback to reject connection if CSRF fetch fails. Don't call cb({}) on error — instead reject or require retry.",
+      "**HIGH:** Implement Content Security Policy headers in next.config.ts or via headers middleware. Restrict script-src, style-src to prevent XSS.",
+      "**HIGH:** Add input validation for A0_URL. Validate it's a valid URL and matches allowed domains (use URL constructor and whitelist check).",
+      "**HIGH:** Add schema validation for incoming A0Snapshot data before processing. Use zod, yup, or io-ts to validate snapshot.logs, kvps, and item objects.",
+      "**MEDIUM:** Sanitize all rendered content from logs and snapshots. If rendering user-controlled HTML (e.g., via react-markdown), use rehype-sanitize plugin.",
+      "**MEDIUM:** Move CSRF token handling to HTTPOnly cookie (server-side only). Remove document.cookie assignment. Rely on automatic cookie transmission.",
+      "**MEDIUM:** Implement CSRF token refresh. Re-fetch token on socket reconnect and before expiration (add timestamp to token data).",
+      "**LOW:** Remove or minimize console logging of sensitive data. Replace console.warn/error with structured logging to server-side only.",
+      "**LOW:** Add SECURITY.md documenting: CORS policy, CSRF protection, XSS mitigation, CSP headers, and authentication flow.",
+      "**LOW:** Review package.json for known vulnerabilities. Run `npm audit` and address high/critical findings. Use npm ci with lock file for reproducible builds.",
+      "**PROCESS:** Add pre-commit hook to prevent committing .env files or secrets. Use .gitignore and git secrets scanning."
+    ]
+  },
+  "durationMs": 39662,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T06:24:23.616Z",
+  "executionId": "audit_1773987823954_ob8w49"
+}

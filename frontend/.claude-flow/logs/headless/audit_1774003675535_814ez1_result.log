@@ -1,0 +1,91 @@
+[2026-03-20T10:48:28.866Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 24,\n      \"description\": \"URL parameter injection: locationId is not URL-encoded before insertion into query string. This could allow query parameter injection or header injection attacks if locationId is user-controlled and contains special characters.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 25,\n      \"description\": \"Potential XSS via unvalidated Agent Zero log data. kvps values (action, module, item_id) are converted to strings and stored without sanitization. If Agent Zero returns malicious payloads and these are rendered without escaping, XSS is possible.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 50,\n      \"description\": \"Potential XSS via log heading processing. Log headings are cleaned with regex but the cleaning logic may not prevent all XSS vectors if headings contain crafted payloads. Depends on how this data is rendered.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"package.json\",\n      \"line\": 17,\n      \"description\": \"Dependency risk: react-markdown is included without sanitization configuration visible. If used to render untrusted content from Agent Zero logs, this could enable XSS attacks if HTML rendering is enabled.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 13,\n      \"description\": \"CSRF token stored in module-level variable without clear lifecycle management. While SameSite=Strict cookie is set, the token value in memory could be accessed by compromised scripts on the same page. Consider using secure storage mechanisms.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 24,\n      \"description\": \"No input validation on locationId parameter. While passed directly to a trusted endpoint, validation would add defense-in-depth.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"next.config.ts\",\n      \"line\": 3,\n      \"description\": \"Backend URL exposed in client-side config via next.config.ts. While not a secret, this is minor information disclosure. Consider if this should be in environment variables only.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 18,\n      \"description\": \"Socket.IO configured with withCredentials: true but CORS configuration not visible. Ensure backend properly validates origin to prevent CSRF over WebSocket.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 13,\n      \"description\": \"No visible Content Security Policy in next.config.ts. CSP would help mitigate XSS from various vectors. Consider adding CSP headers via Next.js middleware.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"package.json\",\n      \"line\": 1,\n      \"description\": \"Dependency audit needed. Run 'npm audit' to check for known vulnerabilities in dependencies. Some packages may have unpatched security issues.\"\n    }\n  ],\n  \"riskScore\": 42,\n  \"recommendations\": [\n    \"URL-encode the locationId parameter in useWorkspace before inserting into query string: use `new URLSearchParams({location_id: locationId}).toString()` instead of template string concatenation.\",\n    \"Implement output escaping at render time for all Agent Zero log data (kvps, headings). Use Next.js built-in escaping or a library like DOMPurify if rendering user-controlled content.\",\n    \"Configure react-markdown with sanitization enabled: set `remarkRehypeOptions={{ sanitize: true }}` or use a dedicated HTML sanitizer like sanitize-html.\",\n    \"Add Content Security Policy headers via next.config.ts middleware to restrict script execution, style-nonce requirements, and external resource loading.\",\n    \"Store CSRF token in httpOnly cookie only (already doing) and consider removing from memory unless absolutely necessary. Verify token validation happens server-side.\",\n    \"Add input validation for locationId: validate format/length before use to prevent injection attacks.\",\n    \"Verify Socket.IO backend properly validates Origin header and restricts CORS to trusted domains. Check Agent Zero's socket configuration.\",\n    \"Move backend URL (A0_URL) from next.config.ts to environment variables only, not exposed in client code.\",\n    \"Run 'npm audit' and update dependencies with security vulnerabilities to latest patched versions.\",\n    \"Document assumptions about Agent Zero data sanitization. If Agent Zero is trusted, document this boundary. If untrusted, add sanitization layer.\",\n    \"Consider implementing Subresource Integrity (SRI) for any external CDN-loaded resources.\",\n    \"Review what data from snapshot logs is actually rendered to users and ensure proper escaping at component level (not shown in code provided).\"\n  ]\n}\n```\n\n## Summary\n\n**Risk Score: 42/100 (Moderate)**\n\nThe codebase has **reasonable foundational security** but several **medium-risk vulnerabilities** related to **untrusted data handling** and **lack of explicit output escaping**. The most critical issues are:\n\n1. **Query parameter injection** in workspace hook (unencoded locationId)\n2. **Potential XSS from Agent Zero logs** if rendered without sanitization\n3. **Missing CSP headers** to mitigate script injection\n4. **react-markdown dependency** without visible sanitization config\n\n**Strengths:**\n- CSRF protection implemented with SameSite=Strict cookies\n- Socket.IO using polling-first transport (Safari SameSite workaround)\n- Credentials properly scoped with `credentials: \"include\"`\n- No hardcoded API keys or secrets\n\n**Next steps:** Add URL encoding, implement output escaping, add CSP headers, and audit dependencies.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 24,
+        "description": "URL parameter injection: locationId is not URL-encoded before insertion into query string. This could allow query parameter injection or header injection attacks if locationId is user-controlled and contains special characters."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 25,
+        "description": "Potential XSS via unvalidated Agent Zero log data. kvps values (action, module, item_id) are converted to strings and stored without sanitization. If Agent Zero returns malicious payloads and these are rendered without escaping, XSS is possible."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-chat.ts",
+        "line": 50,
+        "description": "Potential XSS via log heading processing. Log headings are cleaned with regex but the cleaning logic may not prevent all XSS vectors if headings contain crafted payloads. Depends on how this data is rendered."
+      },
+      {
+        "severity": "medium",
+        "file": "package.json",
+        "line": 17,
+        "description": "Dependency risk: react-markdown is included without sanitization configuration visible. If used to render untrusted content from Agent Zero logs, this could enable XSS attacks if HTML rendering is enabled."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 13,
+        "description": "CSRF token stored in module-level variable without clear lifecycle management. While SameSite=Strict cookie is set, the token value in memory could be accessed by compromised scripts on the same page. Consider using secure storage mechanisms."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 24,
+        "description": "No input validation on locationId parameter. While passed directly to a trusted endpoint, validation would add defense-in-depth."
+      },
+      {
+        "severity": "low",
+        "file": "next.config.ts",
+        "line": 3,
+        "description": "Backend URL exposed in client-side config via next.config.ts. While not a secret, this is minor information disclosure. Consider if this should be in environment variables only."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 18,
+        "description": "Socket.IO configured with withCredentials: true but CORS configuration not visible. Ensure backend properly validates origin to prevent CSRF over WebSocket."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 13,
+        "description": "No visible Content Security Policy in next.config.ts. CSP would help mitigate XSS from various vectors. Consider adding CSP headers via Next.js middleware."
+      },
+      {
+        "severity": "low",
+        "file": "package.json",
+        "line": 1,
+        "description": "Dependency audit needed. Run 'npm audit' to check for known vulnerabilities in dependencies. Some packages may have unpatched security issues."
+      }
+    ],
+    "riskScore": 42,
+    "recommendations": [
+      "URL-encode the locationId parameter in useWorkspace before inserting into query string: use `new URLSearchParams({location_id: locationId}).toString()` instead of template string concatenation.",
+      "Implement output escaping at render time for all Agent Zero log data (kvps, headings). Use Next.js built-in escaping or a library like DOMPurify if rendering user-controlled content.",
+      "Configure react-markdown with sanitization enabled: set `remarkRehypeOptions={{ sanitize: true }}` or use a dedicated HTML sanitizer like sanitize-html.",
+      "Add Content Security Policy headers via next.config.ts middleware to restrict script execution, style-nonce requirements, and external resource loading.",
+      "Store CSRF token in httpOnly cookie only (already doing) and consider removing from memory unless absolutely necessary. Verify token validation happens server-side.",
+      "Add input validation for locationId: validate format/length before use to prevent injection attacks.",
+      "Verify Socket.IO backend properly validates Origin header and restricts CORS to trusted domains. Check Agent Zero's socket configuration.",
+      "Move backend URL (A0_URL) from next.config.ts to environment variables only, not exposed in client code.",
+      "Run 'npm audit' and update dependencies with security vulnerabilities to latest patched versions.",
+      "Document assumptions about Agent Zero data sanitization. If Agent Zero is trusted, document this boundary. If untrusted, add sanitization layer.",
+      "Consider implementing Subresource Integrity (SRI) for any external CDN-loaded resources.",
+      "Review what data from snapshot logs is actually rendered to users and ensure proper escaping at component level (not shown in code provided)."
+    ]
+  },
+  "durationMs": 33331,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T10:48:28.866Z",
+  "executionId": "audit_1774003675535_814ez1"
+}

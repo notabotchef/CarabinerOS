@@ -1,0 +1,16 @@
+[2026-03-20T09:26:08.202Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "I've completed a comprehensive security audit. **Risk score: 62/100** (medium-high risk, primarily due to cookie and URL encoding issues).\n\n**Most critical issues:**\n- CSRF token cookie missing `Secure` & `HttpOnly` flags → add immediately\n- URL parameters not encoded → XSS/injection risk\n- Socket auth bypasses on error → strengthen error handling\n\nWould you like me to create pull request fixes for these vulnerabilities, starting with the critical cookie security issue?\n",
+  "parsedOutput": {
+    "parseError": true,
+    "rawOutput": "I've completed a comprehensive security audit. **Risk score: 62/100** (medium-high risk, primarily due to cookie and URL encoding issues).\n\n**Most critical issues:**\n- CSRF token cookie missing `Secure` & `HttpOnly` flags → add immediately\n- URL parameters not encoded → XSS/injection risk\n- Socket auth bypasses on error → strengthen error handling\n\nWould you like me to create pull request fixes for these vulnerabilities, starting with the critical cookie security issue?\n"
+  },
+  "durationMs": 61081,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T09:26:08.202Z",
+  "executionId": "audit_1773998707121_8cwsp9"
+}

@@ -1,0 +1,77 @@
+[2026-03-20T05:19:39.137Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 24,\n      \"description\": \"URL parameter injection vulnerability: locationId is directly interpolated into query string without encoding. An attacker can inject malicious parameters or open redirects via locationId prop. Example: `?location_id=${decodeURIComponent('x'); evil()}`\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"next.config.ts\",\n      \"line\": 3,\n      \"description\": \"Environment variable A0_URL controls backend URL rewrites without validation. If compromised or misconfigured, could redirect all internal API traffic to attacker-controlled server. Production must enforce allowlist and validate URL format.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 22,\n      \"description\": \"Missing input validation on endpoint parameter. The endpoint prop is used directly in fetch() without validation. If endpoint comes from user input or untrusted source, could cause open redirect or bypass CORS checks via rewrite.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/expo-messages.ts\",\n      \"line\": 57,\n      \"description\": \"Potential XSS: log.heading is used directly without sanitization. If Agent Zero log entries contain malicious content, rendering this in components (e.g., in Expo status UI) could execute arbitrary JavaScript. Verify sanitization at render site.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 32,\n      \"description\": \"Trust boundary violation: kvps.item is cast as Record<string, unknown> and stored in ActionCard.item without validation. If Agent Zero logs can be poisoned, this data flows into components untrusted. Sanitize before rendering.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 17,\n      \"description\": \"CSRF token stored in JavaScript memory (csrfToken variable). While correct approach, the validation must be enforced strictly on Agent Zero backend. If backend validation is weak or missing, CSRF protection fails.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket.ts\",\n      \"line\": 33,\n      \"description\": \"Console logging of snapshot data: `console.log` includes log count and response details. In production, sensitive information could leak to user-facing console. Use debug-only logging or remove.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"package.json\",\n      \"line\": 20,\n      \"description\": \"react-markdown without explicit sanitization config. Verify downstream components pass `sanitize: true` or equivalent when rendering log content. Default behavior may allow certain HTML injection.\"\n    }\n  ],\n  \"riskScore\": 58,\n  \"recommendations\": [\n    \"**Immediate (High Priority):** Add URL encoding utility for query parameters. Use URLSearchParams or encodeURIComponent() in use-workspace.ts line 24: `new URL(url); url.searchParams.set('location_id', locationId)`. Test with payloads containing `=&;` characters.\",\n    \"**Immediate:** Validate A0_URL in next.config.ts against allowlist of permitted origins (localhost for dev, specific domain for prod). Reject any URL with auth credentials, file:// protocol, or non-HTTPS in production.\",\n    \"**Urgent:** Audit Agent Zero log trust boundary. All kvps, log.heading, log.content must be treated as untrusted. Implement centralized sanitization (DOMPurify or similar) before rendering any log data as HTML. Use React.Fragment or text nodes, never dangerouslySetInnerHTML.\",\n    \"**Urgent:** Validate endpoint prop origin in use-workspace.ts. Restrict to known API paths (reject //, http://, etc.). Use constant exports from workspace-config.ts instead of string props.\",\n    \"**High:** Verify Agent Zero backend enforces CSRF token validation. The frontend correctly sends X-CSRF-Token header and sets cookie, but if backend is permissive, protection is ineffective. Add integration test.\",\n    \"**Medium:** Remove or gate console.log statements in use-socket.ts. Use conditional logging: `if (process.env.NODE_ENV === 'development') { console.log(...) }`.\",\n    \"**Medium:** Explicitly configure react-markdown with `allowDangerousHtml: false` and `skipHtml: true` if rendering untrusted log content. Test with HTML payloads like `<img src=x onerror=alert(1)>`.\",\n    \"**Medium:** Implement Content Security Policy (CSP) headers in next.config.ts to block inline scripts and restrict script sources. Example: `script-src 'self'; style-src 'self' 'nonce-...'`.\",\n    \"**Low:** Add rate limiting on /csrf_token and /message_async endpoints (Agent Zero side) to prevent brute force or DoS.\",\n    \"**Low:** Consider CSRF token rotation on each request instead of reusing for session lifetime. Mitigates token theft from local storage.\"\n  ]\n}\n```\n\n## Summary\n\n**Risk Score: 58/100** — The codebase has **3 high-severity vulnerabilities** related to URL injection, external URL control, and trust boundaries with Agent Zero logs. The CSRF mechanism itself is implemented correctly, but depends on backend validation that isn't visible here.\n\n### Critical Actions:\n1. **Fix URL encoding** in `use-workspace.ts` (query parameter injection)\n2. **Lock down A0_URL** validation in production (no open rewrites to arbitrary backends)\n3. **Sanitize all Agent Zero log data** before rendering (kvps, heading, content)\n4. **Validate endpoint parameter** in use-workspace.ts (restrict to known paths)\n\nThe good news: CSRF tokens, credentials handling, and Socket.IO auth flow are implemented correctly. The bad news: trust boundaries with untrusted log data from Agent Zero are weak, and URL handling has injection risks.\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 24,
+        "description": "URL parameter injection vulnerability: locationId is directly interpolated into query string without encoding. An attacker can inject malicious parameters or open redirects via locationId prop. Example: `?location_id=${decodeURIComponent('x'); evil()}`"
+      },
+      {
+        "severity": "high",
+        "file": "next.config.ts",
+        "line": 3,
+        "description": "Environment variable A0_URL controls backend URL rewrites without validation. If compromised or misconfigured, could redirect all internal API traffic to attacker-controlled server. Production must enforce allowlist and validate URL format."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 22,
+        "description": "Missing input validation on endpoint parameter. The endpoint prop is used directly in fetch() without validation. If endpoint comes from user input or untrusted source, could cause open redirect or bypass CORS checks via rewrite."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/expo-messages.ts",
+        "line": 57,
+        "description": "Potential XSS: log.heading is used directly without sanitization. If Agent Zero log entries contain malicious content, rendering this in components (e.g., in Expo status UI) could execute arbitrary JavaScript. Verify sanitization at render site."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 32,
+        "description": "Trust boundary violation: kvps.item is cast as Record<string, unknown> and stored in ActionCard.item without validation. If Agent Zero logs can be poisoned, this data flows into components untrusted. Sanitize before rendering."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 17,
+        "description": "CSRF token stored in JavaScript memory (csrfToken variable). While correct approach, the validation must be enforced strictly on Agent Zero backend. If backend validation is weak or missing, CSRF protection fails."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket.ts",
+        "line": 33,
+        "description": "Console logging of snapshot data: `console.log` includes log count and response details. In production, sensitive information could leak to user-facing console. Use debug-only logging or remove."
+      },
+      {
+        "severity": "low",
+        "file": "package.json",
+        "line": 20,
+        "description": "react-markdown without explicit sanitization config. Verify downstream components pass `sanitize: true` or equivalent when rendering log content. Default behavior may allow certain HTML injection."
+      }
+    ],
+    "riskScore": 58,
+    "recommendations": [
+      "**Immediate (High Priority):** Add URL encoding utility for query parameters. Use URLSearchParams or encodeURIComponent() in use-workspace.ts line 24: `new URL(url); url.searchParams.set('location_id', locationId)`. Test with payloads containing `=&;` characters.",
+      "**Immediate:** Validate A0_URL in next.config.ts against allowlist of permitted origins (localhost for dev, specific domain for prod). Reject any URL with auth credentials, file:// protocol, or non-HTTPS in production.",
+      "**Urgent:** Audit Agent Zero log trust boundary. All kvps, log.heading, log.content must be treated as untrusted. Implement centralized sanitization (DOMPurify or similar) before rendering any log data as HTML. Use React.Fragment or text nodes, never dangerouslySetInnerHTML.",
+      "**Urgent:** Validate endpoint prop origin in use-workspace.ts. Restrict to known API paths (reject //, http://, etc.). Use constant exports from workspace-config.ts instead of string props.",
+      "**High:** Verify Agent Zero backend enforces CSRF token validation. The frontend correctly sends X-CSRF-Token header and sets cookie, but if backend is permissive, protection is ineffective. Add integration test.",
+      "**Medium:** Remove or gate console.log statements in use-socket.ts. Use conditional logging: `if (process.env.NODE_ENV === 'development') { console.log(...) }`.",
+      "**Medium:** Explicitly configure react-markdown with `allowDangerousHtml: false` and `skipHtml: true` if rendering untrusted log content. Test with HTML payloads like `<img src=x onerror=alert(1)>`.",
+      "**Medium:** Implement Content Security Policy (CSP) headers in next.config.ts to block inline scripts and restrict script sources. Example: `script-src 'self'; style-src 'self' 'nonce-...'`.",
+      "**Low:** Add rate limiting on /csrf_token and /message_async endpoints (Agent Zero side) to prevent brute force or DoS.",
+      "**Low:** Consider CSRF token rotation on each request instead of reusing for session lifetime. Mitigates token theft from local storage."
+    ]
+  },
+  "durationMs": 31499,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T05:19:39.137Z",
+  "executionId": "audit_1773983947638_ynedqb"
+}

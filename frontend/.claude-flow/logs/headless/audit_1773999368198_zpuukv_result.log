@@ -1,0 +1,60 @@
+[2026-03-20T09:36:40.051Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 24,\n      \"description\": \"URL parameter injection: locationId is directly interpolated into URL query string without URL encoding. An attacker could inject additional query parameters or manipulate the request. Use URLSearchParams or encodeURIComponent().\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"next.config.ts\",\n      \"line\": 3,\n      \"description\": \"Fallback to localhost in production: A0_URL defaults to http://localhost:5000 if environment variable is unset. In production, this could route requests to an unintended backend or bypass security controls if misconfigured.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 18,\n      \"description\": \"CSRF token stored in memory and cookie. If any XSS vulnerability exists in the application, the token can be stolen and used to forge requests. Relies on SameSite=Strict for mitigation, but defense-in-depth recommends additional XSS prevention.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"package.json\",\n      \"line\": 17,\n      \"description\": \"react-markdown ^10.1.0 included as dependency. If user-provided or untrusted content is rendered through this library without sanitization, it could lead to XSS attacks. No markdown usage visible in provided code, but this is a known XSS vector in markdown renderers.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 0,\n      \"description\": \"Insufficient input validation: Log data from snapshot is processed with minimal validation. While string conversions are used safely, the log structure itself (kvps, heading, content) is trusted without schema validation.\"\n    }\n  ],\n  \"riskScore\": 38,\n  \"recommendations\": [\n    \"URGENT: Fix URL parameter injection in use-workspace.ts - use URLSearchParams or encodeURIComponent() for locationId: `new URLSearchParams({location_id: locationId}).toString()`\",\n    \"Ensure A0_URL environment variable is always set in production. Add a build-time check or validation to prevent fallback to localhost\",\n    \"Implement Content Security Policy (CSP) headers in next.config.ts to prevent XSS attacks. Set directives for script-src, default-src, and style-src\",\n    \"If react-markdown is used anywhere, sanitize markdown input using a library like react-markdown with rehype-sanitize: `<ReactMarkdown rehypePlugins={[rehypeSanitize]}>`\",\n    \"Add strict input validation for log entries in use-chat.ts and use-expo-stream.ts. Define and enforce a schema for A0LogEntry and validate incoming data\",\n    \"Add security headers middleware (X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security) in next.config.ts\",\n    \"Review all socket.io-client auth handling - ensure the backend properly validates CSRF tokens on every message\",\n    \"Audit all environment variables: ensure NEXT_PUBLIC_A0_URL, A0_URL, and others are production-safe and never contain secrets\",\n    \"Run npm audit and update dependencies: check socket.io-client 4.8.3, react-markdown 10.1.0, and other packages for known vulnerabilities\",\n    \"Add OWASP security headers: implement a headers middleware to set X-Content-Type-Options: nosniff, X-XSS-Protection: 1; mode=block\",\n    \"Test for XSS in all user-facing fields - particularly in heading, content, and summary fields from A0LogEntry\"\n  ]\n}\n```\n\n**Key Findings:**\n\n**Critical Gaps:**\n- **URL Parameter Injection** (line 24 in use-workspace.ts): `locationId` bypasses encoding, allowing query injection\n- **Unvalidated Environment Fallback** (next.config.ts): localhost fallback in production is a configuration mistake waiting to happen\n- **No CSP Headers**: The codebase lacks Content Security Policy, leaving it vulnerable to XSS\n\n**Strengths:**\n- ✅ No hardcoded secrets or API keys in the frontend\n- ✅ CSRF protection via token + SameSite=Strict cookies\n- ✅ Proper credential handling with Socket.IO\n- ✅ Input sanitization with `String()` conversions\n\n**Action Items (Priority Order):**\n1. Fix URL encoding in workspace hook immediately\n2. Add CSP headers via middleware\n3. Validate environment configuration at build/runtime\n4. Run security audit on dependencies\n5. Add schema validation for log entries from Agent Zero\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 24,
+        "description": "URL parameter injection: locationId is directly interpolated into URL query string without URL encoding. An attacker could inject additional query parameters or manipulate the request. Use URLSearchParams or encodeURIComponent()."
+      },
+      {
+        "severity": "medium",
+        "file": "next.config.ts",
+        "line": 3,
+        "description": "Fallback to localhost in production: A0_URL defaults to http://localhost:5000 if environment variable is unset. In production, this could route requests to an unintended backend or bypass security controls if misconfigured."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/csrf.ts",
+        "line": 18,
+        "description": "CSRF token stored in memory and cookie. If any XSS vulnerability exists in the application, the token can be stolen and used to forge requests. Relies on SameSite=Strict for mitigation, but defense-in-depth recommends additional XSS prevention."
+      },
+      {
+        "severity": "low",
+        "file": "package.json",
+        "line": 17,
+        "description": "react-markdown ^10.1.0 included as dependency. If user-provided or untrusted content is rendered through this library without sanitization, it could lead to XSS attacks. No markdown usage visible in provided code, but this is a known XSS vector in markdown renderers."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 0,
+        "description": "Insufficient input validation: Log data from snapshot is processed with minimal validation. While string conversions are used safely, the log structure itself (kvps, heading, content) is trusted without schema validation."
+      }
+    ],
+    "riskScore": 38,
+    "recommendations": [
+      "URGENT: Fix URL parameter injection in use-workspace.ts - use URLSearchParams or encodeURIComponent() for locationId: `new URLSearchParams({location_id: locationId}).toString()`",
+      "Ensure A0_URL environment variable is always set in production. Add a build-time check or validation to prevent fallback to localhost",
+      "Implement Content Security Policy (CSP) headers in next.config.ts to prevent XSS attacks. Set directives for script-src, default-src, and style-src",
+      "If react-markdown is used anywhere, sanitize markdown input using a library like react-markdown with rehype-sanitize: `<ReactMarkdown rehypePlugins={[rehypeSanitize]}>`",
+      "Add strict input validation for log entries in use-chat.ts and use-expo-stream.ts. Define and enforce a schema for A0LogEntry and validate incoming data",
+      "Add security headers middleware (X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security) in next.config.ts",
+      "Review all socket.io-client auth handling - ensure the backend properly validates CSRF tokens on every message",
+      "Audit all environment variables: ensure NEXT_PUBLIC_A0_URL, A0_URL, and others are production-safe and never contain secrets",
+      "Run npm audit and update dependencies: check socket.io-client 4.8.3, react-markdown 10.1.0, and other packages for known vulnerabilities",
+      "Add OWASP security headers: implement a headers middleware to set X-Content-Type-Options: nosniff, X-XSS-Protection: 1; mode=block",
+      "Test for XSS in all user-facing fields - particularly in heading, content, and summary fields from A0LogEntry"
+    ]
+  },
+  "durationMs": 31853,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T09:36:40.051Z",
+  "executionId": "audit_1773999368198_zpuukv"
+}

@@ -1,0 +1,78 @@
+[2026-03-20T08:32:48.858Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "# Security Audit Report — CarabinerOS Frontend\n\n```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 86,\n      \"description\": \"XSS Risk: Chat messages render `log.content` directly without sanitization. If Agent Zero sends malicious payloads (including HTML/JS), they execute in the browser. All log content displayed to users (lines 86, 104-108) should be escaped or rendered as text-only.\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 23,\n      \"description\": \"XSS Risk: Action card summaries are created from `log.content.slice(0, 120)` without sanitization. The `summary` field is rendered in the UI without escaping, creating a potential XSS vector.\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/hooks/use-expo-stream.ts\",\n      \"line\": 80,\n      \"description\": \"XSS Risk: Log headline/step text from `extractFromLogs()` is displayed directly (lines 75-80) without sanitization. `kvps.headline` and `kvps.step` come from untrusted logs.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 20,\n      \"description\": \"URL Encoding: locationId parameter is interpolated directly into query string without encoding. Use `new URLSearchParams()` or encodeURIComponent() to prevent injection: `const params = new URLSearchParams({ location_id: locationId })`\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 18,\n      \"description\": \"Cookie Security: CSRF token is set via JavaScript (`document.cookie`). If XSS is exploited, attacker can read/modify this cookie. Use HttpOnly flag (server-side only) whenever possible. Current approach requires CSP and XSS prevention to be effective.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 6,\n      \"description\": \"Token Caching/Expiry: CSRF token is cached indefinitely in memory. If token expires on server, client won't fetch a new one until reconnect or refresh. Implement token refresh logic or shorter cache TTL.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"next.config.ts\",\n      \"line\": 5,\n      \"description\": \"Environment Exposure: `A0_URL` with fallback to `localhost:5000` means dev endpoint could leak into production if env var not set. Explicitly require env var in production: `process.env.A0_URL || (process.env.NODE_ENV === 'production' ? throw new Error(...) : 'http://localhost:5000')`\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 28,\n      \"description\": \"Auth Callback: On every reconnect, CSRF token is re-fetched. While this improves freshness, the old cached token in memory could conflict. Clear old token before refetch or use socket state to track auth state.\"\n    }\n  ],\n  \"riskScore\": 52,\n  \"recommendations\": [\n    \"**CRITICAL:** Escape or sanitize all log content before rendering. Add a utility function `escapeHtml()` or use a React library like `react-markdown` with `sanitizeHtml` plugin. For `use-chat.ts`, `use-action-cards.ts`, and `use-expo-stream.ts`, wrap content in `<pre>` or sanitized markdown renderer.\",\n    \"Use `react-markdown` with `rehype-sanitize` for any rich text from logs. Configure to allow only safe HTML tags (no scripts, iframes, event handlers).\",\n    \"Replace manual URL construction in `use-workspace.ts` with `URLSearchParams`: `new URLSearchParams({ location_id: locationId }).toString()`.\",\n    \"Implement CSRF token refresh: add expiry check and refresh logic before each request. Store expiry time alongside token.\",\n    \"Move CSRF token storage to HttpOnly cookie only (backend-set). If frontend caching is needed, use sessionStorage + clear on logout.\",\n    \"Add `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` headers in `next.config.ts` via rewrites or middleware.\",\n    \"Require `A0_URL` in production; don't fall back to localhost.\",\n    \"Add Content Security Policy (CSP) header to prevent inline script execution (blocks some XSS vectors).\",\n    \"Audit Agent Zero backend (`run_ui.py`, Flask handlers) for injection flaws — frontend is only as safe as the data it receives.\",\n    \"Add dependency scan: run `npm audit` regularly and update `socket.io-client`, `next`, and other deps to latest patch versions.\",\n    \"Test XSS payloads in chat input: verify log content cannot execute JavaScript even if it contains `<script>` or event handlers.\"\n  ]\n}\n```\n\n---\n\n## Summary\n\n**Main Threats:**\n1. **Untrusted log rendering** (HIGH) — Chat, action cards, and expo stream all display backend-provided text without sanitization\n2. **Missing input validation** (MEDIUM) — URL parameters lack encoding; CSRF token lacks expiry logic\n3. **Cookie/token management** (MEDIUM) — CSRF token set via JavaScript; no refresh mechanism\n\n**Quick Wins:**\n- Wrap `log.content` in escaped/sanitized output\n- Use `react-markdown` + `rehype-sanitize` for rich text\n- Add URL encoding utility\n\n**Deep Fixes:**\n- Implement CSRF token refresh on expiry\n- Move token to HttpOnly cookie (server-set only)\n- Audit Agent Zero backend for injection vectors\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "src/hooks/use-chat.ts",
+        "line": 86,
+        "description": "XSS Risk: Chat messages render `log.content` directly without sanitization. If Agent Zero sends malicious payloads (including HTML/JS), they execute in the browser. All log content displayed to users (lines 86, 104-108) should be escaped or rendered as text-only."
+      },
+      {
+        "severity": "high",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 23,
+        "description": "XSS Risk: Action card summaries are created from `log.content.slice(0, 120)` without sanitization. The `summary` field is rendered in the UI without escaping, creating a potential XSS vector."
+      },
+      {
+        "severity": "high",
+        "file": "src/hooks/use-expo-stream.ts",
+        "line": 80,
+        "description": "XSS Risk: Log headline/step text from `extractFromLogs()` is displayed directly (lines 75-80) without sanitization. `kvps.headline` and `kvps.step` come from untrusted logs."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 20,
+        "description": "URL Encoding: locationId parameter is interpolated directly into query string without encoding. Use `new URLSearchParams()` or encodeURIComponent() to prevent injection: `const params = new URLSearchParams({ location_id: locationId })`"
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 18,
+        "description": "Cookie Security: CSRF token is set via JavaScript (`document.cookie`). If XSS is exploited, attacker can read/modify this cookie. Use HttpOnly flag (server-side only) whenever possible. Current approach requires CSP and XSS prevention to be effective."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 6,
+        "description": "Token Caching/Expiry: CSRF token is cached indefinitely in memory. If token expires on server, client won't fetch a new one until reconnect or refresh. Implement token refresh logic or shorter cache TTL."
+      },
+      {
+        "severity": "medium",
+        "file": "next.config.ts",
+        "line": 5,
+        "description": "Environment Exposure: `A0_URL` with fallback to `localhost:5000` means dev endpoint could leak into production if env var not set. Explicitly require env var in production: `process.env.A0_URL || (process.env.NODE_ENV === 'production' ? throw new Error(...) : 'http://localhost:5000')`"
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 28,
+        "description": "Auth Callback: On every reconnect, CSRF token is re-fetched. While this improves freshness, the old cached token in memory could conflict. Clear old token before refetch or use socket state to track auth state."
+      }
+    ],
+    "riskScore": 52,
+    "recommendations": [
+      "**CRITICAL:** Escape or sanitize all log content before rendering. Add a utility function `escapeHtml()` or use a React library like `react-markdown` with `sanitizeHtml` plugin. For `use-chat.ts`, `use-action-cards.ts`, and `use-expo-stream.ts`, wrap content in `<pre>` or sanitized markdown renderer.",
+      "Use `react-markdown` with `rehype-sanitize` for any rich text from logs. Configure to allow only safe HTML tags (no scripts, iframes, event handlers).",
+      "Replace manual URL construction in `use-workspace.ts` with `URLSearchParams`: `new URLSearchParams({ location_id: locationId }).toString()`.",
+      "Implement CSRF token refresh: add expiry check and refresh logic before each request. Store expiry time alongside token.",
+      "Move CSRF token storage to HttpOnly cookie only (backend-set). If frontend caching is needed, use sessionStorage + clear on logout.",
+      "Add `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` headers in `next.config.ts` via rewrites or middleware.",
+      "Require `A0_URL` in production; don't fall back to localhost.",
+      "Add Content Security Policy (CSP) header to prevent inline script execution (blocks some XSS vectors).",
+      "Audit Agent Zero backend (`run_ui.py`, Flask handlers) for injection flaws — frontend is only as safe as the data it receives.",
+      "Add dependency scan: run `npm audit` regularly and update `socket.io-client`, `next`, and other deps to latest patch versions.",
+      "Test XSS payloads in chat input: verify log content cannot execute JavaScript even if it contains `<script>` or event handlers."
+    ]
+  },
+  "durationMs": 38669,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T08:32:48.858Z",
+  "executionId": "audit_1773995530189_6si57o"
+}

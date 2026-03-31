@@ -1,0 +1,954 @@
+[2026-03-20T10:47:18.027Z] PROMPT
+============================================================
+Analyze this codebase for security vulnerabilities:
+- Check for hardcoded secrets (API keys, passwords)
+- Identify SQL injection risks
+- Find XSS vulnerabilities
+- Check for insecure dependencies
+- Identify authentication/authorization issues
+
+Provide a JSON report with:
+{
+  "vulnerabilities": [{ "severity": "high|medium|low", "file": "...", "line": N, "description": "..." }],
+  "riskScore": 0-100,
+  "recommendations": ["..."]
+}
+
+## Codebase Context
+
+--- next-env.d.ts ---
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+import "./.next/types/routes.d.ts";
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+
+--- next.config.ts ---
+import type { NextConfig } from "next";
+
+const A0_URL = process.env.A0_URL || "http://localhost:5000";
+
+const nextConfig: NextConfig = {
+  turbopack: {
+    root: __dirname,
+  },
+  async rewrites() {
+    return [
+      { source: "/csrf_token", destination: `${A0_URL}/csrf_token` },
+      { source: "/message_async", destination: `${A0_URL}/message_async` },
+      { source: "/message", destination: `${A0_URL}/message` },
+      { source: "/chats", destination: `${A0_URL}/chats` },
+      { source: "/chat_load", destination: `${A0_URL}/chat_load` },
+      { source: "/chat_create", destination: `${A0_URL}/chat_create` },
+      { source: "/chat_remove", destination: `${A0_URL}/chat_remove` },
+    ];
+  },
+};
+
+export default nextConfig;
+
+
+--- src/hooks/use-action-cards.ts ---
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import type { A0Snapshot, ActionCard } from "@/lib/types";
+
+interface UseActionCardsReturn {
+  cards: ActionCard[];
+  unreadCount: number;
+  markRead: (id: string) => void;
+  markAllRead: () => void;
+}
+
+export function useActionCards(snapshot: A0Snapshot | null): UseActionCardsReturn {
+  const [cards, setCards] = useState<ActionCard[]>([]);
+  const processedIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!snapshot) return;
+
+    for (const log of snapshot.logs) {
+      if (processedIds.current.has(log.id)) continue;
+      if (log.type !== "tool") continue;
+
+      const kvps = log.kvps || {};
+      if (kvps.module && kvps.action) {
+        const card: ActionCard = {
+          id: log.id,
+          type: String(kvps.action),
+          module: String(kvps.module),
+          action: String(kvps.action),
+          itemId: kvps.item_id ? String(kvps.item_id) : undefined,
+          item: kvps.item as Record<string, unknown> | undefined,
+          summary: log.content.slice(0, 120),
+          timestamp: log.timestamp,
+          read: false,
+        };
+        setCards(prev => [...prev, card]);
+        processedIds.current.add(log.id);
+      }
+    }
+  }, [snapshot]);
+
+  const unreadCount = cards.filter(c => !c.read).length;
+
+  const markRead = (id: string) => {
+    setCards(prev => prev.map(c => c.id === id ? { ...c, read: true } : c));
+  };
+
+  const markAllRead = () => {
+    setCards(prev => prev.map(c => ({ ...c, read: true })));
+  };
+
+  return { cards, unreadCount, markRead, markAllRead };
+}
+
+
+--- src/hooks/use-chat.ts (truncated) ---
+"use client";
+
+import { useState, useCallback, useEffect, useRef } from "react";
+import type { A0Snapshot, A0LogEntry, ChatMessage, InlineStep, StepLabel } from "@/lib/types";
+import { getCsrfToken } from "@/lib/csrf";
+
+// --- Step extraction helpers ---
+
+const STEP_LOG_TYPES = new Set(["agent", "tool", "subagent", "response"]);
+
+const LABEL_MAP: Record<string, StepLabel> = {
+  agent: "GEN",
+  tool: "USE",
+  subagent: "SUB",
+  response: "RES",
+};
+
+const THINKING_MESSAGES = [
+  // --- OG 8 ---
+  "Checking if Rene Redzepi already paid the interns",
+  "Cross-referencing your wine list with last night\u2019s dreams",
+  "Consulting the mise en place oracle",
+  "Running the numbers through the pasta machine",
+  "Asking the walk-in for its opinion",
+  "Debating butter quantities with the saucier",
+  "Checking the reservation book for ghosts",
+  "Calibrating the flavor compass",
+  // --- The line ---
+  "Counting how many side towels disappeared this shift",
+  "Asking the dishwasher if they\u2019ve seen your will to live",
+  "Waiting for the ticket printer to stop \u2014 just kidding, it never stops",
+  "Checking if the walk-in is still judging us",
+  "Consulting the ancient texts (the binder behind the bar)",
+  "Whispering \u201Cheard\u201D to no one in particular",
+  "Doing a quick cry in the walk-in, one sec",
+  "Blaming the previous shift",
+  "Rewriting the 86 list for the third time today",
+  "Pretending this ticket didn\u2019t just print",
+  "Negotiating with the salamander",
+  "Double-checking that nobody 86\u2019d the good tongs",
+  "Asking the line if they\u2019re in the weeds or just standing there",
+  "Looking for the sharpie someone definitely borrowed",
+  "Reading the ticket printer like it\u2019s a fortune teller",
+  "Confirming the special is still special",
+  "Checking who left the burner on overnight",
+  "Performing a quick inventory of lost Sharpies",
+  "Convincing the garde manger this is important",
+  "Wondering who labeled this container \u201Cstuff\u201D",
+  "Ignoring the front-of-house like a true line cook",
+  "Telling the new guy to check the basement",
+  "Looking for a clean apron (good luck)",
+  "Calculating how many covers before we lose it",
+  "Verifying the fish delivery wasn\u2019t yesterday\u2019s fish",
+  "Staring at the board like it owes us money",
+  "Asking Chef if we can sub micro-greens for personality",
+  "Rotating stock and existential dread",
+  "Checking if that\u2019s a fruit fly or a garnish",
+  "Reviewing the Bourdain playbook",
+  "Confirming the quenelles pass the vibe check",
+  "Making sure the pass is clear before we fire",
+  "Trying to remember who has the keys to dry storage",
+  "Tempering chocolate and expectations",
+];
+
+function cleanHeading(raw: string): string {
+  // Strip icon:// prefixes and >>> markers, then map agent numbers to kitchen roles
+  return raw
+    .replace(/icon:\/\/\S+\s*/g, "")
+    .replace(/^>>>\s*/, "")
+    .trim()
+    .replace(/^A0:\s*/, "GM: ")
+    .replace(/^A1:\s*/, "AGM: ")
+    .replace(/^A(\d+):\s*/, "Team: ");
+}
+
+interface CollectedSteps {
+  steps: InlineStep[];
+  stepTitle: string | undefined;
+  stepDuration: number | undefined;
+}
+
+function collectSteps(logs: A0LogEntry[], responseIndex: number): CollectedSteps {
+  const steps: InlineStep[] = [];
+  let lastAgentHeading: string | undefined;
+  let firstTimestamp: number | undefined;
+
+  // Walk backwards from just before the response to find preceding steps
+  for (let i = responseIndex - 1; i >= 0; i--) {
+    const log = logs[i];
+    // Stop at previous user message
+    if (log.type === "user") break;
+    // Stop at previous agent-0 response (but include sub-agent responses)
+    if (log.type === "response" && log.agentno === 0) break;
+    if (!STEP_LOG_TYPES.has(log.type)) continue;
+
+    const heading = cleanHeading(log.heading || "");
+    if (!heading) continue;
+
+    const isFiller = THINKING_MESSAGES.includes(heading);
+    steps.unshift({
+      type: log.type as InlineStep["type"],
+      label: LABEL_MAP[log.type] ?? "GEN",
+      heading,
+      isFiller,
+    });
+
+    // Track first timestamp (earliest step)
+    if (log.timestamp && (firstTimestamp === undefined || log.timestamp < firstTimestamp)) {
+      firstTimestamp = log.timestamp;
+    }
+  }
+
+  // Find the last "agent" type heading for the ticket title
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (steps[i].type === "agent") {
+      // Strip kitchen role prefix for the title (heading already has GM:/AGM:/Team:)
+      lastAgentHeading = steps[i].heading.replace(/^(GM|AGM|Sous Chef|Team):\s*/g, "").trim();
+      break;
+    }
+  }
+
+  // Calculate duration
+  const responseLog = logs[responseIndex];
+  const stepDuration =
+    firstTimestamp !== undefined && responseLog?.timestamp
+      ? responseLog.timestamp - firstTimestamp
+      : undefined;
+
+  return {
+    steps,
+    stepTitle: lastAgentHeading,
+    stepDuration: stepDuration && stepDuration > 0 ? stepDuration : undefined,
+  };
+}
+
+interface UseChatReturn {
+  messages: ChatMessa
+
+--- src/hooks/use-expo-stream.ts (truncated) ---
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import type { A0Snapshot, ChefStatus } from "@/lib/types";
+
+// --- Type guard for agent log kvps ---
+
+interface AgentKvps {
+  thoughts?: string[];
+  headline?: string;
+  step?: string;
+  tool_name?: string;
+}
+
+function getAgentKvps(kvps: Record<string, unknown>): AgentKvps {
+  return {
+    thoughts: Array.isArray(kvps.thoughts) ? (kvps.thoughts as string[]) : undefined,
+    headline: typeof kvps.headline === "string" ? kvps.headline : undefined,
+    step: typeof kvps.step === "string" ? kvps.step : undefined,
+    tool_name: typeof kvps.tool_name === "string" ? kvps.tool_name : undefined,
+  };
+}
+
+// --- ExpoTicketStep ---
+
+export interface ExpoTicketStep {
+  type: "agent" | "tool" | "subagent" | "response";
+  heading: string;
+  isFiller: boolean;
+  durationMs?: number;
+}
+
+// --- ExpoState ---
+
+export interface ExpoState {
+  text: string | null;
+  thoughts: string[];
+  active: boolean;
+  ticketSteps: ExpoTicketStep[];
+}
+
+// --- Kitchen joke fallback ---
+
+const THINKING_MESSAGES = [
+  // --- OG 8 ---
+  "Checking if Rene Redzepi already paid the interns",
+  "Cross-referencing your wine list with last night\u2019s dreams",
+  "Consulting the mise en place oracle",
+  "Running the numbers through the pasta machine",
+  "Asking the walk-in for its opinion",
+  "Debating butter quantities with the saucier",
+  "Checking the reservation book for ghosts",
+  "Calibrating the flavor compass",
+  // --- The line ---
+  "Counting how many side towels disappeared this shift",
+  "Asking the dishwasher if they\u2019ve seen your will to live",
+  "Waiting for the ticket printer to stop \u2014 just kidding, it never stops",
+  "Checking if the walk-in is still judging us",
+  "Consulting the ancient texts (the binder behind the bar)",
+  "Whispering \u201Cheard\u201D to no one in particular",
+  "Doing a quick cry in the walk-in, one sec",
+  "Blaming the previous shift",
+  "Rewriting the 86 list for the third time today",
+  "Pretending this ticket didn\u2019t just print",
+  "Negotiating with the salamander",
+  "Double-checking that nobody 86\u2019d the good tongs",
+  "Asking the line if they\u2019re in the weeds or just standing there",
+  "Looking for the sharpie someone definitely borrowed",
+  "Reading the ticket printer like it\u2019s a fortune teller",
+  "Confirming the special is still special",
+  "Checking who left the burner on overnight",
+  "Performing a quick inventory of lost Sharpies",
+  "Convincing the garde manger this is important",
+  "Wondering who labeled this container \u201Cstuff\u201D",
+  "Ignoring the front-of-house like a true line cook",
+  "Telling the new guy to check the basement",
+  "Looking for a clean apron (good luck)",
+  "Calculating how many covers before we lose it",
+  "Verifying the fish delivery wasn\u2019t yesterday\u2019s fish",
+  "Staring at the board like it owes us money",
+  "Asking Chef if we can sub micro-greens for personality",
+  "Rotating stock and existential dread",
+  "Checking if that\u2019s a fruit fly or a garnish",
+  "Reviewing the Bourdain playbook",
+  "Confirming the quenelles pass the vibe check",
+  "Making sure the pass is clear before we fire",
+  "Trying to remember who has the keys to dry storage",
+  "Tempering chocolate and expectations",
+];
+
+function getRandomJoke(): string {
+  return THINKING_MESSAGES[Math.floor(Math.random() * THINKING_MESSAGES.length)];
+}
+
+// --- Heading cleanup ---
+
+function cleanHeading(raw: string): string {
+  return raw
+    .replace(/icon:\/\/\S+\s*/g, "")
+    .replace(/A\d+:\s*/g, "")
+    .replace(/^>>>\s*/, "")
+    .trim();
+}
+
+// --- Snapshot logs into ticket steps ---
+
+const TICKET_LOG_TYPES = new Set(["agent", "tool", "subagent", "response"]);
+
+function snapshotTicketSteps(snapshot: A0Snapshot | null): ExpoTicketStep[] {
+  if (!snapshot?.logs?.length) return [];
+
+  const steps: ExpoTicketStep[] = [];
+  for (const log of snapshot.logs) {
+    if (!TICKET_LOG_TYPES.has(log.type)) continue;
+
+    const heading = cleanHeading(log.heading || "");
+    if (!heading) continue;
+
+    const isFiller = THINKING_MESSAGES.includes(heading);
+    const stepType = log.type as ExpoTicketStep["type"];
+
+    steps.push({
+      type: stepType,
+      heading,
+      isFiller,
+    });
+  }
+  return steps;
+}
+
+// --- Extract thoughts and status from snapshot ---
+
+function extractFromLogs(snapshot: A0Snapshot | null): {
+  thoughts: string[];
+  headline: string | null;
+  step: string | null;
+} {
+  if (!snapshot?.logs?.length) return { thoughts: [], headline: null, step: null };
+
+  for (let i = snapshot.logs.length - 1; i >= 0; i--) {
+    const log = snapshot.logs[i];
+    if (log.type !== "agent" || !log.kvps) continue;
+
+    const kvps = getAgentKvps(log.kvps);
+    if (kvps.thoughts?.length || kvps.headline || kvps.step) {
+      return {
+        thoughts: kvps.thoughts ?? [],
+        headline: kvps.headline ?? null,
+        step: kvps.step ?? null,
+      };
+    }
+  }
+
+  return { thoughts: [], headline: null, step: null }
+
+--- src/hooks/use-mobile.ts ---
+import * as React from "react"
+
+const MOBILE_BREAKPOINT = 768
+
+export function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    const onChange = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    }
+    mql.addEventListener("change", onChange)
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
+
+  return !!isMobile
+}
+
+
+--- src/hooks/use-socket.ts ---
+"use client";
+
+import { useEffect, useState, useCallback, useRef } from "react";
+import { initStateSyncSocket, getStateSyncSocket } from "@/lib/socket-client";
+import { getCsrfToken } from "@/lib/csrf";
+import type { A0StatePush, A0Snapshot, ChefStatus } from "@/lib/types";
+import type { Socket } from "socket.io-client";
+
+interface UseSocketReturn {
+  connected: boolean;
+  snapshot: A0Snapshot | null;
+  chefStatus: ChefStatus | null;
+  subscribe: (contextId: string | null) => void;
+}
+
+export function useSocket(): UseSocketReturn {
+  const [connected, setConnected] = useState(false);
+  const [snapshot, setSnapshot] = useState<A0Snapshot | null>(null);
+  const [chefStatus, setChefStatus] = useState<ChefStatus | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const logFromRef = useRef(0);
+  const pendingContextRef = useRef<string | null | undefined>(undefined);
+  const subscribedContextRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const socket = initStateSyncSocket();
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      setConnected(true);
+      // If a subscribe was called before connection, use that context
+      const ctx = pendingContextRef.current !== undefined ? pendingContextRef.current : null;
+      pendingContextRef.current = undefined;
+      socket.emit("state_request", {
+        context: ctx,
+        log_from: 0,
+        notifications_from: 0,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        ts: new Date().toISOString(),
+        correlationId: crypto.randomUUID(),
+      });
+    });
+    socket.on("disconnect", () => setConnected(false));
+
+    socket.on("state_push", (envelope: A0StatePush) => {
+      const data = envelope?.data;
+      const snap = data?.snapshot;
+      if (!snap) {
+        console.warn("[state_push] no snapshot in envelope", Object.keys(envelope || {}));
+        return;
+      }
+
+      // Filter snapshots from other contexts to prevent cross-chat bleeding.
+      // Accept if: no subscribed context yet (null), or snapshot matches subscribed context.
+      const subscribed = subscribedContextRef.current;
+      if (subscribed && snap.context && snap.context !== subscribed) {
+        // Wrong context — still update the contexts list (sidebar chat list)
+        // by merging it into the current snapshot without replacing logs/context.
+        setSnapshot(prev => {
+          if (!prev) return prev;
+          return { ...prev, contexts: snap.contexts };
+        });
+        return;
+      }
+
+      const respLogs = snap.logs?.filter((l: { type: string }) => l.type === "response") ?? [];
+      if (respLogs.length > 0) {
+        console.log(`[state_push] ${snap.logs.length} logs, ${respLogs.length} responses, progress_active=${snap.log_progress_active}`);
+      }
+      setSnapshot(snap);
+      if (snap.logs?.length > 0) {
+        logFromRef.current = snap.logs[snap.logs.length - 1].no + 1;
+      }
+    });
+
+    socket.on("chef_status", (status: ChefStatus) => {
+      setChefStatus(status);
+    });
+
+    // Fetch CSRF token FIRST to establish the Flask session cookie,
+    // THEN connect the socket. The WebSocket upgrade request will
+    // carry the session cookie so Agent Zero can validate CSRF.
+    getCsrfToken()
+      .then(() => socket.connect())
+      .catch(() => socket.connect()); // connect anyway, auth callback will retry
+
+    return () => {
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("state_push");
+      socket.off("chef_status");
+      socket.disconnect();
+    };
+  }, []);
+
+  const subscribe = useCallback((contextId: string | null) => {
+    const socket = getStateSyncSocket();
+    logFromRef.current = 0;
+    subscribedContextRef.current = contextId;
+
+    if (!socket?.connected) {
+      // Socket not connected yet — queue the context for when it connects
+      pendingContextRef.current = contextId;
+      return;
+    }
+
+    socket.emit("state_request", {
+      context: contextId,
+      log_from: 0,
+      notifications_from: 0,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      ts: new Date().toISOString(),
+      correlationId: crypto.randomUUID(),
+    });
+  }, []);
+
+  return { connected, snapshot, chefStatus, subscribe };
+}
+
+
+--- src/hooks/use-workspace.ts ---
+"use client";
+
+import { useState, useEffect } from "react";
+
+interface UseWorkspaceReturn<T> {
+  data: T[];
+  loading: boolean;
+  error: string | null;
+  refresh: () => void;
+}
+
+export function useWorkspace<T = Record<string, unknown>>(
+  endpoint: string,
+  locationId?: string,
+): UseWorkspaceReturn<T> {
+  const [data, setData] = useState<T[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const url = locationId
+      ? `${endpoint}?location_id=${locationId}`
+      : endpoint;
+
+    setLoading(true);
+    fetch(url, { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`${res.status}`);
+        const json = await res.json();
+        setData(Array.isArray(json) ? json : json.items ?? json.data ?? []);
+        setError(null);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setData([]);
+      })
+      .finally(() => setLoading(false));
+  }, [endpoint, locationId, refreshKey]);
+
+  return { data, loading, error, refresh: () => setRefreshKey((k) => k + 1) };
+}
+
+
+--- src/lib/csrf.ts ---
+let csrfToken: string | null = null;
+let runtimeId: string | null = null;
+let csrfPromise: Promise<string> | null = null;
+
+export async function getCsrfToken(): Promise<string> {
+  if (csrfToken) return csrfToken;
+  if (csrfPromise) return csrfPromise;
+
+  csrfPromise = fetch("/csrf_token", { credentials: "include" })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.ok) {
+        csrfToken = data.token;
+        runtimeId = data.runtime_id;
+
+        // Agent Zero's WebSocket handler checks for this cookie by name
+        // Its own frontend (api.js) sets it the same way
+        document.cookie = `csrf_token_${runtimeId}=${csrfToken}; SameSite=Strict; Path=/`;
+
+        return data.token;
+      }
+      throw new Error(data.error || "Failed to get CSRF token");
+    })
+    .finally(() => {
+      csrfPromise = null;
+    });
+
+  return csrfPromise;
+}
+
+export function getRuntimeId(): string | null {
+  return runtimeId;
+}
+
+export function clearCsrfToken() {
+  csrfToken = null;
+  runtimeId = null;
+}
+
+
+--- src/lib/expo-messages.ts ---
+import type { A0LogEntry } from "@/lib/types";
+
+const QUIRKY_MESSAGES: Record<string, string[]> = {
+  food_cost_tool: [
+    "Crunching the numbers on that produce order...",
+    "Checking if the avocado market crashed yet...",
+  ],
+  inventory_tool: [
+    "Checking the walk-in...",
+    "Counting what's left after brunch service...",
+  ],
+  prep_tool: [
+    "Asking the sous chef about tomorrow's prep...",
+    "Making sure mise en place is actually en place...",
+  ],
+  order_tool: [
+    "Drafting that PO, hang tight...",
+    "Negotiating with the vendor rep...",
+  ],
+  recipe_tool: [
+    "Pulling up the recipe book...",
+    "Cross-referencing Chef's secret notes...",
+  ],
+  reporting_tool: [
+    "Pulling last week's covers from the reservation book...",
+    "Running the numbers for the morning briefing...",
+  ],
+  invoice_tool: [
+    "Scanning that invoice...",
+    "Making sure they didn't overcharge us again...",
+  ],
+  marketing_tool: [
+    "Drafting something Instagram-worthy...",
+    "Thinking about what would make foodies stop scrolling...",
+  ],
+  menu_tool: [
+    "Checking the menu matrix...",
+    "Looking at what's selling and what's sitting...",
+  ],
+  default: [
+    "Working on it...",
+    "One moment...",
+    "On it, Chef...",
+  ],
+};
+
+const COMPLETION_MESSAGES = [
+  "Heard.",
+  "Service.",
+  "All set.",
+  "Done, Chef.",
+];
+
+export function getExpoMessage(log: A0LogEntry): string | null {
+  if (log.type === "tool" && log.heading) {
+    const toolName = log.heading.replace("Using ", "").replace("...", "").trim();
+    const messages = QUIRKY_MESSAGES[toolName] || QUIRKY_MESSAGES.default;
+    return messages[Math.floor(Math.random() * messages.length)];
+  }
+
+  if (log.type === "agent" || log.type === "subagent") {
+    return `Delegating to ${log.heading || "a specialist"}...`;
+  }
+
+  if (log.type === "progress" && log.content) {
+    return log.content;
+  }
+
+  return null;
+}
+
+export function getCompletionMessage(): string {
+  return COMPLETION_MESSAGES[Math.floor(Math.random() * COMPLETION_MESSAGES.length)];
+}
+
+
+--- src/lib/socket-client.ts ---
+import { io, Socket } from "socket.io-client";
+import { getCsrfToken, clearCsrfToken } from "@/lib/csrf";
+
+let stateSyncSocket: Socket | null = null;
+
+// In dev mode, Next.js rewrites only handle REST endpoints — Socket.IO
+// must connect directly to Agent Zero.  In production (behind nginx),
+// the same-origin default works because nginx proxies /socket.io/.
+const A0_SOCKET_URL = process.env.NEXT_PUBLIC_A0_URL || "";
+
+export function initStateSyncSocket(): Socket {
+  if (stateSyncSocket) return stateSyncSocket;
+
+  // auth callback is called on every connect attempt (including reconnect),
+  // ensuring the CSRF token and session cookie are always fresh.
+  // This matches Agent Zero's own webui pattern (webui/js/websocket.js).
+  // Start with polling so the Engine.IO handshake uses regular HTTP
+  // requests that always carry session cookies.  Safari does not send
+  // SameSite=Strict cookies on WebSocket upgrade requests, which breaks
+  // the CSRF flow when websocket is the initial transport.  Once the
+  // polling connection is established, Socket.IO auto-upgrades to
+  // websocket for better performance.
+  stateSyncSocket = io(`${A0_SOCKET_URL}/state_sync`, {
+    autoConnect: false,
+    transports: ["polling", "websocket"],
+    withCredentials: true,
+    auth: (cb) => {
+      getCsrfToken()
+        .then((token) => cb({ csrf_token: token }))
+        .catch((err) => {
+          console.error("[socket] CSRF token fetch failed for connect:", err);
+          cb({});
+        });
+    },
+  });
+
+  // On connect_error, invalidate the cached CSRF token so the next
+  // reconnect attempt fetches a fresh one (and re-establishes the session).
+  stateSyncSocket.on("connect_error", () => {
+    clearCsrfToken();
+  });
+
+  return stateSyncSocket;
+}
+
+export function getStateSyncSocket(): Socket | null {
+  return stateSyncSocket;
+}
+
+export function disconnectAll() {
+  if (stateSyncSocket) {
+    stateSyncSocket.disconnect();
+    stateSyncSocket = null;
+  }
+}
+
+
+--- src/lib/types.ts ---
+// Agent Zero Socket.IO protocol types
+
+export interface A0LogEntry {
+  no: number;
+  id: string;
+  type: "user" | "agent" | "response" | "tool" | "code_exe" | "browser" |
+        "progress" | "mcp" | "subagent" | "warning" | "rate_limit" |
+        "error" | "info" | "util" | "hint";
+  heading: string;
+  content: string;
+  kvps: Record<string, unknown>;
+  timestamp: number;
+  agentno: number;
+}
+
+export interface A0Context {
+  id: string;
+  name: string;
+  last_message: string;
+  log_version: number;
+}
+
+export interface A0Snapshot {
+  deselect_chat: boolean;
+  context: string;
+  contexts: A0Context[];
+  tasks: unknown[];
+  logs: A0LogEntry[];
+  log_guid: string;
+  log_version: number;
+  log_progress: string | number;
+  log_progress_active: boolean;
+  paused: boolean;
+  notifications: A0Notification[];
+  notifications_guid: string;
+  notifications_version: number;
+}
+
+export interface A0Notification {
+  id: string;
+  type: string;
+  message: string;
+}
+
+// WebSocketManager wraps all emitted payloads in an envelope
+export interface A0StatePush {
+  handlerId: string;
+  eventId: string;
+  correlationId: string;
+  ts: string;
+  data: {
+    runtime_epoch: string;
+    seq: number;
+    snapshot: A0Snapshot;
+  };
+}
+
+export interface A0StateRequestResponse {
+  ok: boolean;
+  data: {
+    runtime_epoch: string;
+    seq_base: number;
+  };
+  correlationId: string;
+}
+
+export type StepLabel = "GEN" | "USE" | "SUB" | "RES";
+
+export interface InlineStep {
+  type: "agent" | "tool" | "subagent" | "response";
+  label: StepLabel;
+  heading: string;
+  isFiller: boolean;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: number;
+  steps?: InlineStep[];
+  stepTitle?: string;
+  stepDuration?: number;
+}
+
+export interface ActionCard {
+  id: string;
+  type: string;
+  module: string;
+  action: string;
+  itemId?: string;
+  item?: Record<string, unknown>;
+  summary: string;
+  timestamp: number;
+  read: boolean;
+}
+
+export interface ChefStatus {
+  status: "working" | "completed" | "idle";
+  tool?: string;
+  text: string;
+  active: boolean;
+}
+
+
+--- src/lib/utils.ts ---
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+
+--- src/lib/workspace-config.ts ---
+import {
+  Home, ShoppingCart, Warehouse, ChefHat, DollarSign,
+  UtensilsCrossed, BookOpen, Receipt, Megaphone, BarChart3,
+  type LucideIcon,
+} from "lucide-react";
+
+export interface ModuleConfig {
+  id: string;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  description: string;
+}
+
+export const MODULES: ModuleConfig[] = [
+  { id: "home", label: "Home", href: "/", icon: Home, description: "Chat & briefing" },
+  { id: "orders", label: "Orders", href: "/orders", icon: ShoppingCart, description: "Purchase orders" },
+  { id: "inventory", label: "Inventory", href: "/inventory", icon: Warehouse, description: "Stock levels & par" },
+  { id: "prep", label: "Prep", href: "/prep", icon: ChefHat, description: "Prep lists" },
+  { id: "food-cost", label: "Food Cost", href: "/food-cost", icon: DollarSign, description: "Cost tracking" },
+  { id: "menu", label: "Menu", href: "/menu", icon: UtensilsCrossed, description: "Menu engineering" },
+  { id: "recipes", label: "Recipes", href: "/recipes", icon: BookOpen, description: "Recipe management" },
+  { id: "invoices", label: "Invoices", href: "/invoices", icon: Receipt, description: "Invoice processing" },
+  { id: "marketing", label: "Marketing", href: "/marketing", icon: Megaphone, description: "Campaigns" },
+  { id: "reporting", label: "Reporting", href: "/reporting", icon: BarChart3, description: "P&L & reports" },
+];
+
+
+--- package.json ---
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^0.577.0",
+    "next": "16.2.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "shadcn": "^4.0.8",
+    "socket.io-client": "^4.8.3",
+    "tailwind-merge": "^3.5.0",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+
+
+## Instructions
+
+Analyze the above codebase context and provide your response following the format specified in the task.

@@ -1,0 +1,112 @@
+INSANELY-FAST-WHISPER: 30-Second Executive Summary
+===================================================
+
+PROJECT: CarabinerOS Voice-First Kitchen Operations
+DATE: March 25, 2026
+STATUS: Viable for offline/batch, NOT suitable for real-time alone
+
+KEY FINDINGS
+============
+
+SPEED:
+  ✅ 150 minutes of audio → 98 seconds (1 min 38 sec)
+  ✅ 5-second kitchen command → <50 ms inference time
+  ✅ 10-23x faster than vanilla OpenAI Whisper
+
+ACCURACY:
+  ✅ 99% WER on English speech (large-v3)
+  ✅ 99.8% WER on distil-large-v2 (slightly better, not worse)
+  ⚠️  No restaurant domain-specific testing done
+
+HARDWARE:
+  ✅ Apple Silicon (M1/M2/M3) supported
+  ✅ NVIDIA CUDA excellent (RTX 3080+)
+  ⚠️  Mac is 2-3x slower than NVIDIA (memory bottleneck)
+  ❌ NO CPU-only option
+
+CRITICAL LIMITATION FOR KITCHEN OPS:
+  ❌ NOT streaming/real-time
+  ❌ Requires full audio file (5-10 sec buffered minimum)
+  ❌ First inference call ~5-7 seconds (model load + inference)
+  ❌ Total latency for "86 salmon": ~2-3 seconds too slow
+
+MODELS AVAILABLE:
+  • openai/whisper-large-v3 (1.5 GB) — Most accurate
+  • distil-whisper/large-v2 (756 MB) — Best speed/accuracy tradeoff ← RECOMMENDED
+  • distil-whisper/medium (385 MB) — Fast but less accurate
+
+PYTHON API:
+  ✅ Simple (HuggingFace Transformers pipeline)
+  ✅ No special library needed beyond transformers + accelerate
+  ✅ Easy to integrate into Flask/Socket.IO backend
+  Example: pipe("audio.wav", batch_size=24, return_timestamps=True)
+
+COST:
+  $0 (self-hosted on existing CarabinerOS GPU)
+  vs. $0.004/min (Deepgram) or $1/hour (Azure)
+
+RECOMMENDATION FOR CARABINER
+=============================
+
+USE CASE 1: Real-Time Kitchen Commands
+  VERDICT: ❌ Not suitable alone
+  REASON: 2-3 second latency for "86 salmon" unacceptable
+  SOLUTION: Use Deepgram (streaming) + IFW (batch logging)
+
+USE CASE 2: Post-Service Analysis & Logging
+  VERDICT: ✅ Excellent choice
+  REASON: Transcribe 2-hour service audio in 2 minutes, zero cost
+  EXAMPLE: BOH activity log, incident transcription, training footage
+
+USE CASE 3: Mobile App Voice Input (Accept 2-3 sec delay)
+  VERDICT: ⚠️ Possible if UX accepts latency
+  REASON: Chef says "24 covers", waits 2-3 sec for AI response
+  TRADEOFF: Lower cost vs delayed feedback
+
+PROPOSED ARCHITECTURE
+======================
+
+Dual STT Strategy:
+  1. Real-time kitchen: Deepgram SDK (200 ms latency, streaming)
+  2. Offline analysis: Insanely-Fast-Whisper (post-service, batch)
+
+This gives CarabinerOS:
+  • Speed where it matters (kitchen operations)
+  • Cost efficiency where it doesn't (post-service analysis)
+
+NEXT STEPS
+==========
+
+1. TEST with actual kitchen audio (80+ dB environment)
+   → Need real samples from Danny's kitchen to validate accuracy
+
+2. PoC: Backend integration
+   → Wrap in Flask handler for post-service transcription
+   → Queue task: save BOH audio → transcribe after 2am
+
+3. Decide: Real-time STT provider
+   → Deepgram, Whisper.cpp, or Azure Speech Services
+   → Must support streaming + kitchen jargon
+
+4. Document: Restaurant domain training
+   → Fine-tune Whisper on kitchen vocabulary?
+   → Or create lookup table for acronyms (86, VIP, POS)?
+
+INSTALLATION
+=============
+
+pip install insanely-fast-whisper flash-attn --no-build-isolation
+
+Mac:
+  insanely-fast-whisper --file-name audio.wav --device-id mps --batch-size 4
+
+Linux GPU:
+  insanely-fast-whisper --file-name audio.wav --flash True
+
+FULL REPORT
+===========
+
+See: /Users/estebannunez/Projects/carabiner-os/RESEARCH_insanely_fast_whisper.md
+
+Author: Research Agent
+Repository: https://github.com/Vaibhavs10/insanely-fast-whisper

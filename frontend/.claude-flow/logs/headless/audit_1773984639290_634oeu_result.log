@@ -1,0 +1,77 @@
+[2026-03-20T05:31:18.362Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"next.config.ts\",\n      \"line\": 3,\n      \"description\": \"A0_URL defaults to HTTP (localhost:5000) in development. In production, this MUST be HTTPS to prevent man-in-the-middle attacks on agent communication. No validation that protocol is secure in production builds.\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 14,\n      \"description\": \"A0_SOCKET_URL is constructed from NEXT_PUBLIC_A0_URL without protocol validation. If this resolves to 'http://' in production, WebSocket traffic is unencrypted. Must enforce wss:// in production.\"\n    },\n    {\n      \"severity\": \"high\",\n      \"file\": \"package.json\",\n      \"line\": 16,\n      \"description\": \"react-markdown@^10.1.0 is declared but no sanitization configuration is visible in codebase. If user-generated markdown is rendered, this creates an XSS vector. Verify markdown is sanitized with options like sanitizeHtml or similar.\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/lib/csrf.ts\",\n      \"line\": 14,\n      \"description\": \"CSRF token stored in JavaScript-accessible cookie. While SameSite=Strict provides protection, the token should ideally be in an HTTP-only cookie. Current approach exposes token to XSS attacks if a vulnerability exists elsewhere (e.g., DOM-based XSS, unsafe dangerouslySetInnerHTML).\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-workspace.ts\",\n      \"line\": 19,\n      \"description\": \"locationId parameter concatenated directly into query string without explicit URL encoding. While fetch() auto-encodes, if this string is later used in innerHTML or other unsafe contexts, it could enable injection attacks. Recommend explicit encodeURIComponent().\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"src/hooks/use-action-cards.ts\",\n      \"line\": 25,\n      \"description\": \"Arbitrary 'item' object from kvps is stored and later rendered without validation. If ActionCard component uses dangerouslySetInnerHTML or renders item properties unsanitized, this creates an XSS vector from Agent Zero logs.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/hooks/use-chat.ts\",\n      \"line\": 59,\n      \"description\": \"No client-side validation of message text before sending to backend. While backend should validate, adding client-side length/content checks improves UX and defense in depth.\"\n    },\n    {\n      \"severity\": \"low\",\n      \"file\": \"src/lib/socket-client.ts\",\n      \"line\": 23,\n      \"description\": \"Socket.IO configured with withCredentials=true but no validation that A0_SOCKET_URL matches current origin. In production, ensure this points to same domain to prevent credential leakage to cross-origin sockets.\"\n    }\n  ],\n  \"riskScore\": 58,\n  \"recommendations\": [\n    \"IMMEDIATE: Enforce HTTPS/WSS in production environments. Add environment validation at build time to reject HTTP URLs when NODE_ENV=production.\",\n    \"IMMEDIATE: If react-markdown is used to render user content, configure it with sanitization: use `rehypeSanitize` plugin or equivalent to strip dangerous HTML/JavaScript.\",\n    \"Add HTTP-only CSRF token cookie as fallback. Keep current JavaScript-accessible token for header injection, but add HTTP-only version for defense in depth against DOM XSS.\",\n    \"Explicitly encode locationId and all URL parameters: use `new URLSearchParams()` or `encodeURIComponent()` to prevent injection.\",\n    \"Audit ActionCard rendering component: ensure 'item' object properties are never rendered with dangerouslySetInnerHTML or innerHTML.\",\n    \"Add client-side input validation for chat messages: enforce length limits, disallow null bytes, reject obviously malicious patterns before sending.\",\n    \"Add Origin check for Socket.IO: verify A0_SOCKET_URL matches window.location.origin in production to prevent cross-origin credential leakage.\",\n    \"Run `npm audit` and `npm audit fix` to scan for known vulnerabilities in dependencies (socket.io-client, react-markdown, etc.).\",\n    \"Add Content Security Policy (CSP) header in next.config.ts to mitigate XSS: restrict script-src, style-src, default-src to reduce blast radius of any XSS.\",\n    \"No SQL injection detected in frontend (SQL runs on backend), but ensure backend uses parameterized queries and validates all data from this client.\"\n  ]\n}\n```\n\n---\n\n## Summary\n\n**Risk Score: 58/100 (Medium-High)**\n\n### Critical Issues:\n1. **HTTP in production** — A0_URL and A0_SOCKET_URL may default to unencrypted HTTP. This breaks all security (CSRF, auth, data privacy) for agent communication.\n2. **Markdown XSS** — react-markdown included without visible sanitization. If rendering user content, this is a direct XSS vector.\n3. **CSRF token exposure** — Token stored in JavaScript-accessible cookie. While SameSite=Strict helps, XSS elsewhere in the app could steal it.\n\n### Medium Issues:\n- Arbitrary object rendering (ActionCard items) without sanitization\n- Weak URL parameter encoding in workspace hook\n- No client-side input validation\n\n### Recommendations:\n1. **Validate protocol in build** — Fail build if A0_URL is http:// in production\n2. **Sanitize markdown** — Add `rehypeSanitize` to react-markdown config\n3. **Add CSP header** — Mitigate XSS blast radius\n4. **Explicit URL encoding** — Use `new URLSearchParams()` for all query params\n5. **Audit and fix dependencies** — Run `npm audit` (socket.io-client, react-markdown are known vectors)\n",
+  "parsedOutput": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "next.config.ts",
+        "line": 3,
+        "description": "A0_URL defaults to HTTP (localhost:5000) in development. In production, this MUST be HTTPS to prevent man-in-the-middle attacks on agent communication. No validation that protocol is secure in production builds."
+      },
+      {
+        "severity": "high",
+        "file": "src/lib/socket-client.ts",
+        "line": 14,
+        "description": "A0_SOCKET_URL is constructed from NEXT_PUBLIC_A0_URL without protocol validation. If this resolves to 'http://' in production, WebSocket traffic is unencrypted. Must enforce wss:// in production."
+      },
+      {
+        "severity": "high",
+        "file": "package.json",
+        "line": 16,
+        "description": "react-markdown@^10.1.0 is declared but no sanitization configuration is visible in codebase. If user-generated markdown is rendered, this creates an XSS vector. Verify markdown is sanitized with options like sanitizeHtml or similar."
+      },
+      {
+        "severity": "medium",
+        "file": "src/lib/csrf.ts",
+        "line": 14,
+        "description": "CSRF token stored in JavaScript-accessible cookie. While SameSite=Strict provides protection, the token should ideally be in an HTTP-only cookie. Current approach exposes token to XSS attacks if a vulnerability exists elsewhere (e.g., DOM-based XSS, unsafe dangerouslySetInnerHTML)."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-workspace.ts",
+        "line": 19,
+        "description": "locationId parameter concatenated directly into query string without explicit URL encoding. While fetch() auto-encodes, if this string is later used in innerHTML or other unsafe contexts, it could enable injection attacks. Recommend explicit encodeURIComponent()."
+      },
+      {
+        "severity": "medium",
+        "file": "src/hooks/use-action-cards.ts",
+        "line": 25,
+        "description": "Arbitrary 'item' object from kvps is stored and later rendered without validation. If ActionCard component uses dangerouslySetInnerHTML or renders item properties unsanitized, this creates an XSS vector from Agent Zero logs."
+      },
+      {
+        "severity": "low",
+        "file": "src/hooks/use-chat.ts",
+        "line": 59,
+        "description": "No client-side validation of message text before sending to backend. While backend should validate, adding client-side length/content checks improves UX and defense in depth."
+      },
+      {
+        "severity": "low",
+        "file": "src/lib/socket-client.ts",
+        "line": 23,
+        "description": "Socket.IO configured with withCredentials=true but no validation that A0_SOCKET_URL matches current origin. In production, ensure this points to same domain to prevent credential leakage to cross-origin sockets."
+      }
+    ],
+    "riskScore": 58,
+    "recommendations": [
+      "IMMEDIATE: Enforce HTTPS/WSS in production environments. Add environment validation at build time to reject HTTP URLs when NODE_ENV=production.",
+      "IMMEDIATE: If react-markdown is used to render user content, configure it with sanitization: use `rehypeSanitize` plugin or equivalent to strip dangerous HTML/JavaScript.",
+      "Add HTTP-only CSRF token cookie as fallback. Keep current JavaScript-accessible token for header injection, but add HTTP-only version for defense in depth against DOM XSS.",
+      "Explicitly encode locationId and all URL parameters: use `new URLSearchParams()` or `encodeURIComponent()` to prevent injection.",
+      "Audit ActionCard rendering component: ensure 'item' object properties are never rendered with dangerouslySetInnerHTML or innerHTML.",
+      "Add client-side input validation for chat messages: enforce length limits, disallow null bytes, reject obviously malicious patterns before sending.",
+      "Add Origin check for Socket.IO: verify A0_SOCKET_URL matches window.location.origin in production to prevent cross-origin credential leakage.",
+      "Run `npm audit` and `npm audit fix` to scan for known vulnerabilities in dependencies (socket.io-client, react-markdown, etc.).",
+      "Add Content Security Policy (CSP) header in next.config.ts to mitigate XSS: restrict script-src, style-src, default-src to reduce blast radius of any XSS.",
+      "No SQL injection detected in frontend (SQL runs on backend), but ensure backend uses parameterized queries and validates all data from this client."
+    ]
+  },
+  "durationMs": 39072,
+  "model": "haiku",
+  "sandboxMode": "strict",
+  "workerType": "audit",
+  "timestamp": "2026-03-20T05:31:18.362Z",
+  "executionId": "audit_1773984639290_634oeu"
+}

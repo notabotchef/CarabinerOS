@@ -1,0 +1,185 @@
+[2026-03-20T05:51:52.514Z] RESULT
+============================================================
+{
+  "success": true,
+  "output": "# Performance Analysis & Optimization Recommendations\n\n## 1. Memory Leaks\n\n### 🔴 Critical: Unbounded Ref Growth in `use-action-cards.ts`\n\n**Issue**: `processedIds` Set grows indefinitely, never cleared.\n\n```typescript\n// ❌ BEFORE\nconst processedIds = useRef(new Set<string>());\n\nuseEffect(() => {\n  for (const log of snapshot.logs) {\n    if (processedIds.current.has(log.id)) continue;\n    // ...\n    processedIds.current.add(log.id);\n  }\n}, [snapshot]);\n```\n\n**Solution**: Implement sliding window or LRU cache:\n\n```typescript\n// ✅ AFTER\nconst MAX_PROCESSED_IDS = 1000;\nconst processedIds = useRef(new Set<string>());\n\nuseEffect(() => {\n  if (!snapshot) return;\n  \n  const idsToAdd: string[] = [];\n  \n  for (const log of snapshot.logs) {\n    if (processedIds.current.has(log.id)) continue;\n    if (log.type !== \"tool\") continue;\n\n    const kvps = log.kvps || {};\n    if (kvps.module && kvps.action) {\n      const card: ActionCard = {\n        id: log.id,\n        type: String(kvps.action),\n        module: String(kvps.module),\n        action: String(kvps.action),\n        itemId: kvps.item_id ? String(kvps.item_id) : undefined,\n        item: kvps.item as Record<string, unknown> | undefined,\n        summary: log.content.slice(0, 120),\n        timestamp: log.timestamp,\n        read: false,\n      };\n      setCards(prev => [...prev, card]);\n      idsToAdd.push(log.id);\n    }\n  }\n  \n  // Add new IDs and evict oldest if over limit\n  idsToAdd.forEach(id => processedIds.current.add(id));\n  if (processedIds.current.size > MAX_PROCESSED_IDS) {\n    const arr = Array.from(processedIds.current);\n    processedIds.current = new Set(arr.slice(-MAX_PROCESSED_IDS));\n  }\n}, [snapshot]);\n```\n\n### 🔴 Critical: Same Issue in `use-chat.ts`\n\n```typescript\n// ✅ Add bounds checking\nconst MAX_PROCESSED_LOGS = 500;\n\nuseEffect(() => {\n  // ... existing logic ...\n  \n  // Periodic cleanup\n  if (processedLogIds.current.size > MAX_PROCESSED_LOGS) {\n    const arr = Array.from(processedLogIds.current);\n    processedLogIds.current = new Set(arr.slice(-MAX_PROCESSED_LOGS));\n  }\n}, [snapshot]);\n```\n\n---\n\n## 2. Unnecessary Re-renders\n\n### 🟡 High Impact: Missing Memoization in `use-action-cards.ts`\n\n**Issue**: `unreadCount` recalculated on every render.\n\n```typescript\n// ❌ BEFORE\nconst unreadCount = cards.filter(c => !c.read).length;\n```\n\n```typescript\n// ✅ AFTER\nconst unreadCount = useMemo(\n  () => cards.filter(c => !c.read).length,\n  [cards]\n);\n```\n\n### 🟡 High Impact: Batched State Updates\n\n**Issue**: Multiple `setMessages` calls in loops cause multiple re-renders.\n\n```typescript\n// ❌ BEFORE (use-chat.ts)\nfor (const log of snapshot.logs) {\n  if (log.type === \"user\") {\n    newMessages.push({...});\n  }\n  if (log.type === \"response\") {\n    newMessages.push({...});\n  }\n}\nif (newMessages.length > 0) {\n  setMessages(prev => [...prev, ...newMessages]);\n}\n```\n\n**Better**: Already batched correctly! But can optimize further:\n\n```typescript\n// ✅ OPTIMIZED\nuseEffect(() => {\n  if (!snapshot || freshChatRef.current) {\n    setLoading(false);\n    return;\n  }\n\n  const newMessages: ChatMessage[] = [];\n  \n  // Process all logs in one pass\n  snapshot.logs.forEach(log => {\n    const logKey = log.id ?? `no-${log.no}`;\n    if (processedLogIds.current.has(logKey)) return;\n\n    if (log.type === \"user\" || (log.type === \"response\" && log.content.trim())) {\n      newMessages.push({\n        id: logKey,\n        role: log.type === \"user\" ? \"user\" : \"assistant\",\n        content: log.content,\n        timestamp: log.timestamp,\n      });\n      processedLogIds.current.add(logKey);\n    }\n  });\n\n  // Single state update\n  if (newMessages.length > 0) {\n    setMessages(prev => [...prev, ...newMessages]);\n  }\n\n  setContextId(snapshot.context || null);\n  setLoading(snapshot.log_progress_active);\n}, [snapshot]);\n```\n\n### 🟡 Medium Impact: Component Re-renders in Pages\n\n**Issue**: Inline functions and object creation in renders.\n\n```typescript\n// ❌ BEFORE (food-cost/page.tsx)\n<Table>\n  {filtered.map((item, i) => (\n    <TableRow key={item.id} onClick={() => console.log(item)}>\n```\n\n```typescript\n// ✅ AFTER\nconst handleRowClick = useCallback((item: FoodCostItem) => {\n  console.log(item);\n}, []);\n\nreturn (\n  <Table>\n    {filtered.map((item, i) => (\n      <TableRow key={item.id} onClick={() => handleRowClick(item)}>\n```\n\n---\n\n## 3. Redundant Computations\n\n### 🟡 High Impact: Expensive Filters Re-run on Every Render\n\n**Issue**: Pages like `food-cost`, `inventory`, `orders` recalculate filters even when dependencies haven't changed.\n\n```typescript\n// ❌ BEFORE (food-cost/page.tsx - partial)\nconst filtered = useMemo(() => {\n  let result = items.filter(/* ... */);\n  if (searchQuery) {\n    result = result.filter(/* ... */);\n  }\n  return result;\n}, [items, activeTab, searchQuery]);\n```\n\n**This is actually correct usage of useMemo!** But can be optimized for very large datasets:\n\n```typescript\n// ✅ OPTIMIZED for large datasets\nconst filtered = useMemo(() => {\n  const query = searchQuery.toLowerCase().trim();\n  \n  return items.filter(item => {\n    // Early return for tab filter\n    if (activeTab !== \"All\") {\n      const level = normalizePressure(item.pressure);\n      if (level !== activeTab) return false;\n    }\n    \n    // Search filter\n    if (query) {\n      return item.menu_item_name.toLowerCase().includes(query);\n    }\n    \n    return true;\n  });\n}, [items, activeTab, searchQuery]);\n```\n\n### 🟢 Low Impact: Helper Functions Called Repeatedly\n\n**Issue**: Functions like `normalizePressure`, `formatCurrency` are called multiple times for same values.\n\n```typescript\n// ✅ Memoize expensive transformations\nconst itemsWithMeta = useMemo(() => \n  items.map(item => ({\n    ...item,\n    pressureLevel: normalizePressure(item.pressure),\n    formattedCost: formatCurrency(item.current_cost_pct),\n  })),\n  [items]\n);\n```\n\n---\n\n## 4. N+1 Query Patterns\n\n### 🟢 No Direct Database Queries Detected\n\nThe codebase uses REST endpoints via `useWorkspace` hook. However:\n\n**Potential Issue**: Multiple `useWorkspace` calls on same page could cause multiple fetches.\n\n```typescript\n// ❌ If you had this:\nconst { data: orders } = useWorkspace(\"/api/orders\");\nconst { data: vendors } = useWorkspace(\"/api/vendors\");\nconst { data: invoices } = useWorkspace(\"/api/invoices\");\n```\n\n**Recommendation**: Backend should provide compound endpoints:\n\n```typescript\n// ✅ BETTER\nconst { data } = useWorkspace(\"/api/dashboard\"); // Returns all needed data\n```\n\n---\n\n## 5. Caching Opportunities\n\n### 🟡 High Impact: Socket Connection & CSRF Token\n\n**Issue**: CSRF token fetched on every socket mount, even though it's cached.\n\n```typescript\n// ✅ ALREADY OPTIMIZED in csrf.ts\nlet csrfPromise: Promise<string> | null = null;\n\nexport async function getCsrfToken(): Promise<string> {\n  if (csrfToken) return csrfToken;\n  if (csrfPromise) return csrfPromise; // Prevents duplicate requests ✅\n  // ...\n}\n```\n\n### 🟡 Medium Impact: Workspace Data Caching\n\n**Issue**: `useWorkspace` refetches on every mount. Add stale-while-revalidate pattern:\n\n```typescript\n// ✅ ENHANCED use-workspace.ts with cache\nconst cache = new Map<string, { data: unknown; timestamp: number }>();\nconst CACHE_TTL = 30000; // 30 seconds\n\nexport function useWorkspace<T = Record<string, unknown>>(\n  endpoint: string,\n  locationId?: string,\n): UseWorkspaceReturn<T> {\n  const [data, setData] = useState<T[]>([]);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState<string | null>(null);\n  const [refreshKey, setRefreshKey] = useState(0);\n\n  useEffect(() => {\n    const url = locationId\n      ? `${endpoint}?location_id=${locationId}`\n      : endpoint;\n\n    // Check cache first\n    const cached = cache.get(url);\n    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {\n      setData(cached.data as T[]);\n      setLoading(false);\n      return;\n    }\n\n    setLoading(true);\n    fetch(url, { credentials: \"include\" })\n      .then(async (res) => {\n        if (!res.ok) throw new Error(`${res.status}`);\n        const json = await res.json();\n        const items = Array.isArray(json) ? json : json.items ?? json.data ?? [];\n        \n        // Update cache\n        cache.set(url, { data: items, timestamp: Date.now() });\n        \n        setData(items);\n        setError(null);\n      })\n      .catch((err) => {\n        setError(err.message);\n        setData([]);\n      })\n      .finally(() => setLoading(false));\n  }, [endpoint, locationId, refreshKey]);\n\n  return { data, loading, error, refresh: () => setRefreshKey((k) => k + 1) };\n}\n```\n\n---\n\n## 6. Animation Performance\n\n### 🟡 High Impact: Framer Motion Overuse\n\n**Issue**: Staggered animations on large lists cause janky scrolling.\n\n```typescript\n// ❌ BEFORE (orders/page.tsx)\n{filtered.map((order, i) => (\n  <motion.tr\n    key={order.id}\n    custom={i}\n    variants={rowVariants}\n    initial=\"hidden\"\n    animate=\"visible\"\n  >\n```\n\n```typescript\n// ✅ AFTER - Virtualize or limit animations\nimport { useReducedMotion } from \"framer-motion\";\n\nfunction OrdersTable({ orders }: { orders: Order[] }) {\n  const shouldReduceMotion = useReducedMotion();\n  const ANIMATION_THRESHOLD = 50;\n  \n  const shouldAnimate = !shouldReduceMotion && orders.length < ANIMATION_THRESHOLD;\n  \n  return (\n    <Table>\n      {orders.map((order, i) => (\n        <motion.tr\n          key={order.id}\n          {...(shouldAnimate ? {\n            custom: i,\n            variants: rowVariants,\n            initial: \"hidden\",\n            animate: \"visible\"\n          } : {})}\n        >\n```\n\n---\n\n## 7. Critical Quick Wins Summary\n\n| Priority | File | Issue | Impact | Fix Time |\n|----------|------|-------|---------|----------|\n| 🔴 Critical | `use-action-cards.ts` | Unbounded Set growth | Memory leak | 5 min |\n| 🔴 Critical | `use-chat.ts` | Unbounded Set growth | Memory leak | 5 min |\n| 🟡 High | `use-action-cards.ts` | Missing useMemo | Excess renders | 2 min |\n| 🟡 High | `use-workspace.ts` | No caching | Excess network | 15 min |\n| 🟡 Medium | All pages | Animation overload | Janky UI | 30 min |\n| 🟢 Low | Helper functions | Repeat computations | Minor perf | 10 min |\n\n**Total estimated fix time: ~70 minutes for dramatic performance improvement.**\n",
+  "parsedOutput": {
+    "sections": [
+      {
+        "title": "Performance Analysis & Optimization Recommendations",
+        "content": "\n",
+        "level": 1
+      },
+      {
+        "title": "1. Memory Leaks",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "🔴 Critical: Unbounded Ref Growth in `use-action-cards.ts`",
+        "content": "\n**Issue**: `processedIds` Set grows indefinitely, never cleared.\n\n```typescript\n// ❌ BEFORE\nconst processedIds = useRef(new Set<string>());\n\nuseEffect(() => {\n  for (const log of snapshot.logs) {\n    if (processedIds.current.has(log.id)) continue;\n    // ...\n    processedIds.current.add(log.id);\n  }\n}, [snapshot]);\n```\n\n**Solution**: Implement sliding window or LRU cache:\n\n```typescript\n// ✅ AFTER\nconst MAX_PROCESSED_IDS = 1000;\nconst processedIds = useRef(new Set<string>());\n\nuseEffect(() => {\n  if (!snapshot) return;\n  \n  const idsToAdd: string[] = [];\n  \n  for (const log of snapshot.logs) {\n    if (processedIds.current.has(log.id)) continue;\n    if (log.type !== \"tool\") continue;\n\n    const kvps = log.kvps || {};\n    if (kvps.module && kvps.action) {\n      const card: ActionCard = {\n        id: log.id,\n        type: String(kvps.action),\n        module: String(kvps.module),\n        action: String(kvps.action),\n        itemId: kvps.item_id ? String(kvps.item_id) : undefined,\n        item: kvps.item as Record<string, unknown> | undefined,\n        summary: log.content.slice(0, 120),\n        timestamp: log.timestamp,\n        read: false,\n      };\n      setCards(prev => [...prev, card]);\n      idsToAdd.push(log.id);\n    }\n  }\n  \n  // Add new IDs and evict oldest if over limit\n  idsToAdd.forEach(id => processedIds.current.add(id));\n  if (processedIds.current.size > MAX_PROCESSED_IDS) {\n    const arr = Array.from(processedIds.current);\n    processedIds.current = new Set(arr.slice(-MAX_PROCESSED_IDS));\n  }\n}, [snapshot]);\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "🔴 Critical: Same Issue in `use-chat.ts`",
+        "content": "\n```typescript\n// ✅ Add bounds checking\nconst MAX_PROCESSED_LOGS = 500;\n\nuseEffect(() => {\n  // ... existing logic ...\n  \n  // Periodic cleanup\n  if (processedLogIds.current.size > MAX_PROCESSED_LOGS) {\n    const arr = Array.from(processedLogIds.current);\n    processedLogIds.current = new Set(arr.slice(-MAX_PROCESSED_LOGS));\n  }\n}, [snapshot]);\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "2. Unnecessary Re-renders",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "🟡 High Impact: Missing Memoization in `use-action-cards.ts`",
+        "content": "\n**Issue**: `unreadCount` recalculated on every render.\n\n```typescript\n// ❌ BEFORE\nconst unreadCount = cards.filter(c => !c.read).length;\n```\n\n```typescript\n// ✅ AFTER\nconst unreadCount = useMemo(\n  () => cards.filter(c => !c.read).length,\n  [cards]\n);\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "🟡 High Impact: Batched State Updates",
+        "content": "\n**Issue**: Multiple `setMessages` calls in loops cause multiple re-renders.\n\n```typescript\n// ❌ BEFORE (use-chat.ts)\nfor (const log of snapshot.logs) {\n  if (log.type === \"user\") {\n    newMessages.push({...});\n  }\n  if (log.type === \"response\") {\n    newMessages.push({...});\n  }\n}\nif (newMessages.length > 0) {\n  setMessages(prev => [...prev, ...newMessages]);\n}\n```\n\n**Better**: Already batched correctly! But can optimize further:\n\n```typescript\n// ✅ OPTIMIZED\nuseEffect(() => {\n  if (!snapshot || freshChatRef.current) {\n    setLoading(false);\n    return;\n  }\n\n  const newMessages: ChatMessage[] = [];\n  \n  // Process all logs in one pass\n  snapshot.logs.forEach(log => {\n    const logKey = log.id ?? `no-${log.no}`;\n    if (processedLogIds.current.has(logKey)) return;\n\n    if (log.type === \"user\" || (log.type === \"response\" && log.content.trim())) {\n      newMessages.push({\n        id: logKey,\n        role: log.type === \"user\" ? \"user\" : \"assistant\",\n        content: log.content,\n        timestamp: log.timestamp,\n      });\n      processedLogIds.current.add(logKey);\n    }\n  });\n\n  // Single state update\n  if (newMessages.length > 0) {\n    setMessages(prev => [...prev, ...newMessages]);\n  }\n\n  setContextId(snapshot.context || null);\n  setLoading(snapshot.log_progress_active);\n}, [snapshot]);\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "🟡 Medium Impact: Component Re-renders in Pages",
+        "content": "\n**Issue**: Inline functions and object creation in renders.\n\n```typescript\n// ❌ BEFORE (food-cost/page.tsx)\n<Table>\n  {filtered.map((item, i) => (\n    <TableRow key={item.id} onClick={() => console.log(item)}>\n```\n\n```typescript\n// ✅ AFTER\nconst handleRowClick = useCallback((item: FoodCostItem) => {\n  console.log(item);\n}, []);\n\nreturn (\n  <Table>\n    {filtered.map((item, i) => (\n      <TableRow key={item.id} onClick={() => handleRowClick(item)}>\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "3. Redundant Computations",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "🟡 High Impact: Expensive Filters Re-run on Every Render",
+        "content": "\n**Issue**: Pages like `food-cost`, `inventory`, `orders` recalculate filters even when dependencies haven't changed.\n\n```typescript\n// ❌ BEFORE (food-cost/page.tsx - partial)\nconst filtered = useMemo(() => {\n  let result = items.filter(/* ... */);\n  if (searchQuery) {\n    result = result.filter(/* ... */);\n  }\n  return result;\n}, [items, activeTab, searchQuery]);\n```\n\n**This is actually correct usage of useMemo!** But can be optimized for very large datasets:\n\n```typescript\n// ✅ OPTIMIZED for large datasets\nconst filtered = useMemo(() => {\n  const query = searchQuery.toLowerCase().trim();\n  \n  return items.filter(item => {\n    // Early return for tab filter\n    if (activeTab !== \"All\") {\n      const level = normalizePressure(item.pressure);\n      if (level !== activeTab) return false;\n    }\n    \n    // Search filter\n    if (query) {\n      return item.menu_item_name.toLowerCase().includes(query);\n    }\n    \n    return true;\n  });\n}, [items, activeTab, searchQuery]);\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "🟢 Low Impact: Helper Functions Called Repeatedly",
+        "content": "\n**Issue**: Functions like `normalizePressure`, `formatCurrency` are called multiple times for same values.\n\n```typescript\n// ✅ Memoize expensive transformations\nconst itemsWithMeta = useMemo(() => \n  items.map(item => ({\n    ...item,\n    pressureLevel: normalizePressure(item.pressure),\n    formattedCost: formatCurrency(item.current_cost_pct),\n  })),\n  [items]\n);\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "4. N+1 Query Patterns",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "🟢 No Direct Database Queries Detected",
+        "content": "\nThe codebase uses REST endpoints via `useWorkspace` hook. However:\n\n**Potential Issue**: Multiple `useWorkspace` calls on same page could cause multiple fetches.\n\n```typescript\n// ❌ If you had this:\nconst { data: orders } = useWorkspace(\"/api/orders\");\nconst { data: vendors } = useWorkspace(\"/api/vendors\");\nconst { data: invoices } = useWorkspace(\"/api/invoices\");\n```\n\n**Recommendation**: Backend should provide compound endpoints:\n\n```typescript\n// ✅ BETTER\nconst { data } = useWorkspace(\"/api/dashboard\"); // Returns all needed data\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "5. Caching Opportunities",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "🟡 High Impact: Socket Connection & CSRF Token",
+        "content": "\n**Issue**: CSRF token fetched on every socket mount, even though it's cached.\n\n```typescript\n// ✅ ALREADY OPTIMIZED in csrf.ts\nlet csrfPromise: Promise<string> | null = null;\n\nexport async function getCsrfToken(): Promise<string> {\n  if (csrfToken) return csrfToken;\n  if (csrfPromise) return csrfPromise; // Prevents duplicate requests ✅\n  // ...\n}\n```\n\n",
+        "level": 3
+      },
+      {
+        "title": "🟡 Medium Impact: Workspace Data Caching",
+        "content": "\n**Issue**: `useWorkspace` refetches on every mount. Add stale-while-revalidate pattern:\n\n```typescript\n// ✅ ENHANCED use-workspace.ts with cache\nconst cache = new Map<string, { data: unknown; timestamp: number }>();\nconst CACHE_TTL = 30000; // 30 seconds\n\nexport function useWorkspace<T = Record<string, unknown>>(\n  endpoint: string,\n  locationId?: string,\n): UseWorkspaceReturn<T> {\n  const [data, setData] = useState<T[]>([]);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState<string | null>(null);\n  const [refreshKey, setRefreshKey] = useState(0);\n\n  useEffect(() => {\n    const url = locationId\n      ? `${endpoint}?location_id=${locationId}`\n      : endpoint;\n\n    // Check cache first\n    const cached = cache.get(url);\n    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {\n      setData(cached.data as T[]);\n      setLoading(false);\n      return;\n    }\n\n    setLoading(true);\n    fetch(url, { credentials: \"include\" })\n      .then(async (res) => {\n        if (!res.ok) throw new Error(`${res.status}`);\n        const json = await res.json();\n        const items = Array.isArray(json) ? json : json.items ?? json.data ?? [];\n        \n        // Update cache\n        cache.set(url, { data: items, timestamp: Date.now() });\n        \n        setData(items);\n        setError(null);\n      })\n      .catch((err) => {\n        setError(err.message);\n        setData([]);\n      })\n      .finally(() => setLoading(false));\n  }, [endpoint, locationId, refreshKey]);\n\n  return { data, loading, error, refresh: () => setRefreshKey((k) => k + 1) };\n}\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "6. Animation Performance",
+        "content": "\n",
+        "level": 2
+      },
+      {
+        "title": "🟡 High Impact: Framer Motion Overuse",
+        "content": "\n**Issue**: Staggered animations on large lists cause janky scrolling.\n\n```typescript\n// ❌ BEFORE (orders/page.tsx)\n{filtered.map((order, i) => (\n  <motion.tr\n    key={order.id}\n    custom={i}\n    variants={rowVariants}\n    initial=\"hidden\"\n    animate=\"visible\"\n  >\n```\n\n```typescript\n// ✅ AFTER - Virtualize or limit animations\nimport { useReducedMotion } from \"framer-motion\";\n\nfunction OrdersTable({ orders }: { orders: Order[] }) {\n  const shouldReduceMotion = useReducedMotion();\n  const ANIMATION_THRESHOLD = 50;\n  \n  const shouldAnimate = !shouldReduceMotion && orders.length < ANIMATION_THRESHOLD;\n  \n  return (\n    <Table>\n      {orders.map((order, i) => (\n        <motion.tr\n          key={order.id}\n          {...(shouldAnimate ? {\n            custom: i,\n            variants: rowVariants,\n            initial: \"hidden\",\n            animate: \"visible\"\n          } : {})}\n        >\n```\n\n---\n\n",
+        "level": 3
+      },
+      {
+        "title": "7. Critical Quick Wins Summary",
+        "content": "| Priority | File | Issue | Impact | Fix Time |\n|----------|------|-------|---------|----------|\n| 🔴 Critical | `use-action-cards.ts` | Unbounded Set growth | Memory leak | 5 min |\n| 🔴 Critical | `use-chat.ts` | Unbounded Set growth | Memory leak | 5 min |\n| 🟡 High | `use-action-cards.ts` | Missing useMemo | Excess renders | 2 min |\n| 🟡 High | `use-workspace.ts` | No caching | Excess network | 15 min |\n| 🟡 Medium | All pages | Animation overload | Janky UI | 30 min |\n| 🟢 Low | Helper functions | Repeat computations | Minor perf | 10 min |\n\n**Total estimated fix time: ~70 minutes for dramatic performance improvement.**",
+        "level": 2
+      }
+    ],
+    "codeBlocks": [
+      {
+        "language": "typescript",
+        "code": "// ❌ BEFORE\nconst processedIds = useRef(new Set<string>());\n\nuseEffect(() => {\n  for (const log of snapshot.logs) {\n    if (processedIds.current.has(log.id)) continue;\n    // ...\n    processedIds.current.add(log.id);\n  }\n}, [snapshot]);"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ AFTER\nconst MAX_PROCESSED_IDS = 1000;\nconst processedIds = useRef(new Set<string>());\n\nuseEffect(() => {\n  if (!snapshot) return;\n  \n  const idsToAdd: string[] = [];\n  \n  for (const log of snapshot.logs) {\n    if (processedIds.current.has(log.id)) continue;\n    if (log.type !== \"tool\") continue;\n\n    const kvps = log.kvps || {};\n    if (kvps.module && kvps.action) {\n      const card: ActionCard = {\n        id: log.id,\n        type: String(kvps.action),\n        module: String(kvps.module),\n        action: String(kvps.action),\n        itemId: kvps.item_id ? String(kvps.item_id) : undefined,\n        item: kvps.item as Record<string, unknown> | undefined,\n        summary: log.content.slice(0, 120),\n        timestamp: log.timestamp,\n        read: false,\n      };\n      setCards(prev => [...prev, card]);\n      idsToAdd.push(log.id);\n    }\n  }\n  \n  // Add new IDs and evict oldest if over limit\n  idsToAdd.forEach(id => processedIds.current.add(id));\n  if (processedIds.current.size > MAX_PROCESSED_IDS) {\n    const arr = Array.from(processedIds.current);\n    processedIds.current = new Set(arr.slice(-MAX_PROCESSED_IDS));\n  }\n}, [snapshot]);"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ Add bounds checking\nconst MAX_PROCESSED_LOGS = 500;\n\nuseEffect(() => {\n  // ... existing logic ...\n  \n  // Periodic cleanup\n  if (processedLogIds.current.size > MAX_PROCESSED_LOGS) {\n    const arr = Array.from(processedLogIds.current);\n    processedLogIds.current = new Set(arr.slice(-MAX_PROCESSED_LOGS));\n  }\n}, [snapshot]);"
+      },
+      {
+        "language": "typescript",
+        "code": "// ❌ BEFORE\nconst unreadCount = cards.filter(c => !c.read).length;"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ AFTER\nconst unreadCount = useMemo(\n  () => cards.filter(c => !c.read).length,\n  [cards]\n);"
+      },
+      {
+        "language": "typescript",
+        "code": "// ❌ BEFORE (use-chat.ts)\nfor (const log of snapshot.logs) {\n  if (log.type === \"user\") {\n    newMessages.push({...});\n  }\n  if (log.type === \"response\") {\n    newMessages.push({...});\n  }\n}\nif (newMessages.length > 0) {\n  setMessages(prev => [...prev, ...newMessages]);\n}"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ OPTIMIZED\nuseEffect(() => {\n  if (!snapshot || freshChatRef.current) {\n    setLoading(false);\n    return;\n  }\n\n  const newMessages: ChatMessage[] = [];\n  \n  // Process all logs in one pass\n  snapshot.logs.forEach(log => {\n    const logKey = log.id ?? `no-${log.no}`;\n    if (processedLogIds.current.has(logKey)) return;\n\n    if (log.type === \"user\" || (log.type === \"response\" && log.content.trim())) {\n      newMessages.push({\n        id: logKey,\n        role: log.type === \"user\" ? \"user\" : \"assistant\",\n        content: log.content,\n        timestamp: log.timestamp,\n      });\n      processedLogIds.current.add(logKey);\n    }\n  });\n\n  // Single state update\n  if (newMessages.length > 0) {\n    setMessages(prev => [...prev, ...newMessages]);\n  }\n\n  setContextId(snapshot.context || null);\n  setLoading(snapshot.log_progress_active);\n}, [snapshot]);"
+      },
+      {
+        "language": "typescript",
+        "code": "// ❌ BEFORE (food-cost/page.tsx)\n<Table>\n  {filtered.map((item, i) => (\n    <TableRow key={item.id} onClick={() => console.log(item)}>"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ AFTER\nconst handleRowClick = useCallback((item: FoodCostItem) => {\n  console.log(item);\n}, []);\n\nreturn (\n  <Table>\n    {filtered.map((item, i) => (\n      <TableRow key={item.id} onClick={() => handleRowClick(item)}>"
+      },
+      {
+        "language": "typescript",
+        "code": "// ❌ BEFORE (food-cost/page.tsx - partial)\nconst filtered = useMemo(() => {\n  let result = items.filter(/* ... */);\n  if (searchQuery) {\n    result = result.filter(/* ... */);\n  }\n  return result;\n}, [items, activeTab, searchQuery]);"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ OPTIMIZED for large datasets\nconst filtered = useMemo(() => {\n  const query = searchQuery.toLowerCase().trim();\n  \n  return items.filter(item => {\n    // Early return for tab filter\n    if (activeTab !== \"All\") {\n      const level = normalizePressure(item.pressure);\n      if (level !== activeTab) return false;\n    }\n    \n    // Search filter\n    if (query) {\n      return item.menu_item_name.toLowerCase().includes(query);\n    }\n    \n    return true;\n  });\n}, [items, activeTab, searchQuery]);"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ Memoize expensive transformations\nconst itemsWithMeta = useMemo(() => \n  items.map(item => ({\n    ...item,\n    pressureLevel: normalizePressure(item.pressure),\n    formattedCost: formatCurrency(item.current_cost_pct),\n  })),\n  [items]\n);"
+      },
+      {
+        "language": "typescript",
+        "code": "// ❌ If you had this:\nconst { data: orders } = useWorkspace(\"/api/orders\");\nconst { data: vendors } = useWorkspace(\"/api/vendors\");\nconst { data: invoices } = useWorkspace(\"/api/invoices\");"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ BETTER\nconst { data } = useWorkspace(\"/api/dashboard\"); // Returns all needed data"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ ALREADY OPTIMIZED in csrf.ts\nlet csrfPromise: Promise<string> | null = null;\n\nexport async function getCsrfToken(): Promise<string> {\n  if (csrfToken) return csrfToken;\n  if (csrfPromise) return csrfPromise; // Prevents duplicate requests ✅\n  // ...\n}"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ ENHANCED use-workspace.ts with cache\nconst cache = new Map<string, { data: unknown; timestamp: number }>();\nconst CACHE_TTL = 30000; // 30 seconds\n\nexport function useWorkspace<T = Record<string, unknown>>(\n  endpoint: string,\n  locationId?: string,\n): UseWorkspaceReturn<T> {\n  const [data, setData] = useState<T[]>([]);\n  const [loading, setLoading] = useState(true);\n  const [error, setError] = useState<string | null>(null);\n  const [refreshKey, setRefreshKey] = useState(0);\n\n  useEffect(() => {\n    const url = locationId\n      ? `${endpoint}?location_id=${locationId}`\n      : endpoint;\n\n    // Check cache first\n    const cached = cache.get(url);\n    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {\n      setData(cached.data as T[]);\n      setLoading(false);\n      return;\n    }\n\n    setLoading(true);\n    fetch(url, { credentials: \"include\" })\n      .then(async (res) => {\n        if (!res.ok) throw new Error(`${res.status}`);\n        const json = await res.json();\n        const items = Array.isArray(json) ? json : json.items ?? json.data ?? [];\n        \n        // Update cache\n        cache.set(url, { data: items, timestamp: Date.now() });\n        \n        setData(items);\n        setError(null);\n      })\n      .catch((err) => {\n        setError(err.message);\n        setData([]);\n      })\n      .finally(() => setLoading(false));\n  }, [endpoint, locationId, refreshKey]);\n\n  return { data, loading, error, refresh: () => setRefreshKey((k) => k + 1) };\n}"
+      },
+      {
+        "language": "typescript",
+        "code": "// ❌ BEFORE (orders/page.tsx)\n{filtered.map((order, i) => (\n  <motion.tr\n    key={order.id}\n    custom={i}\n    variants={rowVariants}\n    initial=\"hidden\"\n    animate=\"visible\"\n  >"
+      },
+      {
+        "language": "typescript",
+        "code": "// ✅ AFTER - Virtualize or limit animations\nimport { useReducedMotion } from \"framer-motion\";\n\nfunction OrdersTable({ orders }: { orders: Order[] }) {\n  const shouldReduceMotion = useReducedMotion();\n  const ANIMATION_THRESHOLD = 50;\n  \n  const shouldAnimate = !shouldReduceMotion && orders.length < ANIMATION_THRESHOLD;\n  \n  return (\n    <Table>\n      {orders.map((order, i) => (\n        <motion.tr\n          key={order.id}\n          {...(shouldAnimate ? {\n            custom: i,\n            variants: rowVariants,\n            initial: \"hidden\",\n            animate: \"visible\"\n          } : {})}\n        >"
+      }
+    ]
+  },
+  "durationMs": 74951,
+  "model": "sonnet",
+  "sandboxMode": "permissive",
+  "workerType": "optimize",
+  "timestamp": "2026-03-20T05:51:52.514Z",
+  "executionId": "optimize_1773985837563_19cqzc"
+}
