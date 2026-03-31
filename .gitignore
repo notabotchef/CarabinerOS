@@ -1,90 +1,51 @@
-# === Agent Zero Core ===
+# Ignore common unwanted files globally
 **/.DS_Store
+**/.env
 **/__pycache__/
 *.py[cod]
 **/.conda/
+
+#Ignore IDE files
 .cursor/
 .windsurf/
+
+# ignore test files in root dir
 /*.test.py
+
+# Ignore all contents of the virtual environment directory
 .venv/
+
+# obsolete folders
+/memory/
+/knowledge/custom/
+/instruments/
+
+# Handle logs directory
 logs/**
 !logs/**/
+
+# Handle tmp and usr directory
 tmp/**
 !tmp/**/
+
+# hack to keep .gitkeep but ignore nested repos
+# Ignore everything under usr
+usr/**
+# Ignore nested repos
+/usr/**/.git
+# Allow git to traverse directories
+!usr/**/
+# Re-ignore everything again
+usr/**/*
+# But allow .gitkeep files
+!usr/**/.gitkeep
+
+
+# Global rule to include .gitkeep files anywhere
+!**/.gitkeep
+
+# for browser-use
 agent_history.gif
+
 .agent/**
-
-# === Rune ===
-frontend/.rune/
-
-# === CarabinerOS ===
-# Frontend
-frontend/node_modules/
-frontend/.next/
-frontend/dist/
-
-# Python
-*.egg-info/
-.eggs/
-*.egg
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/
-
-# Environment (usr/.env is tracked intentionally for LLM config)
-.env
-.env.local
-.env.*.local
-!usr/.env
-
-# Docker volumes
-postgres_data/
-
-# IDE
-.idea/
-
-# Superpowers brainstorm sessions
-.superpowers/brainstorm/
-
-# Internal plans/specs — not for git (upstream A0 docs stay tracked)
-docs/plans/
-docs/specs/
-docs/superpowers/
-docs/agent-zero-internals.md
-docs/ruflo-internals.md
-docs/socket.io.rtf
-
-# Claude Code / Ruflo runtime
-.claude-flow/
-.claude/worktrees/
-.claude/memory.db
-.claude/agents/
-.claude/skills/
-.hive-mind/
-.swarm/
-.next/
-
-# Agent config files (ruflo/swarm)
-agents/*.yaml
-
-# MCP config (local)
-.mcp.json
-
-# Frontend nested runtime
-frontend/.claude-flow/
-frontend/.claude/
-
-# Agent Zero usr overlay — track our customizations
-# (override A0's default usr/** ignore)
-!usr/**
-# Then re-ignore runtime state inside usr/ (must be after !usr/**)
-usr/settings.local.json
-usr/memory/
-usr/chats/
-usr/prompts/
-usr/**/__pycache__/
-usr/**/.DS_Store
-
-# Claude settings (local, not project)
-.claude/settings.json
-.claude/settings.local.json
+.claude/**
