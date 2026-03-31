@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Package, AlertTriangle, TrendingUp, DollarSign, Search } from "lucide-react";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { WorkspaceTable } from "@/components/workspace-table";
 import { Input } from "@/components/ui/input";

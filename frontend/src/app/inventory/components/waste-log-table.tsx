@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { WorkspaceTable } from "@/components/workspace-table";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Trash2, DollarSign, TrendingUp } from "lucide-react";
 
 interface WasteRow {

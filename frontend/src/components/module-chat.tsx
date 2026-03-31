@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { ArrowUp, Loader2, RotateCcw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -215,7 +215,7 @@ export function ModuleChat({
     const progress = snapshot.log_progress;
     if (!progress) return null;
     // Clean up raw progress text for kitchen-friendly display
-    return progress
+    return String(progress)
       .replace(/^Calling LLM.*$/i, "Thinking...")
       .replace(/^Executing tool:\s*/i, "")
       .replace(/^carabiner_db\./i, "")

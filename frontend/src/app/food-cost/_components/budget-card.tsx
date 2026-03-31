@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Wallet } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 

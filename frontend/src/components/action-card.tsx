@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { X, ArrowUp, Check } from "lucide-react";
 import type { ActionCard as ActionCardType, ActionCardType as CardType } from "@/lib/types";
 

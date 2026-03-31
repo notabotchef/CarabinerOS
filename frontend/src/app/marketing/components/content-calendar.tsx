@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Campaign, CampaignStage } from "@/lib/types";
 import { Button } from "@/components/ui/button";

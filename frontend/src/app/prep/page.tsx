@@ -28,7 +28,7 @@ import {
   Clock,
 } from "lucide-react";
 
-import { motion, AnimatePresence, type Variants } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "motion/react";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";

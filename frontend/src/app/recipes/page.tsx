@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, Plus, ScanLine, Search } from "lucide-react";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";

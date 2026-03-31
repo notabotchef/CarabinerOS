@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, X } from "lucide-react";
 import { ChatComposer } from "@/components/chat-composer";
 import { SolitaireCards } from "@/components/solitaire-cards";

@@ -16,7 +16,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { Plus, Search, ShoppingCart, ChevronRight } from "lucide-react";
 
 import { useWorkspace } from "@/hooks/use-workspace";

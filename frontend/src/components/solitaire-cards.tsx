@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "motion/react";
 import { ShoppingCart, DollarSign, ChefHat, UtensilsCrossed, type LucideIcon } from "lucide-react";
 
 function useMounted(): boolean {

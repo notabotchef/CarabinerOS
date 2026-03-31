@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { MODULES } from "@/lib/workspace-config";
 import { useSocketContext } from "@/components/socket-provider";

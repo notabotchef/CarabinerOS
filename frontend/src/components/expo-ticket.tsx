@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import type { ExpoTicketStep } from "@/hooks/use-expo-stream";
 
 interface ExpoTicketProps {

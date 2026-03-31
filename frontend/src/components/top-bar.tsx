@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MenuButton } from "@/components/menu-button";

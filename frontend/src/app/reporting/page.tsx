@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 
 import { useWorkspace } from "@/hooks/use-workspace";
