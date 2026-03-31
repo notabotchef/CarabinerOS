@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { MessageSquare, Plus, Trash2 } from "lucide-react";
+import { MessageSquare, Plus, Puzzle, Settings, Trash2 } from "lucide-react";
 import { MODULES } from "@/lib/workspace-config";
 import { useSocketContext } from "@/components/socket-provider";
 import { useShell } from "@/components/shell";
@@ -177,6 +177,37 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
                 <mod.icon className={cn("size-3.5 shrink-0", isActive ? "text-primary" : "")} />
               </div>
               <span className="truncate">{mod.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* System links — Settings + Plugins */}
+      <div className="flex flex-col border-t border-sidebar-border mt-1 pt-1 px-2">
+        {[
+          { href: "/settings", label: "Settings", icon: Settings },
+          { href: "/plugins", label: "Plugins", icon: Puzzle },
+        ].map(({ href, label, icon: Icon }) => {
+          const isActive = pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150",
+                isActive
+                  ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
+                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border-l-2 border-transparent"
+              )}
+              title={label}
+            >
+              <div className={cn(
+                "flex size-6 items-center justify-center rounded-md transition-colors",
+                isActive ? "bg-primary/15" : "bg-muted/40"
+              )}>
+                <Icon className={cn("size-3.5 shrink-0", isActive ? "text-primary" : "")} />
+              </div>
+              <span className="truncate">{label}</span>
             </Link>
           );
         })}
