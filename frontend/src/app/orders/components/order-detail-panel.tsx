@@ -203,9 +203,14 @@ export function OrderDetailPanel({
     setLoading(true);
     fetch(`/api/orders/${orderId}`, { credentials: "include" })
       .then(async (res) => {
-        if (!res.ok) throw new Error(`${res.status}`);
         const json = await res.json();
-        setOrder(json.data ?? json);
+        // Handle both {ok, data} envelope and bare object responses
+        const payload = json.data ?? json;
+        if (payload && typeof payload === "object" && payload.id) {
+          setOrder(payload);
+        } else {
+          setOrder(null);
+        }
       })
       .catch(() => setOrder(null))
       .finally(() => setLoading(false));
@@ -267,17 +272,30 @@ export function OrderDetailPanel({
     onOpenChange(false);
   }, [onOpenChange]);
 
+  // Normalize line items from DB format {qty, item, price} to display format
   const lineItems: OrderLineItem[] = Array.isArray(order?.line_items)
-    ? (order.line_items as OrderLineItem[])
+    ? (order.line_items as Record<string, unknown>[]).map((raw) => {
+        // DB format: {qty: "5 cs", item: "Roma Tomatoes", price: "$140.00"}
+        // Display format: {name, quantity, unit, unit_price, total}
+        const qtyStr = String(raw.qty ?? raw.quantity ?? "1");
+        const qtyMatch = qtyStr.match(/^([\d.]+)\s*(.*)/);
+        const quantity = qtyMatch ? parseFloat(qtyMatch[1]) : 1;
+        const unit = qtyMatch?.[2]?.trim() || (raw.unit as string) || "";
+        const priceStr = String(raw.price ?? raw.unit_price ?? raw.total ?? "0");
+        const priceNum = parseFloat(priceStr.replace(/[^0-9.-]/g, "")) || 0;
+        return {
+          name: (raw.item ?? raw.name ?? "") as string,
+          quantity,
+          unit,
+          unit_price: priceNum,
+          total: priceNum,
+        };
+      })
     : [];
 
-  // Derive order total from line items; fall back to stored total if no items
-  const computedTotal = lineItems.length > 0
-    ? lineItems.reduce((sum, item) => {
-        const val = typeof item.total === "number" ? item.total : parseFloat(String(item.total)) || 0;
-        return sum + val;
-      }, 0)
-    : order?.total;
+  // Derive order total: use stored total string, fall back to line items sum
+  const storedTotal = order?.total ? parseFloat(String(order.total).replace(/[^0-9.-]/g, "")) : 0;
+  const computedTotal = storedTotal > 0 ? storedTotal : lineItems.reduce((s, i) => s + i.total, 0);
 
   const currentStatus = order?.status as OrderStatus | undefined;
   const canSubmit = currentStatus === "Drafting" || currentStatus === "Ready to send";

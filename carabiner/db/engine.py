@@ -69,7 +69,14 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
                     raise
             return
         except Exception as e:
-            if "unknown protocol state" not in str(e) and "different event loop" not in str(e).lower():
+            err = str(e).lower()
+            is_loop_error = (
+                "unknown protocol state" in err
+                or "different event loop" in err
+                or "attached to a different loop" in err
+                or "is bound to a different event loop" in err
+            )
+            if not is_loop_error:
                 raise
             # Fall through to create a fresh engine for this loop
 

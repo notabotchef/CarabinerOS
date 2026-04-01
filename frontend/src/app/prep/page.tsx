@@ -699,7 +699,7 @@ export default function PrepPage() {
   // Determine which data source to use
   const hasOperationalData = prepList !== null && prepList.items.length > 0;
   const hasWorkspaceData = workspaceData.length > 0;
-  const loading = opLoading && wsLoading;
+  const loading = opLoading || wsLoading;
 
   // Operational item completion toggle (optimistic UI)
   const handleToggleItem = useCallback(async (itemId: string) => {

@@ -14,6 +14,20 @@
 **Rationale:** A0's base image has everything A0 needs. Mirrors production deployment — same base for all tenants, CarabinerOS as overlay.
 **Impact:** Dockerfile.agent-zero must be rewritten. Docker-compose mounts remain the same.
 
+## [2026-04-01] Decision: A0 ApiHandler Stubs via Startup Extension
+
+**Context:** Frontend calls `/api/orders`, `/api/prep`, etc. A0's dispatch system looks for `ApiHandler` classes in `/a0/api/<path>.py`. CarabinerOS can't modify A0 engine files, and A0 has no hook to register Flask blueprints post-startup.
+**Decision:** The `_10_carabiner_init.py` startup extension writes thin Python stub files to `/a0/api/` at boot. Each stub imports a factory from `carabiner/api/_a0_handlers.py` that generates A0-compatible `ApiHandler` classes wrapping the repository layer.
+**Rationale:** Zero A0 engine modifications. Stubs are regenerated every boot (idempotent). A0's file-based dispatch natively loads them. Factory pattern keeps boilerplate minimal (~3 lines per resource).
+**Impact:** `carabiner/api/_a0_handlers.py` (handler factory), `_10_carabiner_init.py` (stub writer), `next.config.ts` (detail rewrites `/api/orders/:id` → `?id=:id`)
+
+## [2026-04-01] Decision: No Global DB Engine at Startup
+
+**Context:** The startup_migration extension runs on a separate asyncio event loop (via `asyncio.new_event_loop()`). A0's uvicorn runs on a different loop. Calling `init_db()` at startup creates a global engine bound to the wrong loop, causing intermittent "attached to a different loop" errors on API requests.
+**Decision:** Don't call `init_db()` at startup. Only run `Base.metadata.create_all` (table creation). Let `get_session()` fallback create per-request engines via its cross-loop detection.
+**Rationale:** Per-request engines are slightly less efficient but 100% reliable. The startup extension and uvicorn will never share an event loop.
+**Impact:** `carabiner/db/engine.py` (broadened error detection), `_10_carabiner_init.py` (removed `init_db()` call)
+
 ## [2026-04-01] Decision: Production Architecture — Per-Tenant A0 + Shared DB Cluster
 
 **Context:** Planning how restaurants will deploy. Each restaurant needs isolated A0 (stateful: memory, chats) but infra should scale efficiently.

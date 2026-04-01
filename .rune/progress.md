@@ -1,5 +1,87 @@
 # Progress
 
+## [2026-04-01] Session 14 — Get A0 + CarabinerOS Running (Full Stack Restoration)
+
+**Completed:**
+- [x] Rewrote Dockerfile.agent-zero → FROM agent0ai/agent-zero-base:latest (proper A0 pipeline)
+- [x] Updated docker-compose.dev.yml: port 5050:80, removed WEB_UI_PORT/WEB_UI_HOST
+- [x] Updated nginx.dev.conf: all proxy_pass → agent-zero:80
+- [x] Fixed startup_migration: create_all tables + workspace_models import
+- [x] Fixed frontend CSRF SyntaxError: set A0_URL=http://agent-zero:80 in compose
+- [x] Built A0 ApiHandler stub system: 8 main + 8 sub-route endpoints auto-registered at boot
+- [x] Fixed cross-loop DB errors: removed global init_db(), broadened error detection in get_session()
+- [x] Fixed food-cost summary/budget: fall back to most recent data instead of strictly "today"
+- [x] Fixed recipe detail: use RecipeDetailOut (with components/steps) for detail path
+- [x] Fixed sidebar layout: nav now fixed overlay with backdrop, no content push
+- [x] Added inventory sub-endpoints: valuation, counts (with detail), par-levels, waste
+- [x] Added prep/today endpoint for operational prep data
+- [x] Added order detail support: ?id= param + Next.js rewrites for all resources
+- [x] Added /api/vendors endpoint for order detail panel
+- [x] Built Settings page: restaurant profile, AI config, integrations preview, system info
+- [x] Built Plugins page: installed plugins, 8-card integration marketplace, SDK teaser
+- [x] DB seeded: 37 tables, 3,037 records (Carabiner Tapas, March 2026)
+
+**Still Needs Work:**
+- [ ] End-to-end chat: send message → A0 responds (needs LLM API key)
+- [ ] A0 code_execution: A0 calling `carabiner orders list --json` autonomously
+- [ ] Reporting page: needs /api/reporting/daily-pl endpoint
+- [ ] Marketing page: verify campaigns data renders
+- [ ] Recipe shared components / base recipes (future — needs UI design)
+- [ ] Budget card interaction: click to set budget via chat or manual input
+
+**Next Session Should:**
+1. Configure LLM API key and test end-to-end chat
+2. Test A0 code_execution with carabiner CLI
+3. Add remaining sub-endpoints (reporting/daily-pl, menu/86-board)
+4. Review all agent work for quality — sidebar fix, settings page, plugins page
+5. Consider committing session 14 changes
+
+**Python Context:**
+- Python: 3.12.4 (venv at /opt/venv-a0/ inside Docker)
+- Installed extras: sqlalchemy[asyncio], asyncpg, alembic, typer, rich
+- DB migration: create_all (no alembic versioning active)
+
+**Branch:** session-13/clean-rebuild (continuing)
+
+---
+
+## [2026-04-01] Session 14 — Get A0 + CarabinerOS Running (original notes)
+
+**Completed:**
+- [x] Rewrote Dockerfile.agent-zero → FROM agent0ai/agent-zero-base:latest
+- [x] Follows exact A0 DockerfileLocal pipeline (fs overlay, install scripts, supervisord)
+- [x] CarabinerOS layer: asyncpg/alembic/typer/rich installed in A0's venv, CLI in PATH
+- [x] Updated docker-compose.dev.yml: port 5050:80 (A0 runs on port 80 via self_update_manager)
+- [x] Updated nginx.dev.conf: all proxy_pass directives → agent-zero:80
+- [x] Fixed startup_migration to create_all tables + import workspace_models
+- [x] Removed usr/chats/.gitkeep causing A0 error
+- [x] Full stack verified: postgres + agent-zero + frontend + nginx
+
+**Verified Working:**
+- A0 WebUI: http://localhost:5050 (stock, serves HTML)
+- A0 WebUI through nginx: http://localhost:8080/a0/
+- Frontend: http://localhost:8080 (Next.js 16, serves HTML)
+- A0 API: /api/health responds through nginx
+- Socket.IO: polling transport works, websocket upgrade available
+- DB: 37 tables created, 3,037 records seeded (Carabiner Tapas, March 2026)
+- CLI: `carabiner orders list --json` returns real data inside container
+- CarabinerOS DB init: "CarabinerOS database connected" at startup
+
+**Still Needs Testing:**
+- [ ] End-to-end chat: send message in frontend → A0 responds (needs LLM API key configured)
+- [ ] A0 code_execution: A0 running `carabiner orders list --json` autonomously
+- [ ] Frontend data pages: orders, inventory, etc. loading from API
+
+**Key Learnings:**
+- A0 base image provides: Python 3.12, venv at /opt/venv-a0/, torch, HF, supervisord, searxng, SSH
+- self_update_manager.py hardcodes --port=80, so WEB_UI_PORT env var is overridden
+- setup_venv.sh uses `source` (bash-ism), must use `bash -c` in Dockerfile RUN
+- Only 3 new packages needed (alembic, asyncpg, mako) — sqlalchemy/typer/rich already in A0 base
+
+**Branch:** session-13/clean-rebuild (continuing)
+
+---
+
 ## [2026-04-01] Session 13 — Clean Rebuild: Submodule + CLI
 
 **Completed:**

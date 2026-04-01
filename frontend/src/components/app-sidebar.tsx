@@ -146,7 +146,7 @@ export function AppSidebar({ hidden }: AppSidebarProps) {
     <>
       <nav
         className={cn(
-          "flex flex-col shrink-0 border-r border-sidebar-border bg-sidebar/90 glass-subtle h-dvh transition-all duration-200 overflow-hidden relative z-50",
+          "fixed top-0 left-0 flex flex-col border-r border-sidebar-border bg-sidebar/90 glass-subtle h-dvh transition-all duration-200 overflow-hidden z-50",
           hidden ? "w-0 border-r-0" : "w-60"
         )}
       >

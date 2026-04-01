@@ -58,3 +58,4 @@ agent_history.gif
 
 # Global .gitkeep
 !**/.gitkeep
+usr/plugins/agent_harness/

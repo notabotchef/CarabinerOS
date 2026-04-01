@@ -98,6 +98,127 @@ def get(
 
 
 @app.command()
+def create(
+    location_id: str = typer.Option(..., "--location-id", "-l", help="Location UUID."),
+    task: str = typer.Option(..., "--task", help="Prep task name."),
+    station: str = typer.Option(..., "--station", help="Station (grill, pantry, pastry, etc.)."),
+    service_lane: str = typer.Option("Dinner", "--service-lane", help="Service lane (Brunch, Dinner, Happy Hour)."),
+    readiness: str = typer.Option("Not Started", "--readiness", help="Readiness status."),
+    shortage: Optional[str] = typer.Option(None, "--shortage", help="Shortage description."),
+    summary: Optional[str] = typer.Option(None, "--summary", help="Task summary."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be created without writing."),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON."),
+) -> None:
+    """Create a new prep task."""
+    from carabiner.db import repositories
+
+    try:
+        loc = uuid.UUID(location_id)
+    except ValueError:
+        print_error(EXIT_VALIDATION, f"Invalid UUID: {location_id}", "validation")
+        raise typer.Exit(EXIT_VALIDATION)
+
+    data: dict = {
+        "location_id": loc,
+        "task": task,
+        "station": station,
+        "service_lane": service_lane,
+        "readiness": readiness,
+    }
+    if shortage is not None:
+        data["shortage"] = shortage
+    if summary is not None:
+        data["summary"] = summary
+
+    if dry_run:
+        payload = {k: str(v) for k, v in data.items()}
+        payload["_dry_run"] = True
+        if is_json_mode(json_output):
+            print_json(payload)
+        else:
+            print_detail(payload, title="Dry Run — Prep Task")
+        return
+
+    try:
+        prep_task = db_call(repositories.create_prep, data)
+    except Exception as exc:
+        print_error(EXIT_DB_ERROR, str(exc), "db_error")
+        raise typer.Exit(EXIT_DB_ERROR)
+
+    result = _serialize_prep(prep_task)
+
+    if is_json_mode(json_output):
+        print_json(result)
+    else:
+        print_detail(result, title="Created Prep Task")
+
+
+@app.command()
+def update(
+    task_id: str = typer.Argument(help="Prep task UUID."),
+    task: Optional[str] = typer.Option(None, "--task", help="Prep task name."),
+    station: Optional[str] = typer.Option(None, "--station", help="Station."),
+    service_lane: Optional[str] = typer.Option(None, "--service-lane", help="Service lane."),
+    readiness: Optional[str] = typer.Option(None, "--readiness", help="Readiness status."),
+    shortage: Optional[str] = typer.Option(None, "--shortage", help="Shortage description (use '' to clear)."),
+    summary: Optional[str] = typer.Option(None, "--summary", help="Task summary."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be updated without writing."),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON."),
+) -> None:
+    """Update an existing prep task."""
+    from carabiner.db import repositories
+
+    try:
+        tid = uuid.UUID(task_id)
+    except ValueError:
+        print_error(EXIT_VALIDATION, f"Invalid UUID: {task_id}", "validation")
+        raise typer.Exit(EXIT_VALIDATION)
+
+    data: dict = {}
+    if task is not None:
+        data["task"] = task
+    if station is not None:
+        data["station"] = station
+    if service_lane is not None:
+        data["service_lane"] = service_lane
+    if readiness is not None:
+        data["readiness"] = readiness
+    if shortage is not None:
+        data["shortage"] = shortage if shortage != "" else None
+    if summary is not None:
+        data["summary"] = summary
+
+    if not data:
+        print_error(EXIT_VALIDATION, "No fields to update. Pass at least one --field flag.", "validation")
+        raise typer.Exit(EXIT_VALIDATION)
+
+    if dry_run:
+        payload = {"id": task_id, "_dry_run": True, **{k: str(v) for k, v in data.items()}}
+        if is_json_mode(json_output):
+            print_json(payload)
+        else:
+            print_detail(payload, title="Dry Run — Update Prep Task")
+        return
+
+    try:
+        prep_task = db_call(repositories.update_prep, tid, data)
+    except Exception as exc:
+        print_error(EXIT_DB_ERROR, str(exc), "db_error")
+        raise typer.Exit(EXIT_DB_ERROR)
+
+    if prep_task is None:
+        print_error(EXIT_NOT_FOUND, f"Prep task {task_id} not found", "not_found")
+        raise typer.Exit(EXIT_NOT_FOUND)
+
+    result = _serialize_prep(prep_task)
+
+    if is_json_mode(json_output):
+        print_json(result)
+    else:
+        print_detail(result, title="Updated Prep Task")
+
+
+@app.command()
 def delete(
     task_id: str = typer.Argument(help="Prep task UUID."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be deleted without writing."),

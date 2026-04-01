@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { MessageList } from "@/components/message-list";
 import { ThoughtsStream } from "@/components/thoughts-stream";
 import { ExpoTicket } from "@/components/expo-ticket";
@@ -19,13 +19,31 @@ interface ChatViewProps {
 
 export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: ChatViewProps) {
   const [ticketExpanded, setTicketExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
   const hasTicket = expo.ticketSteps.length > 0;
   // Auto-expand the ticket while A0 is actively processing so users see
   // the step-by-step log in real-time (H2 fix: expo whispering).
   const effectiveTicketExpanded = expo.active ? hasTicket : (ticketExpanded && hasTicket);
 
+  // Track whether user is near the bottom — respect their scroll position
+  const handleScroll = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const threshold = 120; // px from bottom
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  }, []);
+
+  // Only auto-scroll if user is already near the bottom
+  useEffect(() => {
+    if (isNearBottomRef.current) {
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, expo.thoughts, expo.text, expo.ticketSteps]);
+
   return (
-    <div className="flex flex-1 flex-col min-h-0">
+    <div ref={containerRef} onScroll={handleScroll} className="flex flex-1 flex-col min-h-0 overflow-y-auto">
       <MessageList messages={messages} />
 
       {/* Thoughts stream — ghostly inner monologue above expo bar */}
@@ -46,6 +64,7 @@ export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: Ch
       <div className="border-t border-border/50">
         <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} />
       </div>
+      <div ref={endRef} />
     </div>
   );
 }

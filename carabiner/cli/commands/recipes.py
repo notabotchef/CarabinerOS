@@ -167,6 +167,150 @@ def get(
 
 
 @app.command()
+def create(
+    location_id: str = typer.Option(..., "--location-id", "-l", help="Location UUID."),
+    name: str = typer.Option(..., "--name", help="Recipe name."),
+    category: str = typer.Option(..., "--category", help="Category (Starters, Mains, Desserts, Sauces, etc.)."),
+    status: str = typer.Option("draft", "--status", help="Status (draft, active, archived)."),
+    yield_quantity: Optional[str] = typer.Option(None, "--yield-qty", help="Yield quantity."),
+    yield_unit: Optional[str] = typer.Option(None, "--yield-unit", help="Yield unit (portions, liters, kg)."),
+    description: Optional[str] = typer.Option(None, "--description", help="Recipe description."),
+    components: Optional[str] = typer.Option(None, "--components", help="Components as JSON string."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be created without writing."),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON."),
+) -> None:
+    """Create a new recipe."""
+    import json as json_mod
+    from carabiner.db import repositories
+
+    try:
+        loc = uuid.UUID(location_id)
+    except ValueError:
+        print_error(EXIT_VALIDATION, f"Invalid UUID: {location_id}", "validation")
+        raise typer.Exit(EXIT_VALIDATION)
+
+    data: dict = {
+        "location_id": loc,
+        "name": name,
+        "category": category,
+        "status": status,
+    }
+    if yield_quantity is not None:
+        data["yield_quantity"] = float(yield_quantity)
+    if yield_unit is not None:
+        data["yield_unit"] = yield_unit
+    if description is not None:
+        data["description"] = description
+    if components is not None:
+        try:
+            data["components"] = json_mod.loads(components)
+        except json_mod.JSONDecodeError as exc:
+            print_error(EXIT_VALIDATION, f"Invalid JSON for --components: {exc}", "validation")
+            raise typer.Exit(EXIT_VALIDATION)
+
+    if dry_run:
+        payload = {k: str(v) for k, v in data.items()}
+        payload["_dry_run"] = True
+        if is_json_mode(json_output):
+            print_json(payload)
+        else:
+            print_detail(payload, title="Dry Run — Recipe")
+        return
+
+    try:
+        recipe = db_call(repositories.create_recipe, data)
+    except Exception as exc:
+        print_error(EXIT_DB_ERROR, str(exc), "db_error")
+        raise typer.Exit(EXIT_DB_ERROR)
+
+    result = _serialize_recipe_full(recipe)
+
+    if is_json_mode(json_output):
+        print_json(result)
+    else:
+        print_detail(
+            {k: v for k, v in result.items() if k != "components"},
+            title=f"Created Recipe: {result['name']}",
+        )
+
+
+@app.command()
+def update(
+    recipe_id: str = typer.Argument(help="Recipe UUID."),
+    name: Optional[str] = typer.Option(None, "--name", help="Recipe name."),
+    category: Optional[str] = typer.Option(None, "--category", help="Category."),
+    status: Optional[str] = typer.Option(None, "--status", help="Status (draft, active, archived)."),
+    yield_quantity: Optional[str] = typer.Option(None, "--yield-qty", help="Yield quantity."),
+    yield_unit: Optional[str] = typer.Option(None, "--yield-unit", help="Yield unit."),
+    description: Optional[str] = typer.Option(None, "--description", help="Recipe description."),
+    components: Optional[str] = typer.Option(None, "--components", help="Replace components (JSON string)."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be updated without writing."),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON."),
+) -> None:
+    """Update an existing recipe."""
+    import json as json_mod
+    from carabiner.db import repositories
+
+    try:
+        rid = uuid.UUID(recipe_id)
+    except ValueError:
+        print_error(EXIT_VALIDATION, f"Invalid UUID: {recipe_id}", "validation")
+        raise typer.Exit(EXIT_VALIDATION)
+
+    data: dict = {}
+    if name is not None:
+        data["name"] = name
+    if category is not None:
+        data["category"] = category
+    if status is not None:
+        data["status"] = status
+    if yield_quantity is not None:
+        data["yield_quantity"] = float(yield_quantity)
+    if yield_unit is not None:
+        data["yield_unit"] = yield_unit
+    if description is not None:
+        data["description"] = description
+    if components is not None:
+        try:
+            data["components"] = json_mod.loads(components)
+        except json_mod.JSONDecodeError as exc:
+            print_error(EXIT_VALIDATION, f"Invalid JSON for --components: {exc}", "validation")
+            raise typer.Exit(EXIT_VALIDATION)
+
+    if not data:
+        print_error(EXIT_VALIDATION, "No fields to update. Pass at least one --field flag.", "validation")
+        raise typer.Exit(EXIT_VALIDATION)
+
+    if dry_run:
+        payload = {"id": recipe_id, "_dry_run": True, **{k: str(v) for k, v in data.items()}}
+        if is_json_mode(json_output):
+            print_json(payload)
+        else:
+            print_detail(payload, title="Dry Run — Update Recipe")
+        return
+
+    try:
+        recipe = db_call(repositories.update_recipe, rid, data)
+    except Exception as exc:
+        print_error(EXIT_DB_ERROR, str(exc), "db_error")
+        raise typer.Exit(EXIT_DB_ERROR)
+
+    if recipe is None:
+        print_error(EXIT_NOT_FOUND, f"Recipe {recipe_id} not found", "not_found")
+        raise typer.Exit(EXIT_NOT_FOUND)
+
+    result = _serialize_recipe_full(recipe)
+
+    if is_json_mode(json_output):
+        print_json(result)
+    else:
+        print_detail(
+            {k: v for k, v in result.items() if k != "components"},
+            title=f"Updated Recipe: {result['name']}",
+        )
+
+
+@app.command()
 def delete(
     recipe_id: str = typer.Argument(help="Recipe UUID."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be deleted without writing."),

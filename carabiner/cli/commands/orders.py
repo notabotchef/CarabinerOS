@@ -149,6 +149,79 @@ def create(
 
 
 @app.command()
+def update(
+    order_id: str = typer.Argument(help="Order UUID."),
+    vendor: Optional[str] = typer.Option(None, "--vendor", help="Vendor name."),
+    channel: Optional[str] = typer.Option(None, "--channel", help="Order channel."),
+    status: Optional[str] = typer.Option(None, "--status", help="Order status."),
+    total: Optional[str] = typer.Option(None, "--total", help="Order total."),
+    eta: Optional[str] = typer.Option(None, "--eta", help="Expected delivery."),
+    summary: Optional[str] = typer.Option(None, "--summary", help="Order summary."),
+    line_items: Optional[str] = typer.Option(None, "--line-items", help="Line items as JSON string."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be updated without writing."),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON."),
+) -> None:
+    """Update an existing order."""
+    import json as json_mod
+    from carabiner.db import repositories
+
+    try:
+        oid = uuid.UUID(order_id)
+    except ValueError:
+        print_error(EXIT_VALIDATION, f"Invalid UUID: {order_id}", "validation")
+        raise typer.Exit(EXIT_VALIDATION)
+
+    data: dict = {}
+    if vendor is not None:
+        data["vendor"] = vendor
+    if channel is not None:
+        data["channel"] = channel
+    if status is not None:
+        data["status"] = status
+    if total is not None:
+        data["total"] = total
+    if eta is not None:
+        data["eta"] = eta
+    if summary is not None:
+        data["summary"] = summary
+    if line_items is not None:
+        try:
+            data["line_items"] = json_mod.loads(line_items)
+        except json_mod.JSONDecodeError as exc:
+            print_error(EXIT_VALIDATION, f"Invalid JSON for --line-items: {exc}", "validation")
+            raise typer.Exit(EXIT_VALIDATION)
+
+    if not data:
+        print_error(EXIT_VALIDATION, "No fields to update. Pass at least one --field flag.", "validation")
+        raise typer.Exit(EXIT_VALIDATION)
+
+    if dry_run:
+        payload = {"id": order_id, "_dry_run": True, **{k: str(v) for k, v in data.items()}}
+        if is_json_mode(json_output):
+            print_json(payload)
+        else:
+            print_detail(payload, title="Dry Run — Update Order")
+        return
+
+    try:
+        order = db_call(repositories.update_order, oid, data)
+    except Exception as exc:
+        print_error(EXIT_DB_ERROR, str(exc), "db_error")
+        raise typer.Exit(EXIT_DB_ERROR)
+
+    if order is None:
+        print_error(EXIT_NOT_FOUND, f"Order {order_id} not found", "not_found")
+        raise typer.Exit(EXIT_NOT_FOUND)
+
+    result = _serialize_order(order)
+
+    if is_json_mode(json_output):
+        print_json(result)
+    else:
+        print_detail(result, title="Updated Order")
+
+
+@app.command()
 def delete(
     order_id: str = typer.Argument(help="Order UUID."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be deleted without writing."),

@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode, type MouseEvent } from "react";
+import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode, type MouseEvent } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { TopBar } from "@/components/top-bar";
+import { FloatingIsland } from "@/components/floating-island";
 import { NotificationPanel } from "@/components/notification-panel";
 import { useActionCards } from "@/hooks/use-action-cards";
 import { useSocketContext } from "@/components/socket-provider";
@@ -33,6 +34,8 @@ export function Shell({ children }: { children: ReactNode }) {
   const [sidebarHidden, setSidebarHidden] = useState(true);
   const [newChatPending, setNewChatPending] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [topBarVisible, setTopBarVisible] = useState(true);
+  const topBarRef = useRef<HTMLDivElement>(null);
 
   const { notifications } = useSocketContext();
   const actionCards = useActionCards(notifications);
@@ -41,6 +44,18 @@ export function Shell({ children }: { children: ReactNode }) {
   const closeSidebar = useCallback(() => setSidebarHidden(true), []);
   const requestNewChat = useCallback(() => setNewChatPending(true), []);
   const consumeNewChat = useCallback(() => setNewChatPending(false), []);
+
+  // Intersection Observer: detect when the top bar leaves the viewport
+  useEffect(() => {
+    const el = topBarRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setTopBarVisible(entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Close sidebar when clicking empty space on main content.
   // Interactive elements (links, buttons, inputs) pass through without closing.
@@ -54,8 +69,24 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <ShellContext.Provider value={{ openSidebar, closeSidebar, sidebarHidden, newChatPending, requestNewChat, consumeNewChat }}>
       <AppSidebar hidden={sidebarHidden} />
+      {/* Backdrop — blocks pointer events on main content while sidebar is open */}
+      {!sidebarHidden && (
+        <div
+          className="fixed inset-0 z-40 bg-black/20"
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
+      )}
       <main className="flex-1 flex flex-col min-h-dvh overflow-hidden relative" onClick={handleMainClick}>
-        <TopBar
+        <div ref={topBarRef}>
+          <TopBar
+            unreadCount={actionCards.unreadCount}
+            lastCardType={actionCards.lastCardType}
+            onBellClick={() => { setNotifOpen(true); actionCards.markAllRead(); }}
+          />
+        </div>
+        <FloatingIsland
+          visible={!topBarVisible}
           unreadCount={actionCards.unreadCount}
           lastCardType={actionCards.lastCardType}
           onBellClick={() => { setNotifOpen(true); actionCards.markAllRead(); }}

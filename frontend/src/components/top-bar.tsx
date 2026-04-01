@@ -102,35 +102,40 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
           <Settings className="size-4" />
         </a>
 
-        {/* Card duo notification icon — poker hand */}
+        {/* Action cards icon */}
         <div className="relative size-8 cursor-pointer group flex items-center justify-center" onClick={onBellClick} title="Action Cards">
           <motion.div
             initial="idle"
             animate="idle"
             whileHover="hovered"
             variants={parentVariants}
-            className="relative w-5 h-5"
+            className="relative"
           >
-            {/* Back card — peeks upper-left (behind) */}
-            <motion.div
-              className="absolute w-[13px] h-[17px] rounded-[2.5px] border-[1.5px] bg-card top-[-1px] left-[0px] z-[1]"
-              variants={backCardVariants}
-              transition={cardTransition}
-              style={{
-                borderColor: notifyColor?.border ?? "var(--color-foreground)",
-                backgroundColor: notifyColor?.bg ?? "var(--color-card)",
-                transformOrigin: "bottom center",
-                opacity: 0.5,
-                transition: "border-color 0.2s, background-color 0.2s",
-              }}
-            />
-            {/* Front card — overlaps bottom-right (on top) */}
-            <motion.div
-              className="absolute w-[13px] h-[17px] rounded-[2.5px] border-[1.5px] border-foreground/50 bg-card top-[3px] left-[5px] z-[2]"
-              variants={frontCardVariants}
-              transition={cardTransition}
-              style={{ transformOrigin: "bottom center" }}
-            />
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 16 16"
+              fill="none"
+              className="text-muted-foreground/60 group-hover:text-foreground transition-colors"
+            >
+              <motion.rect
+                x="2" y="1" width="9" height="12" rx="1.5"
+                stroke={notifyColor?.border ?? "currentColor"}
+                strokeWidth="1.5"
+                opacity="0.4"
+                variants={backCardVariants}
+                transition={cardTransition}
+                style={{ transformOrigin: "center" }}
+              />
+              <motion.rect
+                x="5" y="3" width="9" height="12" rx="1.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                variants={frontCardVariants}
+                transition={cardTransition}
+                style={{ transformOrigin: "center" }}
+              />
+            </svg>
           </motion.div>
           {unreadCount > 0 && (
             <Badge

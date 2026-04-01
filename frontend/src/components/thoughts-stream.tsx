@@ -72,7 +72,7 @@ export function ThoughtsStream({ thoughts, active }: ThoughtsStreamProps) {
 
           return (
             <motion.div
-              key={`${thoughts.length - visibleThoughts.length + i}-${thought.slice(0, 20)}`}
+              key={`${thoughts.length - visibleThoughts.length + i}-${(thought ?? "").slice(0, 20)}`}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
