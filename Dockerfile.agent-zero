@@ -15,9 +15,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir -r requirements2.txt
 
-# CarabinerOS additional deps (SQLAlchemy async, asyncpg, MCP, Pydantic, etc.)
+# CarabinerOS additional deps (asyncpg, typer, rich, etc.)
 COPY carabiner/requirements.txt /tmp/cos-requirements.txt
-RUN pip install --no-cache-dir -r /tmp/cos-requirements.txt 2>/dev/null || true
+RUN pip install --no-cache-dir -r /tmp/cos-requirements.txt
 
 # ipython is required by Agent Zero's code_execution_tool
 RUN pip install --no-cache-dir ipython
