@@ -1,5 +1,40 @@
 # Progress
 
+## [2026-04-01] Session 13 — Clean Rebuild: Submodule + CLI
+
+**Completed:**
+- [x] Removed 1,631 A0 core files from repo root (128K lines deleted)
+- [x] Added engine/agent-zero/ as git submodule pinned to v1.6 tag
+- [x] Created usr/plugins/carabiner/ plugin with startup_migration DB init extension
+- [x] Built carabiner CLI (carabiner/cli/, Typer+Rich, 14 files, 8 resource modules)
+- [x] Removed 63 MCP tools — saves ~14,000 tokens per A0 prompt
+- [x] System prompt rewritten to teach A0 CLI grammar instead of MCP tools
+- [x] CLI reference doc in usr/knowledge/main/ for A0's RAG
+- [x] Cleaned usr/ — removed 10 stale tool files, 162 old chats, stale A0_SET_* env overrides
+- [x] Reset settings.json and .env to match clean A0 at /Users/estebannunez/agent-zero/a0/usr/
+- [x] DB seeded with 3,037 records (Carabiner Tapas, full March 2026)
+- [x] CLI tested inside Docker — all 8 resources return real data
+
+**Still Broken:**
+- [ ] Dockerfile uses python:3.12-slim — MUST use agent0ai/agent-zero-base:latest
+- [ ] Frontend Next.js 16 SyntaxError — needs investigation
+- [ ] Chat pipeline untested — frontend ↔ A0 Socket.IO not verified
+- [ ] nginx /a0/ proxy — A0 WebUI doesn't render through it
+
+**Key Architecture Decision:**
+CLI over MCP. Dockerfile must build FROM agent0ai/agent-zero-base (A0's own image with tkinter, HF models, full runtime). CarabinerOS layer goes on top: usr/, carabiner/, pip deps.
+
+**Next Session Should:**
+1. Rewrite Dockerfile to FROM agent0ai/agent-zero-base:latest (study engine/agent-zero/DockerfileLocal)
+2. Bring up full stack, verify A0 WebUI works stock at localhost:5050
+3. Seed DB, test carabiner CLI inside container
+4. Verify chat pipeline: frontend → A0 → response
+5. Test A0 calling `carabiner orders list --json` via code_execution
+
+**Branch:** session-13/clean-rebuild (8 commits ahead of main)
+
+---
+
 ## [2026-03-31] Session 12 — Stabilization, Cleanup, and Architecture Decision
 
 **Completed:**

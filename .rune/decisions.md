@@ -1,5 +1,26 @@
 # Decisions Log
 
+## [2026-04-01] Decision: CLI Replaces 63 MCP Tools
+
+**Context:** 63 MCP tools inject ~14,000 tokens into every A0 prompt. No filtering — all tools, every message. This is the single biggest token cost.
+**Decision:** Replace carabiner-db MCP server with `carabiner` CLI (Typer+Rich). A0 calls via code_execution. Grammar: `carabiner <resource> <verb> [--json]`.
+**Rationale:** 35x token reduction in benchmarks (jannikreinhard.com). Claude Code itself uses CLI (git, gh, npm) — no MCP. LLMs trained on billions of terminal interactions — they know CLI natively.
+**Impact:** carabiner/cli/ (14 new files), usr/settings.json (mcp_servers = {}), system prompt rewritten, knowledge doc added.
+
+## [2026-04-01] Decision: Dockerfile Must Use agent0ai/agent-zero-base
+
+**Context:** Custom python:3.12-slim Dockerfile missing tkinter, HF model cache, proper A0 runtime. Every rebuild reveals another missing dep. Plugin installer crashes, memory dashboard fails.
+**Decision:** Build FROM agent0ai/agent-zero-base:latest (A0's own base image). Add CarabinerOS layer on top (usr/, carabiner/, pip deps).
+**Rationale:** A0's base image has everything A0 needs. Mirrors production deployment — same base for all tenants, CarabinerOS as overlay.
+**Impact:** Dockerfile.agent-zero must be rewritten. Docker-compose mounts remain the same.
+
+## [2026-04-01] Decision: Production Architecture — Per-Tenant A0 + Shared DB Cluster
+
+**Context:** Planning how restaurants will deploy. Each restaurant needs isolated A0 (stateful: memory, chats) but infra should scale efficiently.
+**Decision:** Per-tenant: own A0 container + own database. Shared: base image, frontend, DB cluster. CarabinerOS layer baked into image, per-tenant config via env vars. Stage 1: OpenRouter LLM, Stage 2: own inference at 500 users, Stage 3: fine-tuned restaurant LLM.
+**Rationale:** A0 is stateful (memory, agent profiles per restaurant). Can't share one A0 across tenants. But base image + PostgreSQL cluster are shared efficiently.
+**Impact:** Architecture supports 10→100→1000 restaurants. Infra cost: ~$1.50/restaurant/month at 100 tenants.
+
 ## [2026-03-31] Decision: Clean Rebuild — Fresh A0 v1.6 with Plugin-Only Architecture
 
 **Context:** Session 12 spent 8+ hours patching A0 v1.11 incompatibilities. Every fix revealed another: API paths moved to /api/, WebSocket requires handlers array, _model_config overrides settings.json, event loops conflict between DeferredTask and SQLAlchemy async. The fork-and-merge architecture means CarabinerOS code is intermingled with A0 core at the repo root — every upstream change breaks us.
