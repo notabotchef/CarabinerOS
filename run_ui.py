@@ -227,6 +227,17 @@ def run():
     except Exception as e:
         PrintStyle.warning(f"CarabinerOS DB init error (non-fatal): {e}")
 
+    # Register CarabinerOS workspace API blueprint BEFORE the catch-all /api/<path>
+    # dispatch can intercept requests. Blueprint-specific routes take priority in Flask.
+    try:
+        from carabiner.api.flask_blueprint import blueprint as carabiner_bp
+        webapp.register_blueprint(carabiner_bp)
+        from carabiner.api.prep_routes import prep_blueprint
+        webapp.register_blueprint(prep_blueprint)
+        PrintStyle().print("CarabinerOS API routes registered.")
+    except Exception as e:
+        PrintStyle.warning(f"CarabinerOS API routes not loaded: {e}")
+
     wsgi_app = WSGIMiddleware(webapp)
     starlette_app = Starlette(
         routes=[
@@ -317,10 +328,13 @@ def _init_carabiner_db():
         PrintStyle.warning("DATABASE_URL not set — skipping CarabinerOS DB init")
         return
     try:
-        import nest_asyncio
-        nest_asyncio.apply()
         from carabiner.db.engine import init_db
-        asyncio.get_event_loop().run_until_complete(init_db(db_url))
+        # Use a fresh event loop to avoid conflicts with DeferredTask threads
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(init_db(db_url))
+        finally:
+            loop.close()
         PrintStyle().print("CarabinerOS database initialized.")
     except Exception as e:
         PrintStyle.warning(f"CarabinerOS DB init failed: {e}")

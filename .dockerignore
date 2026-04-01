@@ -23,10 +23,12 @@ usr/*
 .conda/
 .cursor/
 .venv/
-.git/
+# .git/ is included for self-update version detection
+.git/objects/pack/*.tmp
 .claude/
 .rune/
 .github/
+.worktrees/
 
 ###############################################################################
 # Frontend (built separately, not needed in agent-zero image)

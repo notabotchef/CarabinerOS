@@ -24,9 +24,11 @@ services:
       - WEB_UI_HOST=0.0.0.0
       - DATABASE_URL=postgresql+asyncpg://carabiner:carabiner@postgres:5432/carabiner
       - FLASK_SECRET_KEY=carabiner-dev-secret-key-2026
+      - HF_HUB_OFFLINE=1
     volumes:
       - ./usr:/app/usr
       - ./carabiner:/app/carabiner
+      - hf_cache:/root/.cache/huggingface
     ports:
       - "5050:5000"
     extra_hosts:
@@ -38,8 +40,8 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:5000/ || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 18
+      start_period: 60s
 
   frontend:
     build:
@@ -67,3 +69,4 @@ services:
 
 volumes:
   pgdata:
+  hf_cache:
