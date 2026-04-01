@@ -1,5 +1,0 @@
-# Python deps for the NotebookLM plugin
-# patchright is the Playwright-compatible browser automation lib
-# used by the upstream notebooklm-mcp server.
-patchright>=1.0.0
-pyyaml>=6.0

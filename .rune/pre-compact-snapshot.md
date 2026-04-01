@@ -1,115 +1,115 @@
 # Pre-Compact Snapshot
-Generated: 2026-03-25T08:30:35.770Z
+Generated: 2026-04-01T01:27:00.128Z
 
 ## Session Metrics
-- Tool calls: 136
-- Session start: 2026-03-25T06:16:47.939Z
-- Top tools: unknown(136)
+- Tool calls: 59
+- Session start: 2026-03-31T20:38:56.084Z
+- Top tools: unknown(59)
 
 ## State Files (preview)
 ### .rune/progress.md
 # Progress
 
-## [2026-03-25] Session 9 Summary — Action Cards End-to-End Fix
+## [2026-03-31] Session 12 — Stabilization, Cleanup, and Architecture Decision
 
 **Completed:**
-- [x] Debugged action card delivery — root cause: `snapshot.notifications` never consumed by frontend (data arriving, thrown on floor)
-- [x] Collapsed expo subordinate into A0 direct `notify_user` calls — saves ~800-1000 tokens per notification
-- [x] Updated `_25_restaurant_context.py` — A0 calls `notify_user` directly, no more `call_subordinate(profile="expo")`
-- [x] Expanded `A0Notification` type to match backend `NotificationItem.output()` (title, detail, priority, display_time, etc.)
-- [x] `useSocket` now extracts `snapshot.notifications` from `state_push` events
-- [x] `useActionCards` converts `A0Notification[]` → `ActionCard[]` with type mapping (success→update, warning→urgent, etc.)
-- [x] Wired notifications through `SocketProvider` context → `Shell` → `useActionCards`
-- [x] Slimmed ALL MCP `*_list` responses — `_slim()` strips 13 heavy JSONB/Text columns (line_items, detail_points, summary, etc.)
-- [x] `orders_list` token reduction: 3,103 → ~400-500 tokens (6 orders)
-- [x] Disabled auto-emit extension primary path to prevent duplicate cards (notify_user + auto-emit were both creating cards)
-- [x] Fixed card UI: removed `aspect-[4/5]` gap, hidden Sheet close button (duplicate X), cleaned card animations
-- [x] Rewrote notification panel animations — removed `layoutId`/`LayoutGroup` conflicts, clean spring enter/exit
-- [x] Verified end-to-end: user prompt → A0 DB write → A0 calls `notify_user` → `state_push` → frontend card appears
-- [x] Expo prompt updated to use `notify_user` tool (kept for scheduled proactive sweeps)
+- [x] Fixed API 404s — blueprint registration moved to run_ui.py startup
+- [x] Fixed CSRF endpoint — nginx proxies /csrf_token → /api/csrf_token
+- [x] Eliminated codex_proxy — removed from settings.json, _model_config, Dockerfile, .env
+- [x] Fixed Socket.IO chat — added `handlers: ["ws_webui"]` to auth (A0 v1.11 requirement)
+- [x] Fixed plugin installer — removed stale `from turtle import stamp` import
+- [x] Docker self-update infrastructure — .git in image, /exe/ scripts, git index synced, stash-safe
+- [x] Fixed startup hang — HF_HUB_OFFLINE=1, hf_cache volume, asyncio.new_event_loop for DB init
+- [x] Cleaned 85 branches → 1, 40 worktrees → 1 (16.6 GB reclaimed), 10 stashes → 0
+- [x] Closed 5 open PRs — documented in docs/future-work/closed-prs-2026-03-31.md
+- [x] Moved 22 research docs from root to docs/research/
+- [x] CarabinerOS README replacing upstream A0 README
+- [x] All changes committed and pushed to GitHub
 
-**Key Architecture Decisions:**
-- A0 calls `notify_user` directly after DB writes (no subordinate delegation)
-- Notifications flow via existing `state_push` → `snapshot.notifications` (same pipe as chat streaming)
-- MCP `*_list` tools return summary-only fields; `*_get` returns full objects
-- Auto-emit extension disabled (A0 direct notification is the single path)
+**Still Broken (carried to Session 13):**
+- [ ] Chat message rendering — Socket connects, state_push received, but cOS chat page renders blank
+- [ ] DB route async errors — food-cost/summary, prep/today return 500 (event loop conflict)
+- [ ] Home page — Daily Brief and stats widgets not rendering
+- [ ] Model config — openrouter with wrong api_base, needs OpenRouter key or switch to local Ollama
+- [ ] Self-update — version detection works but actual update untested
 
-**Known Issues (to fix):**
-- [ ] `inventory_create` type coercion — A0 passes int for VARCHAR columns, requires retry (MCP layer should coerce)
-- [ ] A0 unnecessarily calls `*_list` before create operations (e.g., lists all 48 inventory items before adding 1)
-- [ ] Token cost still high (~$600/mo estimate for real restaurant scale) — needs RAG/pagination/smarter tool selection
-- [ ] Card module badge shows "GENERAL" — notify_user `group` field not set by A0, needs prompt guidance
-- [ ] Record IDs visible in card detail text — A0 should not include UUIDs in user-facing notifications
-
-**Still Open (carried):**
-- [ ] Migration 009 not yet run
-- [ ] Full walkthrough all 8 modules — visual QA
-- [ ] Wire ModuleChat into remaining 7 modules
-- [ ] Apply "Make It Nice" to empty states, loading, errors
-- [ ] Daily Brief — A0 scheduled task
-- [ ] Settings/integrations page skeleton
+**Key Architecture Decision:**
+CarabinerOS was built INSIDE Agent Zero (fork-and-merge), not ON TOP of it. Every fix this session revealed another A0 protocol incompatibility (API paths, WebSocket handlers, config migration, event loop). Decision: **clean rebuild on fresh A0 v1.6** with plugin-only architecture. Zero patches to A0 core files.
 
 **Next Session Should:**
-1. Fix A0 unnecessary `*_list` calls before creates — update system prompt to say "don't list before creating"
-2. Fix `inventory_create` type coercion in MCP layer (auto-cast int→str for VARCHAR columns)
-3. Add `group` field guidance to A0 prompt so cards show correct module badge
-4. Strip UUIDs from A0 `notify_user` detail text via prompt guidance
-5. Token cost reduction: pagination on `*_list`, or RAG-based tool selection
-6. Visual QA all 8 modules on :8080
+1. Fresh clone of agent0ai/agent-zero at v1.6 tag
+2. Set up as git submodule at engine/agent-zero/
+3. Create usr/plugins/carabiner/ plugin (DB init, API routes via plugin lifecycle)
+4. Reconnect frontend to stock A0 WebSocket protocol
+5. Verify: chat works, DB routes return data, module pages render
+6. Session 13 starter prompt saved in conversation
 
-## [2026-03-24] Session 8 Summary — UI Polish + Integration Architecture
+---
+
+## [2026-03-28] Session 11 — Tiny Router Build + A0 Personal Instance Setup
+
+**Completed:**
+- [x] Deleted OpenClaw — processes, launchd agent, npm package, `~/.openclaw/`, Docker images (~13GB reclaimed)
+- [x] Home directory audit — identified ~72GB of stale files (a0/, a0backup/, a0dev/, agent-zero/, carabiner-os.zip, .ollama, .gemini, .codex, .antigravity)
+- [x] Cleaned Docker images — removed old agent0ai/agent-zero (8.25GB), stale worktree build (4.74GB), curlimages/curl
+- [x] Built `a0-tiny-router` plugin — full ONNX inference pipeline using upstream `tgupj/tiny-router` (DeBERTa-v3-small, 44M params)
+- [x] Extracted inference-only functions into `tiny_router_helpers/upstream.py` — no torch/datasets dependency at runtime
+- [x] Downloaded INT8 ONNX model (172MB) from HuggingFace, verified 6-7ms inference inside A0 container
+- [x] 20/20 tests passing (12 routing logic + 8 smoke tests with real model)
+- [x] Made plugin A0-spec-compliant: renamed to `tiny_router`, `usr.plugins.*` imports, Store Gate webui, LICENSE, execute.py
+- [x] Installed in personal A0 at `/Users/estebannunez/agent-zero/a0/usr/plugins/tiny_router/`
 
 ### .rune/decisions.md
 # Decisions Log
 
-## [2026-03-25] Decision: A0 direct notify_user (no expo subordinate)
+## [2026-03-31] Decision: Clean Rebuild — Fresh A0 v1.6 with Plugin-Only Architecture
 
-**Context:** Expo subordinate agent added ~800-1000 tokens per notification for a second LLM call that just reformatted data A0 already had. Expo also failed on first try (passed unsupported `priority` field), wasting another ~300 tokens.
-**Decision:** A0 calls `notify_user` directly after DB writes. No subordinate delegation for reactive notifications. Expo agent kept for scheduled proactive sweeps only.
-**Rationale:** A0 has all the context — vendor name, item counts, deadline. Spawning a subordinate to reformat is pure overhead. The notify_user tool is simple (title, message, detail, type). A0 can assess urgency inline.
-**Impact:** `usr/extensions/system_prompt/_25_restaurant_context.py` (prompt change), `usr/extensions/tool_execute_after/_30_action_card_emit.py` (auto-emit disabled). Frontend unchanged — consumes `snapshot.notifications` from `state_push`.
+**Context:** Session 12 spent 8+ hours patching A0 v1.11 incompatibilities. Every fix revealed another: API paths moved to /api/, WebSocket requires handlers array, _model_config overrides settings.json, event loops conflict between DeferredTask and SQLAlchemy async. The fork-and-merge architecture means CarabinerOS code is intermingled with A0 core at the repo root — every upstream change breaks us.
+**Decision:** Clean rebuild. Fresh clone of agent0ai/agent-zero at v1.6 tag. CarabinerOS as plugin(s) in usr/plugins/carabiner/. Zero patches to A0 core files. Submodule or clean overlay architecture.
+**Rationale:** Patching is unsustainable. The root cause is architectural — cOS built inside A0, not on top of it. A clean separation means: (1) A0 updates are a tag bump, not a merge nightmare, (2) all cOS code is clearly separated, (3) the plugin system is the designed extension point.
+**Impact:** Entire repo structure changes. All A0 core files replaced with fresh upstream. CarabinerOS code preserved in carabiner/, frontend/, usr/. DB init and API routes move from run_ui.py patches to plugin init hooks.
 
-## [2026-03-25] Decision: Slim MCP list responses
+## [2026-03-31] Decision: Socket.IO Requires handlers Array in Auth
 
-**Context:** `orders_list` returned 3,103 tokens for 6 orders (full line_items JSONB, detail_points, summary, prompt). A real restaurant with 50+ orders would cost thousands in tokens monthly. `inventory_list` was even worse: 10,219 tokens for 48 items.
-**Decision:** All `*_list` MCP tools strip 13 heavy columns (line_items, detail_points, prompt, summary, extracted_data, gl_codes, media_urls, components, steps, ingredients, notes, equipment, tags, events). `*_get` tools return full objects.
-**Rationale:** LLM only needs summary fields to decide what to do. Full detail is fetched on demand via `*_get`. This is a 75-85% token reduction on list calls.
-**Impact:** `carabiner/mcp/server.py` — `_slim()` helper applied to 13 list endpoints. No model or repository changes.
+**Context:** CarabinerOS frontend connected to A0 Socket.IO /ws namespace but received no state_push events. Chat was completely dead.
+**Decision:** The auth callback must include `handlers: ["ws_webui"]` for A0 to activate the state sync handler. Without it, all events are silently dropped.
+**Rationale:** A0's WebSocket dispatch checks `_active_handlers[sid]` — if empty (no handlers declared in auth), it returns early with "NO_HANDLERS" without processing any events. This was a protocol change in A0's newer versions that our frontend never knew about.
+**Impact:** `frontend/src/lib/socket-client.ts` — auth callback sends `{ csrf_token, handlers: ["ws_webui"] }`
 
-## [2026-03-25] Decision: Notifications via state_push (not separate Socket.IO events)
+## [2026-03-31] Decision: All A0 Endpoints Moved to /api/ Prefix
 
-**Context:** Action cards were delivered via direct `sio.emit("action_card")` on `/state_sync` — but CSRF cookie validation was rejecting CarabinerOS's socket connections. Chat streaming worked because it uses the same `state_push` mechanism.
-**Decision:** Notifications flow through the existing `state_push` → `snapshot.notifications` pipeline. Frontend reads notifications from the same events that deliver chat. No new socket events, no new handshakes.
-**Rationale:** The pipe already works (chat proves it). Adding a second delivery mechanism (direct `action_card` emit) introduced CSRF issues and duplicate cards. Single path = simple path.
-**Impact:** `frontend/src/hooks/use-action-cards.ts` (consumes `snapshot.notifications`), `frontend/src/hooks/use-socket.ts` (exposes notifications), `frontend/src/components/socket-provider.tsx` (context). Auto-emit extension disabled.
+**Context:** CarabinerOS nginx and Next.js rewrites pointed to bare paths (/message_async, /chats, /csrf_token). All returned 404 or 405.
+**Decision:** A0 v1.11 moved all endpoints under /api/. Updated nginx.dev.conf and frontend/next.config.ts to proxy to /api/ prefixed paths.
+**Rationale:** A0's register_api_route() registers a catch-all /api/<path> dispatcher. Bare paths like /message_async don't exist — they're at /api/message_async.
+**Impact:** nginx.dev.conf (7 location blocks), frontend/next.config.ts (7 rewrites)
 
-## [2026-03-24] Decision: Self-extending plugin architecture
+## [2026-03-28] Decision: Tiny Router A0 Plugin — Inference-Only Extraction
 
-**Context:** CarabinerOS needs integrations with Toast, OpenTable, Square, Google, 7shifts, etc. Building each one manually doesn't scale. A0 can already write code at runtime.
-**Decision:** A0 creates integrations autonomously by writing MCP servers + manifest files to `usr/plugins/`. The frontend dynamically discovers and renders plugin data via a generic PluginWidget — zero React code per integration. Manifests define UI presence, auth config, and natural language routing.
-**Rationale:** This makes CarabinerOS a self-extending platform. Traditional SaaS: feature request → 6 weeks. CarabinerOS: user request → A0 builds overnight → live tomorrow. The competitive moat is the ability to build ANY integration on demand.
-**Impact:** `docs/plans/self-extending-architecture.md` (full spec), `docs/plans/integration-architecture.md` (OAuth/token details). Build order: manifest schema → plugin discovery API → generic widget → settings page → MCP scaffolding tool → overnight agent.
-**Constraints:** A0 can only write to `usr/plugins/`. Cannot modify frontend, domain code, core, auth, or database schema without approval.
+**Context:** The upstream `tgupj/tiny-router` package requires torch, datasets, and other heavy ML deps. At runtime in A0, only ONNX inference is needed.
+**Decision:** Extract only the inference-path functions (`prepare_record`, `scale_logits`, `canonicalize_action`, `normalize_interaction`, `build_prompt`) into `tiny_router_helpers/upstream.py`. Keep upstream as git submodule for reference. Runtime deps: only onnxruntime, transformers, sentencepiece, numpy.
+**Rationale:** Avoids ~2GB torch dependency in A0 container. The extracted functions are pure Python + numpy — no torch needed for ONNX inference.
+**Impact:** `tiny_router_helpers/upstream.py` (standalone), `vendor/tiny-router/` (submodule reference only)
 
-## [2026-03-21 16:00] Decision: Use remark-gfm for markdown table rendering
+## [2026-03-28] Decision: Codex Proxy Startup at monologue_start
 
-**Context:** CarabinerOS chat rendered markdown tables as raw pipe-delimited text instead of formatted HTML tables
-**Decision:** Added remark-gfm plugin to ReactMarkdown and CSS table styles using existing theme variables
-**Rationale:** GFM tables are not standard markdown — require remark-gfm plugin. CSS-only approach keeps it simple.
-**Impact:** frontend/src/components/message-list.tsx, frontend/src/app/globals.css
+**Context:** Codex proxy started at `message_loop_start` via `_10_codex_proxy.py`. LiteLLM tried to connect to `127.0.0.1:8400` before the proxy was listening, causing connection refused errors.
+**Decision:** Added `monologue_start/_05_codex_proxy_boot.py` that starts the proxy once per conversation before any message loop iteration.
+**Rationale:** `monologue_start` fires before the message loop begins. By the time `message_loop_start` → LLM call happens, the proxy is already listening.
+**Impact:** `/a0/usr/plugins/codex-provider/extensions/python/monologue_start/_05_codex_proxy_boot.py`
 
-## [2026-03-21 16:30] Decision: Use relative venv path for MCP config
+## [2026-03-28] Decision: Ollama num_ctx Must Be Passed via kwargs
 
-**Context:** MCP carabiner_db command used absolute path to venv python, breaking portability across machines and Docker
-**Decision:** Changed to `.venv/bin/python` (relative) in usr/settings.json, added settings.local.json pattern for overrides
-**Rationale:** Docker uses `python` (system), local dev uses `.venv/bin/python`. Relative path works for local dev; Docker overrides via its own config.
-**Impact:** usr/settings.json, .gitignore, usr/settings.local.json.example
+**Context:** A0's `ctx_length` in model config controls how much history A0 sends to the LLM. But Ollama independently allocates its own context window — defaulting to 65K for GLM-30B (~26GB RAM). This caused OOM and hangs.
+**Decision:** Pass `num_ctx` directly to Ollama via the model config `kwargs` field: `{"kwargs": {"num_ctx": 8192}}`. This controls Ollama's actual memory allocation.
+**Rationale:** A0's `ctx_length` and Ollama's `num_ctx` are independent settings. Without explicit `num_ctx` in kwargs, Ollama uses the model's default (65K for GLM), regardless of what A0 sends.
+**Impact:** `_model_config/config.json` — `kwargs.num_ctx` for both chat and utility models
 
-## [2026-03-21 17:00] Decision: Unpinned litellm/openai/starlette in requirements.txt
+## [2026-03-28] Decision: Phase 1 Tiny Router — Log Only, No LLM Skip
 
-**Context:** requirements.txt had `>=` floor pins that conflicted with exact pins in requirements2.txt (used by Docker)
-**Decision:** Use unpinned entries (just package name) so requirements2.txt wins in Docker builds
-**Rationale:** requirements2.txt is the authoritative source for Docker version pins. Our entries just ensure the packages are listed.
+**Context:** The upstream model is trained on synthetic data (F1: 0.78, exact match: 0.46). Routing decisions might be wrong for real restaurant messages.
+**Decision:** Phase 1 logs every classification but never skips the LLM. Phase 2 (configurable via plugin settings UI) will actually skip for canned responses once thresholds are validated.
+**Rationale:** Collect real classification data before trusting the model with cost-saving decisions. A wrong canned response ("Got it.") to an actual question would be worse than the token cost savings.
+**Impact:** Extension logs `WOULD skip LLM -> "Got it." (Phase 1: pass-through)` — visible in logs for threshold tuning
 
 ### .rune/conventions.md
 # Conventions

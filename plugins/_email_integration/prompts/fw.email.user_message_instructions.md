@@ -1,2 +1,0 @@
-
-[Handler instructions: {{instructions}}]

@@ -1,52 +1,40 @@
 # CarabinerOS
 
-Restaurant management platform powered by Agent Zero. AI-first operations for independent restaurants — orders, inventory, prep, menu, recipes, invoices, food cost, marketing, and reporting.
+Restaurant management platform powered by Agent Zero.
 
 ## Architecture
 
-CarabinerOS is a domain layer built on top of [Agent Zero](https://github.com/agent0ai/agent-zero), an agentic AI framework.
-
-- **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui
-- **Backend**: Agent Zero (Python/Flask + Socket.IO) with CarabinerOS extensions
-- **Database**: PostgreSQL 16, SQLAlchemy 2.0 async, Alembic migrations
-- **AI**: LiteLLM (multi-provider), MCP tools for database operations
-
-## Running
-
-```bash
-# Full stack via Docker
-docker compose -f docker-compose.dev.yml up
-
-# Access
-# CarabinerOS frontend: http://localhost:8080
-# Agent Zero UI: http://localhost:8080/a0/
-```
-
-## Project Structure
-
 ```
 carabiner-os/
-├── carabiner/           # CarabinerOS domain code
-│   ├── api/             # Flask blueprint (REST routes)
-│   ├── db/              # SQLAlchemy models + Alembic migrations
-│   └── mcp/             # MCP server (AI tool interface)
-├── frontend/            # Next.js 16 app
-├── usr/                 # Agent Zero user data (volume-mounted)
-│   ├── agents/          # Agent profiles
-│   ├── extensions/      # Lifecycle hooks
-│   ├── plugins/         # A0 plugins
-│   └── settings.json    # Runtime config
-├── api/                 # Agent Zero API handlers (upstream)
-├── plugins/             # Agent Zero plugins (upstream)
+├── engine/agent-zero/     ← git submodule (A0 v1.6, read-only)
+├── carabiner/             ← domain code (DB models, MCP server, API schemas)
+├── frontend/              ← Next.js 16 app (React 19, Tailwind 4, shadcn/ui)
+├── usr/                   ← A0 user data (plugins, extensions, agents, chats)
+│   ├── plugins/carabiner/ ← main plugin (API handlers, DB init)
+│   ├── extensions/        ← lifecycle hooks (system_prompt, tool hooks)
+│   ├── agents/            ← agent profiles (gm, souschef, etc.)
+│   └── settings.json
 ├── docker-compose.dev.yml
 ├── Dockerfile.agent-zero
 └── nginx.dev.conf
 ```
 
-## Status
+**Key principle**: Zero patches to A0 core files. Everything CarabinerOS lives in `usr/` as plugins/extensions, or in `carabiner/` as domain code.
 
-Active development. Private repository.
+## Quick Start
 
-## License
+```bash
+docker compose -f docker-compose.dev.yml up
+# Frontend: http://localhost:3000
+# Full stack via nginx: http://localhost:8080
+```
 
-Proprietary. All rights reserved.
+## Development
+
+```bash
+# Frontend
+cd frontend && pnpm dev
+
+# Backend (runs A0 with CarabinerOS plugins)
+cd engine/agent-zero && python run_ui.py
+```

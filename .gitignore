@@ -5,48 +5,56 @@
 *.py[cod]
 **/.conda/
 
-#Ignore IDE files
+# IDE files
 .cursor/
 .windsurf/
 
-# ignore test files in root dir
+# test files in root dir
 /*.test.py
 
-# Ignore all contents of the virtual environment directory
+# Virtual environment
 .venv/
 
-# obsolete folders
+# Obsolete folders
 /memory/
 /knowledge/custom/
 /instruments/
 
-# Handle logs directory
+# Logs
 logs/**
 !logs/**/
 
-# Handle tmp and usr directory
+# Temp
 tmp/**
 !tmp/**/
 
-# hack to keep .gitkeep but ignore nested repos
-# Ignore everything under usr
-usr/**
-# Ignore nested repos
+# ── usr/ ─────────────────────────────────────────────
+# Track our plugins/extensions/agents/settings but ignore
+# runtime data (chats, memory, workdir, secrets, projects)
+usr/chats/
+usr/memory/
+usr/workdir/
+usr/secrets.env
+usr/projects/
+usr/.env
+usr/**/__pycache__/
 /usr/**/.git
-# Allow git to traverse directories
-!usr/**/
-# Re-ignore everything again
-usr/**/*
-# But allow .gitkeep files
-!usr/**/.gitkeep
 
+# ── Engine submodule ─────────────────────────────────
+# The submodule is tracked by .gitmodules — don't ignore it
 
-# Global rule to include .gitkeep files anywhere
-!**/.gitkeep
+# ── Build artifacts ──────────────────────────────────
+frontend/.next/
+frontend/node_modules/
+.ruff_cache/
+.next/
 
 # for browser-use
 agent_history.gif
 
+# Rune / Claude state
 .agent/**
-.claude/**
 .worktrees/
+
+# Global .gitkeep
+!**/.gitkeep
