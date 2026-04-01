@@ -1,78 +1,34 @@
-###############################################################################
-# Project‑specific exclusions / re‑includes
-###############################################################################
+# ── Runtime data (volume-mounted, not baked into image) ──
+usr/chats/
+usr/memory/
+usr/workdir/
+usr/secrets.env
+usr/projects/
 
-# Obsolete
-memory/**
-instruments/**
-knowledge/custom/**
+# ── Build artifacts ──
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+.venv/
 
-# Logs, tmp, usr
-logs/*
-tmp/*
-usr/*
-
-
-# Keep .gitkeep markers anywhere
-!**/.gitkeep
-
-
-###############################################################################
-# Environment / tooling
-###############################################################################
+# ── Dev/tooling files ──
 .conda/
 .cursor/
-.venv/
-# .git/ is included for self-update version detection
-.git/objects/pack/*.tmp
 .claude/
 .rune/
 .github/
 .worktrees/
+.git/
 
-###############################################################################
-# Frontend (built separately, not needed in agent-zero image)
-###############################################################################
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-
-###############################################################################
-# Docs, research, non-runtime files
-###############################################################################
+# ── Docs (not needed at runtime) ──
 docs/
-*.md
-!prompts/**/*.md
-!knowledge/**/*.md
-!agents/**/*.md
-!plugins/**/*.md
-!skills/**/*.md
-NOTEBOOKLM_*.md
-MARKITDOWN_*.md
-PLUGIN_TINY_ROUTER_*.md
-RESEARCH_*.md
-GITAGENT_*.md
 
+# ── Tests ──
+tests/
 
-###############################################################################
-# Tests (root‑level only)
-###############################################################################
-/*.test.py
-
-
-###############################################################################
-# ─── LAST SECTION: universal junk / caches (MUST BE LAST) ───
-#   Put these at the *bottom* so they override any ! re‑includes above
-###############################################################################
-# OS / editor junk
+# ── OS / editor junk ──
 **/.DS_Store
 **/Thumbs.db
-
-# Python caches / compiled artefacts
 **/__pycache__/
 **/*.py[cod]
-**/*.pyo
-**/*.pyd
-
-# Environment files anywhere
 *.env

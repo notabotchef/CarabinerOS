@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
+      // A0 chat endpoints (frontend calls bare paths, A0 serves at /api/)
       { source: "/csrf_token", destination: `${A0_URL}/api/csrf_token` },
       { source: "/message_async", destination: `${A0_URL}/api/message_async` },
       { source: "/message", destination: `${A0_URL}/api/message` },
@@ -15,6 +16,7 @@ const nextConfig: NextConfig = {
       { source: "/chat_load", destination: `${A0_URL}/api/chat_load` },
       { source: "/chat_create", destination: `${A0_URL}/api/chat_create` },
       { source: "/chat_remove", destination: `${A0_URL}/api/chat_remove` },
+      // CarabinerOS + A0 API catch-all
       { source: "/api/:path*", destination: `${A0_URL}/api/:path*` },
     ];
   },

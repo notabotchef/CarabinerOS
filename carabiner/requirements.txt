@@ -1,0 +1,4 @@
+# CarabinerOS domain dependencies (beyond what A0 provides)
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29
+alembic>=1.13

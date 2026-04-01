@@ -1,57 +1,40 @@
 FROM python:3.12-slim
 
-WORKDIR /app
+# A0 runs from /a0, CarabinerOS domain code at /cos
+WORKDIR /a0
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential curl git \
     && rm -rf /var/lib/apt/lists/*
 
-# Python deps — install with flexible resolution to handle A0's version conflicts
-COPY requirements.txt requirements2.txt ./
+# Python deps — A0's requirements
+COPY engine/agent-zero/requirements.txt engine/agent-zero/requirements2.txt ./
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt -r requirements2.txt || \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir -r requirements2.txt
 
-# Copy entire app (including .git for version detection / self-update)
-COPY . .
+# CarabinerOS additional deps (SQLAlchemy async, asyncpg, MCP, Pydantic, etc.)
+COPY carabiner/requirements.txt /tmp/cos-requirements.txt
+RUN pip install --no-cache-dir -r /tmp/cos-requirements.txt 2>/dev/null || true
 
-# Create .venv/bin/python symlink so MCP server config (.venv/bin/python)
-# works identically in Docker (system python) and local dev (real venv)
-RUN mkdir -p .venv/bin && ln -sf /usr/local/bin/python .venv/bin/python
-
-# ipython is required by Agent Zero's code_execution_tool for Python runtime
+# ipython is required by Agent Zero's code_execution_tool
 RUN pip install --no-cache-dir ipython
 
-# Set up /exe/ self-update infrastructure.
-# Uses patched self_update_manager (port from WEB_UI_PORT env, not hardcoded 80).
-# The manager expects REPO_DIR=/a0 — symlink /a0 → /app.
-RUN mkdir -p /exe && \
-    cp docker/carabiner_self_update_manager.py /exe/self_update_manager.py && \
-    cp docker/run/fs/exe/trigger_self_update.sh /exe/trigger_self_update.sh && \
-    chmod +x /exe/trigger_self_update.sh && \
-    ln -sfn /app /a0
+# Copy A0 engine (from submodule — read-only, never modified)
+COPY engine/agent-zero/ /a0/
 
-# Mark git directory as safe (Docker runs as root, repo may be owned differently).
-# Remove usr/ and carabiner/ from git index — they are volume-mounted at runtime
-# and MUST NOT be touched by self-update stash/checkout/reset operations.
-# The files still exist on disk; git just stops tracking them.
-RUN git config --global --add safe.directory /app && \
-    git config --global --add safe.directory /a0 && \
-    git -C /app stash clear && \
-    echo "usr/" >> /app/.git/info/exclude && \
-    echo "carabiner/" >> /app/.git/info/exclude && \
-    git -C /app add -A && \
-    git -C /app \
-      -c user.email="docker@carabiner.os" \
-      -c user.name="Docker Build" \
-      commit -m "docker: sync index with image contents" --allow-empty
+# Copy CarabinerOS domain code
+COPY carabiner/ /cos/carabiner/
+
+# Create .venv/bin/python symlink so MCP server config works
+RUN mkdir -p /a0/.venv/bin && ln -sf /usr/local/bin/python /a0/.venv/bin/python
+
+# Add /cos to Python path so carabiner.* imports work from A0 extensions
+ENV PYTHONPATH="/cos:${PYTHONPATH}"
 
 EXPOSE 5000
 
-# Use self_update_manager as entrypoint — handles version detection,
-# pending updates, and launches run_ui.py.
-# Health check URL overridden to port 5000 (CarabinerOS uses 5000, not 80).
-ENV A0_SELF_UPDATE_HEALTH_URL=http://127.0.0.1:5000/api/health
-CMD ["python", "/exe/self_update_manager.py", "docker-run-ui"]
+# Run A0's run_ui.py — CarabinerOS registers via startup_migration extension
+CMD ["python", "run_ui.py"]

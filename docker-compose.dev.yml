@@ -26,9 +26,10 @@ services:
       - FLASK_SECRET_KEY=carabiner-dev-secret-key-2026
       - HF_HUB_OFFLINE=1
     volumes:
-      - ./usr:/app/usr
-      - ./carabiner:/app/carabiner
-      - hf_cache:/root/.cache/huggingface
+      # Mount usr/ so plugins/extensions/settings are live-editable
+      - ./usr:/a0/usr
+      # Mount CarabinerOS domain code for live development
+      - ./carabiner:/cos/carabiner
     ports:
       - "5050:5000"
     extra_hosts:

@@ -1,0 +1,8 @@
+name: carabiner
+title: CarabinerOS
+description: Restaurant management platform — DB, API routes, and domain logic.
+version: 0.13.0
+settings_sections: []
+per_project_config: false
+per_agent_config: false
+always_enabled: true
