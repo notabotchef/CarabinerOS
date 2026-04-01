@@ -1,5 +1,41 @@
 # Progress
 
+## [2026-03-31] Session 12 — Stabilization, Cleanup, and Architecture Decision
+
+**Completed:**
+- [x] Fixed API 404s — blueprint registration moved to run_ui.py startup
+- [x] Fixed CSRF endpoint — nginx proxies /csrf_token → /api/csrf_token
+- [x] Eliminated codex_proxy — removed from settings.json, _model_config, Dockerfile, .env
+- [x] Fixed Socket.IO chat — added `handlers: ["ws_webui"]` to auth (A0 v1.11 requirement)
+- [x] Fixed plugin installer — removed stale `from turtle import stamp` import
+- [x] Docker self-update infrastructure — .git in image, /exe/ scripts, git index synced, stash-safe
+- [x] Fixed startup hang — HF_HUB_OFFLINE=1, hf_cache volume, asyncio.new_event_loop for DB init
+- [x] Cleaned 85 branches → 1, 40 worktrees → 1 (16.6 GB reclaimed), 10 stashes → 0
+- [x] Closed 5 open PRs — documented in docs/future-work/closed-prs-2026-03-31.md
+- [x] Moved 22 research docs from root to docs/research/
+- [x] CarabinerOS README replacing upstream A0 README
+- [x] All changes committed and pushed to GitHub
+
+**Still Broken (carried to Session 13):**
+- [ ] Chat message rendering — Socket connects, state_push received, but cOS chat page renders blank
+- [ ] DB route async errors — food-cost/summary, prep/today return 500 (event loop conflict)
+- [ ] Home page — Daily Brief and stats widgets not rendering
+- [ ] Model config — openrouter with wrong api_base, needs OpenRouter key or switch to local Ollama
+- [ ] Self-update — version detection works but actual update untested
+
+**Key Architecture Decision:**
+CarabinerOS was built INSIDE Agent Zero (fork-and-merge), not ON TOP of it. Every fix this session revealed another A0 protocol incompatibility (API paths, WebSocket handlers, config migration, event loop). Decision: **clean rebuild on fresh A0 v1.6** with plugin-only architecture. Zero patches to A0 core files.
+
+**Next Session Should:**
+1. Fresh clone of agent0ai/agent-zero at v1.6 tag
+2. Set up as git submodule at engine/agent-zero/
+3. Create usr/plugins/carabiner/ plugin (DB init, API routes via plugin lifecycle)
+4. Reconnect frontend to stock A0 WebSocket protocol
+5. Verify: chat works, DB routes return data, module pages render
+6. Session 13 starter prompt saved in conversation
+
+---
+
 ## [2026-03-28] Session 11 — Tiny Router Build + A0 Personal Instance Setup
 
 **Completed:**

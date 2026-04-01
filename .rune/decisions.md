@@ -1,5 +1,26 @@
 # Decisions Log
 
+## [2026-03-31] Decision: Clean Rebuild — Fresh A0 v1.6 with Plugin-Only Architecture
+
+**Context:** Session 12 spent 8+ hours patching A0 v1.11 incompatibilities. Every fix revealed another: API paths moved to /api/, WebSocket requires handlers array, _model_config overrides settings.json, event loops conflict between DeferredTask and SQLAlchemy async. The fork-and-merge architecture means CarabinerOS code is intermingled with A0 core at the repo root — every upstream change breaks us.
+**Decision:** Clean rebuild. Fresh clone of agent0ai/agent-zero at v1.6 tag. CarabinerOS as plugin(s) in usr/plugins/carabiner/. Zero patches to A0 core files. Submodule or clean overlay architecture.
+**Rationale:** Patching is unsustainable. The root cause is architectural — cOS built inside A0, not on top of it. A clean separation means: (1) A0 updates are a tag bump, not a merge nightmare, (2) all cOS code is clearly separated, (3) the plugin system is the designed extension point.
+**Impact:** Entire repo structure changes. All A0 core files replaced with fresh upstream. CarabinerOS code preserved in carabiner/, frontend/, usr/. DB init and API routes move from run_ui.py patches to plugin init hooks.
+
+## [2026-03-31] Decision: Socket.IO Requires handlers Array in Auth
+
+**Context:** CarabinerOS frontend connected to A0 Socket.IO /ws namespace but received no state_push events. Chat was completely dead.
+**Decision:** The auth callback must include `handlers: ["ws_webui"]` for A0 to activate the state sync handler. Without it, all events are silently dropped.
+**Rationale:** A0's WebSocket dispatch checks `_active_handlers[sid]` — if empty (no handlers declared in auth), it returns early with "NO_HANDLERS" without processing any events. This was a protocol change in A0's newer versions that our frontend never knew about.
+**Impact:** `frontend/src/lib/socket-client.ts` — auth callback sends `{ csrf_token, handlers: ["ws_webui"] }`
+
+## [2026-03-31] Decision: All A0 Endpoints Moved to /api/ Prefix
+
+**Context:** CarabinerOS nginx and Next.js rewrites pointed to bare paths (/message_async, /chats, /csrf_token). All returned 404 or 405.
+**Decision:** A0 v1.11 moved all endpoints under /api/. Updated nginx.dev.conf and frontend/next.config.ts to proxy to /api/ prefixed paths.
+**Rationale:** A0's register_api_route() registers a catch-all /api/<path> dispatcher. Bare paths like /message_async don't exist — they're at /api/message_async.
+**Impact:** nginx.dev.conf (7 location blocks), frontend/next.config.ts (7 rewrites)
+
 ## [2026-03-28] Decision: Tiny Router A0 Plugin — Inference-Only Extraction
 
 **Context:** The upstream `tgupj/tiny-router` package requires torch, datasets, and other heavy ML deps. At runtime in A0, only ONNX inference is needed.
