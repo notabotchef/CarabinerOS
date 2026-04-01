@@ -21,27 +21,44 @@
 - [x] Built Plugins page: installed plugins, 8-card integration marketplace, SDK teaser
 - [x] DB seeded: 37 tables, 3,037 records (Carabiner Tapas, March 2026)
 
+**Also Completed (late session):**
+- [x] Fixed model config: removed dead codex proxy api_base, cleared Ollama kwargs
+- [x] Deleted 10 stale MCP tool prompts from agent profiles
+- [x] Updated 4 agent prompts: CLI read + CLI write + notify_user instructions
+- [x] Added CLI write commands (create/update/delete) for 6 resources via rune:team
+- [x] Built floating island nav bar (vertical, left side)
+- [x] Fixed nginx detail routes: UUID regex rewrite for /api/<resource>/<uuid>
+- [x] Fixed order detail panel: normalized line item format (DB {qty,item,price} → display {name,quantity,unit,unit_price,total})
+- [x] Fixed thoughts-stream null safety
+- [x] Fixed chat auto-scroll: only scrolls if user is near bottom
+- [x] Nginx: routed all chat endpoints directly to A0 (session-consistent Socket.IO)
+- [x] Nginx: increased header buffer for Safari cookie accumulation
+- [x] Updated README to professional format
+- [x] Merged to main and pushed to GitHub
+- [x] Hermes plugin installed by Esteban
+
 **Still Needs Work:**
-- [ ] End-to-end chat: send message → A0 responds (needs LLM API key)
-- [ ] A0 code_execution: A0 calling `carabiner orders list --json` autonomously
+- [ ] Action cards: agents have NOTIFY instructions but aren't calling notify_user
 - [ ] Reporting page: needs /api/reporting/daily-pl endpoint
-- [ ] Marketing page: verify campaigns data renders
+- [ ] Menu 86-board: needs /api/menu/86-board endpoint
 - [ ] Recipe shared components / base recipes (future — needs UI design)
-- [ ] Budget card interaction: click to set budget via chat or manual input
+- [ ] Real-time sync: cOS doesn't get state_push when conversation started in A0 WebUI (different sessions)
+- [ ] A0 self-update shows "unknown" (no .git in /a0/ — cosmetic)
 
 **Next Session Should:**
-1. Configure LLM API key and test end-to-end chat
-2. Test A0 code_execution with carabiner CLI
-3. Add remaining sub-endpoints (reporting/daily-pl, menu/86-board)
-4. Review all agent work for quality — sidebar fix, settings page, plugins page
-5. Consider committing session 14 changes
+1. Debug action cards pipeline — agents have NOTIFY but don't call it
+2. Add reporting/daily-pl and menu/86-board endpoints
+3. Test CLI write commands end-to-end (orders create via A0 chat)
+4. Monitor Hermes plugin behavior, adapt carabiner plugin
+5. Review MiroFish simulation results
+6. Floating island: refine sizing, smaller
 
 **Python Context:**
 - Python: 3.12.4 (venv at /opt/venv-a0/ inside Docker)
 - Installed extras: sqlalchemy[asyncio], asyncpg, alembic, typer, rich
 - DB migration: create_all (no alembic versioning active)
 
-**Branch:** session-13/clean-rebuild (continuing)
+**Branch:** main (clean, pushed to GitHub)
 
 ---
 

@@ -34,3 +34,24 @@
 **Action:** Restart the A0 container. A0 caches loaded ApiHandler classes in memory.
 **Confidence:** 0.7
 **Evidence:** Changed RecipeOut→RecipeDetailOut in _a0_handlers.py but recipe detail still returned 0 components until restart.
+
+## [2026-04-01] Instinct: Never restart A0 during active testing
+
+**Trigger:** Seeing a fixable issue while user is testing an A0 conversation
+**Action:** Queue the fix. Tell the user "I have a fix ready, want me to apply after testing?" Wait for the test to complete, review logs, THEN apply. Frontend/nginx restarts are safe anytime.
+**Confidence:** 0.9
+**Evidence:** Restarted A0 mid-conversation to push prompt updates. Killed in-flight multi-turn exchange, wasted tokens, lost the observation. User called it out as a recurring violation.
+
+## [2026-04-01] Instinct: nginx /api/ catch-all blocks Next.js detail rewrites
+
+**Trigger:** Adding `/api/resource/:id` → `?id=:id` rewrites in next.config.ts
+**Action:** Those rewrites won't work because nginx's `location /api/` catches first and sends directly to A0. Detail routes must be handled in nginx with a UUID regex rewrite, not in Next.js.
+**Confidence:** 0.9
+**Evidence:** Order detail returned "API endpoint not found: orders/UUID" because nginx sent the full path to A0. Fixed with nginx regex: `location ~ "^/api/(resource)/([uuid])$"` → `proxy_pass /api/$1?id=$2`.
+
+## [2026-04-01] Instinct: Safari cookie accumulation causes 400
+
+**Trigger:** Getting "400 Bad Request — Request Header Or Cookie Too Large" in Safari
+**Action:** A0 creates a new `session_<runtime_id>` cookie on every restart. They accumulate in the browser. Fix: `large_client_header_buffers 4 32k` in nginx. User clears cookies for localhost.
+**Confidence:** 0.8
+**Evidence:** After many A0 restarts during dev, Safari hit nginx's 8k default header buffer limit.
