@@ -8,13 +8,13 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
-      { source: "/csrf_token", destination: `${A0_URL}/csrf_token` },
-      { source: "/message_async", destination: `${A0_URL}/message_async` },
-      { source: "/message", destination: `${A0_URL}/message` },
-      { source: "/chats", destination: `${A0_URL}/chats` },
-      { source: "/chat_load", destination: `${A0_URL}/chat_load` },
-      { source: "/chat_create", destination: `${A0_URL}/chat_create` },
-      { source: "/chat_remove", destination: `${A0_URL}/chat_remove` },
+      { source: "/csrf_token", destination: `${A0_URL}/api/csrf_token` },
+      { source: "/message_async", destination: `${A0_URL}/api/message_async` },
+      { source: "/message", destination: `${A0_URL}/api/message` },
+      { source: "/chats", destination: `${A0_URL}/api/chats` },
+      { source: "/chat_load", destination: `${A0_URL}/api/chat_load` },
+      { source: "/chat_create", destination: `${A0_URL}/api/chat_create` },
+      { source: "/chat_remove", destination: `${A0_URL}/api/chat_remove` },
       { source: "/api/:path*", destination: `${A0_URL}/api/:path*` },
     ];
   },
