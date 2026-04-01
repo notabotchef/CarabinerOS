@@ -28,11 +28,13 @@ COPY engine/agent-zero/ /a0/
 # Copy CarabinerOS domain code
 COPY carabiner/ /cos/carabiner/
 
-# Create .venv/bin/python symlink so MCP server config works
-RUN mkdir -p /a0/.venv/bin && ln -sf /usr/local/bin/python /a0/.venv/bin/python
-
 # Add /cos to Python path so carabiner.* imports work from A0 extensions
 ENV PYTHONPATH="/cos:${PYTHONPATH}"
+
+# Make carabiner CLI available as a command (A0 calls via code_execution)
+RUN ln -sf /usr/local/bin/python /usr/local/bin/carabiner-python && \
+    echo '#!/bin/sh\nexec python -m carabiner.cli "$@"' > /usr/local/bin/carabiner && \
+    chmod +x /usr/local/bin/carabiner
 
 EXPOSE 5000
 
