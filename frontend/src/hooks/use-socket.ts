@@ -25,26 +25,38 @@ export function useSocket(): UseSocketReturn {
   const subscribedContextRef = useRef<string | null>(null);
 
   useEffect(() => {
+    console.log("[useSocket] initializing socket connection...");
     const socket = initStateSyncSocket();
     socketRef.current = socket;
 
     socket.on("connect", () => {
+      console.log("[useSocket] connected to /ws namespace");
       setConnected(true);
       // If a subscribe was called before connection, use that context
       const ctx = pendingContextRef.current !== undefined ? pendingContextRef.current : null;
       pendingContextRef.current = undefined;
-      socket.emit("state_request", {
+      const req = {
         context: ctx,
         log_from: 0,
         notifications_from: 0,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         ts: new Date().toISOString(),
         correlationId: crypto.randomUUID(),
-      });
+      };
+      console.log("[useSocket] emitting state_request", req);
+      socket.emit("state_request", req);
     });
-    socket.on("disconnect", () => setConnected(false));
+    socket.on("disconnect", (reason) => {
+      console.log("[useSocket] disconnected:", reason);
+      setConnected(false);
+    });
+
+    socket.onAny((event, ...args) => {
+      console.log("[useSocket] received event:", event, args.length > 0 ? Object.keys(args[0] || {}) : "no data");
+    });
 
     socket.on("state_push", (envelope: A0StatePush) => {
+      console.log("[useSocket] state_push received, keys:", Object.keys(envelope || {}));
       const data = envelope?.data;
       const snap = data?.snapshot;
       if (!snap) {

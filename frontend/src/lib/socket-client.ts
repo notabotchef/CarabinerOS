@@ -26,10 +26,10 @@ export function initStateSyncSocket(): Socket {
     withCredentials: true,
     auth: (cb) => {
       getCsrfToken()
-        .then((token) => cb({ csrf_token: token }))
+        .then((token) => cb({ csrf_token: token, handlers: ["ws_webui"] }))
         .catch((err) => {
           console.error("[socket] CSRF token fetch failed for connect:", err);
-          cb({});
+          cb({ handlers: ["ws_webui"] });
         });
     },
   });
