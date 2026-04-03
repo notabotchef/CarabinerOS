@@ -20,16 +20,25 @@
 - [x] Fixed: chat_context_id was missing from 7 Pydantic output schemas (OrderOut, InventoryOut, PrepOut, MenuOut, CampaignOut, InvoiceOut, RecipeOut) — Chat Context Link now flows end-to-end
 - [x] Fixed: floating island nav — p-2→p-1.5, gap-2→gap-1, rounded-2xl→rounded-xl, shadow-md→shadow-sm, removed cOS logo, buttons size-8→size-7
 
+**Also Completed (session 16):**
+- [x] GTM docs committed: NYC beta targets, distributor channel brief, liability framework
+- [x] TypeScript build error fixed: order-detail-panel.tsx double-cast (tsc now clean)
+- [x] Demo seeder parameterized: --restaurant-name flag for personalized NYC pitches
+- [x] Demo runbook written: docs/gtm/demo-runbook.md (15-min script, recovery paths, sim-validated messaging)
+- [x] Action card summary/detail fields corrected: title→summary (headline), message→detail (body) — was reversed in notify_user.py
+- [x] Card timestamp fixed: emitting seconds not ms (frontend stale filter uses seconds)
+
 **Still Needs Work:**
-- [ ] Action cards: live test — does A0 actually send valid JSON in notify_user.detail? (requires live stack)
+- [ ] Action cards: live test — does A0 produce valid JSON in notify_user.detail, does card render rich? (requires live stack)
 - [ ] CLI write commands: test end-to-end (orders create via A0 chat)
 - [ ] Real-time sync: cOS doesn't get state_push when conversation started in A0 WebUI
-- [ ] Note: /api/reporting/daily-pl and /api/menu/86-board already exist — session 14 backlog was stale
 
 **Next Session Should:**
-1. Bring up full stack, send an A0 create command, verify action card appears with rich content
-2. Test orders create via chat → check chat_context_id saved in DB → verify side-chat links to that conversation
-3. Real-time sync investigation
+1. `docker compose -f docker-compose.dev.yml up` — bring stack up
+2. Send "Draft a new order for Pacific Seafood for produce replenishment based on our par levels" in A0 chat
+3. Verify: action card appears with title as headline, structured actions/stats visible
+4. Verify: order appears in Orders page with chat_context_id, side-chat links to that conversation
+5. Real-time sync: investigate why cOS misses state_push from A0 WebUI sessions
 
 **Branch:** main (clean, pushed to GitHub)
 
