@@ -387,18 +387,18 @@ DAY_PATTERNS = {
 # BUILD FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def build_foundation() -> list:
+def build_foundation(restaurant_name: str = "Carabiner Tapas") -> list:
     """Location, Org, WorkspaceLocation, GL, UoM, Vendors."""
     objects = []
 
     # Location
     objects.append(Location(
-        id=LOC_ID, name="Carabiner Tapas", code="CT-001",
+        id=LOC_ID, name=restaurant_name, code="CT-001",
         address="742 N Wells St, Chicago, IL 60654", timezone="America/Chicago",
     ))
 
     # Organization + WorkspaceLocation
-    objects.append(Organization(id=ORG_ID, name="Carabiner Tapas LLC", slug="carabiner-tapas"))
+    objects.append(Organization(id=ORG_ID, name=f"{restaurant_name} LLC", slug=restaurant_name.lower().replace(" ", "-")))
     objects.append(WorkspaceLocation(
         id=WS_LOC_ID, org_id=ORG_ID, slug="main-kitchen", name="Main Kitchen",
         city="Chicago", status="Stable", sales_delta="+4.2%", labor_delta="-1.1%",
@@ -2294,7 +2294,7 @@ def build_inbox_items() -> list:
 # MAIN SEEDER
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def seed():
+async def seed(restaurant_name: str = "Carabiner Tapas"):
     engine = create_async_engine(DATABASE_URL, echo=False)
     counts: dict[str, int] = {}
 
@@ -2315,7 +2315,7 @@ async def seed():
         async with session.begin():
             # 1. Foundation (must commit before items due to FK on UoM)
             print("🏗  Seeding foundation (location, vendors, GL, UoM)...")
-            foundation = build_foundation()
+            foundation = build_foundation(restaurant_name)
             session.add_all(foundation)
             counts["foundation"] = len(foundation)
 
@@ -2465,7 +2465,7 @@ async def seed():
     # Summary
     total = sum(counts.values())
     print("\n" + "═" * 50)
-    print("  SEED COMPLETE — Carabiner Tapas")
+    print(f"  SEED COMPLETE — {restaurant_name}")
     print("═" * 50)
     for label, count in counts.items():
         print(f"  {label:.<30} {count:>5}")
@@ -2474,8 +2474,9 @@ async def seed():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Seed Carabiner Tapas with realistic data")
+    parser = argparse.ArgumentParser(description="Seed the database with realistic restaurant data")
     parser.add_argument("--no-confirm", action="store_true", help="Skip confirmation prompt")
+    parser.add_argument("--restaurant-name", default="Carabiner Tapas", help="Restaurant name for the demo (e.g. 'Rosa Rosa Kitchen')")
     args = parser.parse_args()
 
     if not args.no_confirm:
@@ -2486,7 +2487,7 @@ def main():
             print("Aborted.")
             return
 
-    asyncio.run(seed())
+    asyncio.run(seed(args.restaurant_name))
 
 
 if __name__ == "__main__":
