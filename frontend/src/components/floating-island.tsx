@@ -25,20 +25,15 @@ export function FloatingIsland({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -12 }}
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
-          className="fixed top-3 left-3 z-30 flex flex-col items-center gap-2 rounded-2xl bg-card/95 backdrop-blur-sm shadow-md p-2 border border-border"
+          className="fixed top-3 left-3 z-30 flex flex-col items-center gap-1 rounded-xl bg-card/95 backdrop-blur-sm shadow-sm p-1.5 border border-border"
         >
           {/* Hamburger menu */}
           <MenuButton />
 
-          {/* Compact logo */}
-          <div className="flex size-6 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/70 text-primary-foreground text-[8px] font-black tracking-tight leading-none shadow-sm select-none">
-            cOS
-          </div>
-
           {/* Action cards badge */}
           <button
             onClick={onBellClick}
-            className="relative flex size-8 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors"
+            className="relative flex size-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors"
             title="Action Cards"
           >
             {/* Simplified card icon for compact view */}

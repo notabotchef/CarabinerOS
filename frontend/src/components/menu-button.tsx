@@ -9,13 +9,13 @@ export function MenuButton() {
   return (
     <button
       onClick={sidebarHidden ? openSidebar : closeSidebar}
-      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors"
+      className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors"
       title={sidebarHidden ? "Open menu" : "Close menu"}
     >
       {sidebarHidden ? (
-        <Menu className="size-[18px]" strokeWidth={1.5} />
+        <Menu className="size-4" strokeWidth={1.5} />
       ) : (
-        <X className="size-[18px]" strokeWidth={1.5} />
+        <X className="size-4" strokeWidth={1.5} />
       )}
     </button>
   );
