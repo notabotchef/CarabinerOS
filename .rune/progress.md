@@ -1,5 +1,40 @@
 # Progress
 
+## [2026-04-02] Session 15 — Action Cards v2 + Chat Context Link
+
+**Completed:**
+- [x] Action Cards v2: A0 sends structured JSON in notify_user.detail (actions, stats, changes, chips)
+- [x] Frontend notificationToCard() parses rich card payload → contextual action buttons
+- [x] Module badge now uses group field from A0 (no more "GENERAL")
+- [x] Extensions moved to usr/extensions/python/ (correct A0 overlay path)
+- [x] New _20_inject_location.py: injects active location into A0 context per-message
+- [x] _30_action_card_emit.py disabled — A0 direct notify_user is the single card path
+- [x] ChatContextMixin: nullable chat_context_id column on all workspace models
+- [x] System prompt injects context ID → A0 passes --chat-context on all writes
+- [x] ModuleChat accepts chatContextId prop, subscribes to the record's conversation
+- [x] CLI orders/prep accept --chat-context flag
+- [x] 4 agent prompts updated: context ID + card JSON schema
+- [x] MiroShark sim2 report committed
+
+**Also Completed (same session):**
+- [x] Fixed: chat_context_id was missing from 7 Pydantic output schemas (OrderOut, InventoryOut, PrepOut, MenuOut, CampaignOut, InvoiceOut, RecipeOut) — Chat Context Link now flows end-to-end
+- [x] Fixed: floating island nav — p-2→p-1.5, gap-2→gap-1, rounded-2xl→rounded-xl, shadow-md→shadow-sm, removed cOS logo, buttons size-8→size-7
+
+**Still Needs Work:**
+- [ ] Action cards: live test — does A0 actually send valid JSON in notify_user.detail? (requires live stack)
+- [ ] CLI write commands: test end-to-end (orders create via A0 chat)
+- [ ] Real-time sync: cOS doesn't get state_push when conversation started in A0 WebUI
+- [ ] Note: /api/reporting/daily-pl and /api/menu/86-board already exist — session 14 backlog was stale
+
+**Next Session Should:**
+1. Bring up full stack, send an A0 create command, verify action card appears with rich content
+2. Test orders create via chat → check chat_context_id saved in DB → verify side-chat links to that conversation
+3. Real-time sync investigation
+
+**Branch:** main (clean, pushed to GitHub)
+
+---
+
 ## [2026-04-01] Session 14 — Get A0 + CarabinerOS Running (Full Stack Restoration)
 
 **Completed:**
