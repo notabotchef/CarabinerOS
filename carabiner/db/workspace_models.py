@@ -16,7 +16,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Te
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from carabiner.db.base import Base, TimestampMixin
+from carabiner.db.base import Base, ChatContextMixin, TimestampMixin
 
 
 # ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ class InboxItem(TimestampMixin, Base):
 # Workspace Orders
 # ---------------------------------------------------------------------------
 
-class WorkspaceOrder(TimestampMixin, Base):
+class WorkspaceOrder(ChatContextMixin, TimestampMixin, Base):
     __tablename__ = "workspace_orders"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -99,7 +99,7 @@ class WorkspaceOrder(TimestampMixin, Base):
 # Workspace Inventory
 # ---------------------------------------------------------------------------
 
-class WorkspaceInventory(TimestampMixin, Base):
+class WorkspaceInventory(ChatContextMixin, TimestampMixin, Base):
     __tablename__ = "workspace_inventory"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -126,7 +126,7 @@ class WorkspaceInventory(TimestampMixin, Base):
 # Workspace Prep Tasks
 # ---------------------------------------------------------------------------
 
-class WorkspacePrep(TimestampMixin, Base):
+class WorkspacePrep(ChatContextMixin, TimestampMixin, Base):
     __tablename__ = "workspace_prep"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -169,7 +169,7 @@ class WorkspaceFoodCost(TimestampMixin, Base):
 # Workspace Menu
 # ---------------------------------------------------------------------------
 
-class WorkspaceMenu(TimestampMixin, Base):
+class WorkspaceMenu(ChatContextMixin, TimestampMixin, Base):
     __tablename__ = "workspace_menu"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -207,7 +207,7 @@ class WorkspaceMenu(TimestampMixin, Base):
 # Workspace Campaigns (Marketing)
 # ---------------------------------------------------------------------------
 
-class WorkspaceCampaign(TimestampMixin, Base):
+class WorkspaceCampaign(ChatContextMixin, TimestampMixin, Base):
     __tablename__ = "workspace_campaigns"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -233,7 +233,7 @@ class WorkspaceCampaign(TimestampMixin, Base):
 # Workspace Invoices
 # ---------------------------------------------------------------------------
 
-class WorkspaceInvoice(TimestampMixin, Base):
+class WorkspaceInvoice(ChatContextMixin, TimestampMixin, Base):
     __tablename__ = "workspace_invoices"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -292,7 +292,7 @@ class InvoiceEvent(TimestampMixin, Base):
 # Workspace Recipes (Modernist Cuisine format)
 # ---------------------------------------------------------------------------
 
-class WorkspaceRecipe(TimestampMixin, Base):
+class WorkspaceRecipe(ChatContextMixin, TimestampMixin, Base):
     __tablename__ = "workspace_recipes"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

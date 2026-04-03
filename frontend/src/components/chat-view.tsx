@@ -62,7 +62,9 @@ export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: Ch
       />
 
       <div className="border-t border-border/50">
-        <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} />
+        <div className="mx-auto w-full max-w-4xl px-2 sm:px-6 lg:px-12">
+          <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} />
+        </div>
       </div>
       <div ref={endRef} />
     </div>

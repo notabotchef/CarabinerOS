@@ -106,6 +106,11 @@ export interface ActionCardStat {
 export type ActionCardType = "urgent" | "action" | "update" | "info";
 export type ActionCardStatus = "new" | "read" | "committed" | "dismissed";
 
+export interface ActionCardAction {
+  label: string;
+  type: "primary" | "secondary" | "danger";
+}
+
 export interface ActionCard {
   id: string;
   type: ActionCardType;
@@ -116,6 +121,7 @@ export interface ActionCard {
   itemId?: string;
   changes: ActionCardChange[];
   stats: ActionCardStat[];
+  actions?: ActionCardAction[];
   priority: 0 | 1 | 2;
   deadline?: string;
   status: ActionCardStatus;
@@ -123,6 +129,19 @@ export interface ActionCard {
   source: "reactive" | "proactive";
   suggestedAction?: string;
   suggestedChips?: string[];
+}
+
+/** Structured payload A0 sends in notify_user detail field as JSON */
+export interface RichCardPayload {
+  module?: string;
+  action?: string;
+  item_id?: string;
+  stats?: ActionCardStat[];
+  changes?: ActionCardChange[];
+  actions?: ActionCardAction[];
+  deadline?: string;
+  suggested_action?: string;
+  suggested_chips?: string[];
 }
 
 export interface CardChatMessage {

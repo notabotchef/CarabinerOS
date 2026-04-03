@@ -470,6 +470,7 @@ export function OrderDetailPanel({
         {/* Chat composer — pinned to bottom */}
         <ModuleChat
           moduleId="orders"
+          chatContextId={(order as unknown as Record<string, unknown>)?.chat_context_id as string | undefined}
           buildContext={() =>
             `[module=orders, order_id=${order?.id ?? "new"}]`
           }

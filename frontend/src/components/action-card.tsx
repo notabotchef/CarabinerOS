@@ -55,8 +55,11 @@ export const TYPE_STYLES: Record<CardType, {
 };
 
 /** Maps type+module to a contextual action button label, like a kitchen callout. */
-export function getActionLabel(type: CardType, module: string): string {
-  const key = `${type}+${module}`;
+export function getActionLabel(card: { type: CardType; module: string; actions?: Array<{ label: string; type: string }> }): string {
+  // A0-specified action takes priority
+  if (card.actions?.length) return card.actions[0].label;
+  // Fallback: type+module mapping
+  const key = `${card.type}+${card.module}`;
   const map: Record<string, string> = {
     "urgent+orders": "Confirm",
     "urgent+inventory": "86 It",
@@ -66,16 +69,16 @@ export function getActionLabel(type: CardType, module: string): string {
     "update+invoices": "Approve",
   };
   if (map[key]) return map[key];
-  if (type === "info") return "Got It";
-  if (type === "urgent") return "Handle";
-  if (type === "action") return "Act";
+  if (card.type === "info") return "Got It";
+  if (card.type === "urgent") return "Handle";
+  if (card.type === "action") return "Act";
   return "Review";
 }
 
 export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardProps) {
   const style = TYPE_STYLES[card.type];
   const isCommitted = card.status === "committed";
-  const actionLabel = getActionLabel(card.type, card.module);
+  const actionLabel = getActionLabel(card);
 
   return (
     <motion.div
@@ -91,13 +94,15 @@ export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardPr
     >
       {/* Content area */}
       <div className="p-4 flex-1 flex flex-col gap-1">
-        {/* Module pill badge */}
-        <span className={[
-          "inline-block self-start px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm mb-1",
-          style.pill,
-        ].join(" ")}>
-          {card.module}
-        </span>
+        {/* Module pill badge — hide if "general" (no real module) */}
+        {card.module && card.module !== "general" && (
+          <span className={[
+            "inline-block self-start px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm mb-1",
+            style.pill,
+          ].join(" ")}>
+            {card.module.replace("_", " ")}
+          </span>
+        )}
 
         {/* Title */}
         <p className={[

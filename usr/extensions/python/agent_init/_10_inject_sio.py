@@ -29,7 +29,7 @@ def _get_sio():
 
 
 class InjectSio(Extension):
-    async def execute(self, **kwargs) -> None:
+    def execute(self, **kwargs) -> None:
         if self.agent.config.additional.get("sio"):
             return  # already injected (e.g. by a parent agent)
 

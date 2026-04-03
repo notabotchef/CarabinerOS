@@ -2,42 +2,11 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowUp, Loader2, RotateCcw } from "lucide-react";
+import { ArrowUp, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useSocketContext } from "@/components/socket-provider";
 import { useChat } from "@/hooks/use-chat";
-
-/* ------------------------------------------------------------------ */
-/*  localStorage helpers for persistent module chat contexts            */
-/* ------------------------------------------------------------------ */
-
-const STORAGE_KEY = "carabiner:module-chat-contexts";
-
-function getStoredContexts(): Record<string, string> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-}
-
-function getStoredContext(moduleId: string): string | null {
-  return getStoredContexts()[moduleId] ?? null;
-}
-
-function setStoredContext(moduleId: string, ctxId: string): void {
-  const map = getStoredContexts();
-  map[moduleId] = ctxId;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
-}
-
-function clearStoredContext(moduleId: string): void {
-  const map = getStoredContexts();
-  delete map[moduleId];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
-}
 
 /* ------------------------------------------------------------------ */
 /*  Helper: strip bracket context prefix from display text             */
@@ -56,6 +25,8 @@ interface ModuleChatProps {
   moduleId: string;
   /** Function that returns the bracket context string from current module state */
   buildContext: () => string;
+  /** A0 chat context ID from the DB record — subscribes to show that conversation */
+  chatContextId?: string | null;
   /** Placeholder text */
   placeholder?: string;
   /** Quick-action chip labels */
@@ -66,51 +37,38 @@ interface ModuleChatProps {
 
 /* ------------------------------------------------------------------ */
 /*  ModuleChat component                                               */
+/*                                                                     */
+/*  Attaches to the CURRENT main chat context from SocketProvider.     */
+/*  Messages are sent to the active conversation with module context   */
+/*  prepended (e.g. [module=orders, order_id=UUID]).                   */
+/*  Only creates a new chat if the user types AND no active chat       */
+/*  exists.                                                            */
 /* ------------------------------------------------------------------ */
 
 export function ModuleChat({
   moduleId,
   buildContext,
+  chatContextId,
   placeholder = "Type a message...",
   chips = [],
   onMessageSent,
 }: ModuleChatProps) {
   const { snapshot, subscribe } = useSocketContext();
-  const { sendMessage, messages, loading, createNewChat, resetChat } = useChat(snapshot);
+  const { sendMessage, messages, loading, createNewChat } = useChat(snapshot);
 
   const [value, setValue] = useState("");
-  const [hasStarted, setHasStarted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const previousContextRef = useRef<string | null>(null);
-  const moduleChatContextRef = useRef<string | null>(null);
-  const restoredRef = useRef(false);
+  const subscribedRef = useRef<string | null>(null);
 
-  // On mount: check localStorage for a stored context for this module.
-  // If found, subscribe to it immediately so message history loads.
+  // Subscribe to the record's chat context — shows the conversation that
+  // created/modified this specific record. Re-subscribes when record changes.
   useEffect(() => {
-    const storedCtxId = getStoredContext(moduleId);
-    if (storedCtxId && !restoredRef.current) {
-      restoredRef.current = true;
-      // Save the current main chat context so we can restore on unmount
-      previousContextRef.current = snapshot?.context ?? null;
-      moduleChatContextRef.current = storedCtxId;
-      subscribe(storedCtxId);
-      setHasStarted(true);
+    if (chatContextId && chatContextId !== subscribedRef.current) {
+      subscribedRef.current = chatContextId;
+      subscribe(chatContextId);
     }
-    // Only run on mount (moduleId is stable for the lifecycle of this component)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleId]);
-
-  // Restore the previous Socket.IO context subscription when unmounting
-  // so the main chat continues to work after closing the module chat.
-  useEffect(() => {
-    return () => {
-      if (previousContextRef.current !== undefined) {
-        subscribe(previousContextRef.current);
-      }
-    };
-  }, [subscribe]);
+  }, [chatContextId, subscribe]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -133,52 +91,29 @@ export function ModuleChat({
       const trimmed = text.trim();
       if (!trimmed) return;
 
-      // On first send, create a fresh A0 context, send, then subscribe
-      if (!hasStarted) {
-        previousContextRef.current = snapshot?.context ?? null;
-
+      // If no active context, create one
+      const hasContext = !!snapshot?.context || !!chatContextId;
+      if (!hasContext) {
         const newCtxId = await createNewChat();
         if (newCtxId) {
-          moduleChatContextRef.current = newCtxId;
-          setStoredContext(moduleId, newCtxId);
+          subscribe(newCtxId);
         }
-        setHasStarted(true);
-
-        // Send the message first (createNewChat already set contextIdRef)
-        const context = buildContext();
-        const enriched = context ? `${context} ${trimmed}` : trimmed;
-        const returnedCtx = await sendMessage(enriched);
-
-        // Now subscribe to receive the streaming response
-        const ctxToSubscribe = returnedCtx || newCtxId;
-        if (ctxToSubscribe) {
-          subscribe(ctxToSubscribe);
-          // Update stored context if backend returned a different one
-          if (returnedCtx && returnedCtx !== newCtxId) {
-            moduleChatContextRef.current = returnedCtx;
-            setStoredContext(moduleId, returnedCtx);
-          }
-        }
-        setValue("");
-        return;
       }
 
+      // Prepend module context and send to the current conversation
       const context = buildContext();
       const enriched = context ? `${context} ${trimmed}` : trimmed;
-      await sendMessage(enriched);
+      const returnedCtx = await sendMessage(enriched);
+
+      // If backend returned a new context (first message), subscribe to it
+      if (returnedCtx && returnedCtx !== snapshot?.context) {
+        subscribe(returnedCtx);
+      }
+
       setValue("");
     },
-    [hasStarted, createNewChat, buildContext, sendMessage, snapshot, subscribe, moduleId, onMessageSent],
+    [createNewChat, buildContext, sendMessage, snapshot, subscribe],
   );
-
-  const handleNewConversation = useCallback(() => {
-    clearStoredContext(moduleId);
-    moduleChatContextRef.current = null;
-    restoredRef.current = false;
-    resetChat();
-    setHasStarted(false);
-    setValue("");
-  }, [moduleId, resetChat]);
 
   const handleSubmit = useCallback(() => {
     doSend(value);
@@ -201,7 +136,6 @@ export function ModuleChat({
     if (firstUserIdx === -1) return [];
     return messages.slice(firstUserIdx).filter((m) => {
       if (m.role !== "assistant") return true;
-      // Drop welcome greetings that bleed from A0's default context
       const lower = m.content.toLowerCase();
       if (lower.includes("welcome to carabiner")) return false;
       if (lower.includes("how can i help")) return false;
@@ -214,7 +148,6 @@ export function ModuleChat({
     if (!snapshot?.log_progress_active) return null;
     const progress = snapshot.log_progress;
     if (!progress) return null;
-    // Clean up raw progress text for kitchen-friendly display
     return String(progress)
       .replace(/^Calling LLM.*$/i, "Thinking...")
       .replace(/^Executing tool:\s*/i, "")
@@ -224,17 +157,9 @@ export function ModuleChat({
 
   return (
     <div className="flex flex-col border-t border-border">
-      {/* Messages area */}
+      {/* Messages area — shows messages from the current main chat */}
       {filteredMessages.length > 0 && (
         <div className="relative">
-          {/* New conversation button — top-right of messages area */}
-          <button
-            onClick={handleNewConversation}
-            title="New conversation"
-            className="absolute top-2 right-3 z-10 size-6 rounded-lg flex items-center justify-center text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/10 transition-colors"
-          >
-            <RotateCcw className="size-3" />
-          </button>
           <div
             ref={scrollRef}
             className="max-h-[280px] overflow-y-auto px-4 py-3 flex flex-col gap-2"

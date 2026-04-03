@@ -1,0 +1,13 @@
+schema: "paperclip/v1"
+
+inputs:
+  ANTHROPIC_API_KEY:
+    requirement: "optional"
+    default: ""
+
+sidebar:
+  agents:
+    - "ceo"
+    - "cto"
+    - "content-producer"
+    - "hermes-engineer"

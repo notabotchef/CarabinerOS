@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { initStateSyncSocket } from "@/lib/socket-client";
-import type { ActionCard, ActionCardType, CardChatMessage, A0Notification } from "@/lib/types";
+import type { ActionCard, ActionCardType, CardChatMessage, A0Notification, RichCardPayload } from "@/lib/types";
 
 const STORAGE_KEY = "cos_action_cards";
 const THREAD_STORAGE_KEY = "cos_card_threads";
@@ -61,20 +61,40 @@ const NOTIFICATION_TYPE_MAP: Record<string, ActionCardType> = {
   progress: "info",
 };
 
+function parseRichDetail(detail: string | undefined): RichCardPayload | null {
+  if (!detail) return null;
+  try {
+    // A0 may wrap JSON in markdown code fences — strip them
+    const cleaned = detail.replace(/^```json?\n?|\n?```$/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      return parsed as RichCardPayload;
+    }
+  } catch { /* detail is plain text — that's fine */ }
+  return null;
+}
+
 function notificationToCard(n: A0Notification): ActionCard {
+  const rich = parseRichDetail(n.detail);
+
   return {
     id: n.id,
     type: NOTIFICATION_TYPE_MAP[n.type] ?? "info",
-    module: n.group || "general",
-    action: "update",
+    module: rich?.module ?? n.group ?? "general",
+    action: (rich?.action as ActionCard["action"]) ?? "update",
     summary: n.title || n.message,
-    detail: n.detail || n.message,
-    changes: [],
-    stats: [],
+    detail: rich ? n.message : (n.detail || n.message),
+    itemId: rich?.item_id ?? undefined,
+    changes: rich?.changes ?? [],
+    stats: rich?.stats ?? [],
+    actions: rich?.actions ?? undefined,
     priority: n.priority >= 20 ? 1 : 0,
+    deadline: rich?.deadline ?? undefined,
     status: "new",
     timestamp: Math.floor(new Date(n.timestamp).getTime() / 1000),
     source: "reactive",
+    suggestedAction: rich?.suggested_action ?? undefined,
+    suggestedChips: rich?.suggested_chips ?? undefined,
   };
 }
 
@@ -180,7 +200,12 @@ export function useActionCards(notifications?: A0Notification[]): UseActionCards
     for (const n of fresh) seenNotifIds.current.add(n.id);
     const newCards = fresh.map(notificationToCard);
     setLastCardType(newCards[newCards.length - 1].type);
-    setCards((prev) => [...prev, ...newCards]);
+    setCards((prev) => {
+      // Deduplicate by id — prevent duplicate key React warnings
+      const existingIds = new Set(prev.map((c) => c.id));
+      const unique = newCards.filter((c) => !existingIds.has(c.id));
+      return unique.length > 0 ? [...prev, ...unique] : prev;
+    });
   }, [notifications]);
 
   // Persist cards to sessionStorage on every change (after hydration)

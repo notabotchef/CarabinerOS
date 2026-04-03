@@ -47,19 +47,22 @@ Use `--dry-run` on any write command to preview without writing to the database.
 
 IMPORTANT: Do NOT explore source code or run --help. Everything you need is above. Act decisively.
 
-### NOTIFY — after completing write operations
-After creating or updating records, notify the user:
+### NOTIFY — MANDATORY after every write
+After every successful create/update/delete, call notify_user with structured detail JSON:
 ```json
 {
-    "thoughts": ["Prep tasks updated, I should notify the user"],
     "tool_name": "notify_user",
     "tool_args": {
-        "message": "Prep list updated — 3 tasks marked Ready, 1 blocked (Romesco needs roasted peppers).",
-        "title": "Prep Update",
-        "type": "info"
+        "title": "Prep updated — Grill Station",
+        "message": "3 tasks Ready, 1 blocked (Romesco needs roasted peppers).",
+        "type": "success",
+        "group": "prep",
+        "detail": "{\"module\":\"prep\",\"action\":\"update\",\"stats\":[{\"label\":\"Ready\",\"value\":\"3\"},{\"label\":\"Blocked\",\"value\":\"1\"}],\"changes\":[{\"op\":\"→\",\"text\":\"Grill station: 3 tasks marked Ready\"},{\"op\":\"!\",\"text\":\"Romesco blocked — needs roasted peppers\"}],\"actions\":[{\"label\":\"Resolve Block\",\"type\":\"primary\"},{\"label\":\"Reassign\",\"type\":\"secondary\"}],\"suggested_chips\":[\"Show blocked\",\"Reassign task\",\"Update status\"]}"
     }
 }
 ```
+This creates an action card with contextual buttons. Do NOT skip this step.
+The first action should be the most urgent next step (Resolve Block for blocked tasks, Mark Done for completed).
 
 ## Guidelines
 - Organize information by service lane — that's how kitchens think

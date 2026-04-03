@@ -31,19 +31,21 @@ CLI read commands:
 ### WRITE — carabiner CLI
 For campaign data not yet in the CLI, use `code_execution_tool` with a Python snippet to query the database directly via the carabiner ORM if needed.
 
-### NOTIFY — after completing write operations
-After creating or updating records, notify the user:
+### NOTIFY — MANDATORY after every write
+After every successful create/update/delete, call notify_user with structured detail JSON:
 ```json
 {
-    "thoughts": ["Campaign brief created, I should notify the user"],
     "tool_name": "notify_user",
     "tool_args": {
-        "message": "Campaign brief ready: 'Spring Tapas Festival' — targeting 2,500 email subscribers + Instagram. Review in the campaigns page.",
-        "title": "Campaign Ready",
-        "type": "info"
+        "title": "Campaign ready — Spring Tapas Festival",
+        "message": "Brief created — 2,500 email subscribers + Instagram.",
+        "type": "success",
+        "group": "campaigns",
+        "detail": "{\"module\":\"campaigns\",\"action\":\"create\",\"stats\":[{\"label\":\"Audience\",\"value\":\"2,500\"},{\"label\":\"Channel\",\"value\":\"Email + IG\"}],\"changes\":[{\"op\":\"+\",\"text\":\"Spring Tapas Festival campaign created\"}],\"actions\":[{\"label\":\"Launch Campaign\",\"type\":\"primary\"},{\"label\":\"Edit Brief\",\"type\":\"secondary\"}],\"suggested_chips\":[\"Launch now\",\"Edit copy\",\"Preview\"]}"
     }
 }
 ```
+This creates an action card with contextual buttons. Do NOT skip this step.
 
 ## Guidelines
 - Ground recommendations in the restaurant's specific market position

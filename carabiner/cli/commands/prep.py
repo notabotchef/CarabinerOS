@@ -106,6 +106,7 @@ def create(
     readiness: str = typer.Option("Not Started", "--readiness", help="Readiness status."),
     shortage: Optional[str] = typer.Option(None, "--shortage", help="Shortage description."),
     summary: Optional[str] = typer.Option(None, "--summary", help="Task summary."),
+    chat_context: Optional[str] = typer.Option(None, "--chat-context", help="A0 chat context ID."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be created without writing."),
     json_output: bool = typer.Option(False, "--json", help="Output as JSON."),
 ) -> None:
@@ -129,6 +130,8 @@ def create(
         data["shortage"] = shortage
     if summary is not None:
         data["summary"] = summary
+    if chat_context is not None:
+        data["chat_context_id"] = chat_context
 
     if dry_run:
         payload = {k: str(v) for k, v in data.items()}

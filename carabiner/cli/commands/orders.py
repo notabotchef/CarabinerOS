@@ -26,6 +26,7 @@ def _serialize_order(o) -> dict:
         "eta": o.eta,
         "line_items": o.line_items,
         "summary": o.summary,
+        "chat_context_id": getattr(o, "chat_context_id", None),
         "created_at": o.created_at.isoformat() if o.created_at else None,
         "updated_at": o.updated_at.isoformat() if o.updated_at else None,
     }
@@ -105,6 +106,7 @@ def create(
     vendor: str = typer.Option(..., "--vendor", help="Vendor name."),
     channel: str = typer.Option("manual", "--channel", help="Order channel."),
     total: str = typer.Option("0.00", "--total", help="Order total."),
+    chat_context: Optional[str] = typer.Option(None, "--chat-context", help="A0 chat context ID."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be created without writing."),
     json_output: bool = typer.Option(False, "--json", help="Output as JSON."),
 ) -> None:
@@ -124,6 +126,8 @@ def create(
         "total": total,
         "status": "Drafting",
     }
+    if chat_context:
+        data["chat_context_id"] = chat_context
 
     if dry_run:
         payload = {k: str(v) for k, v in data.items()}
@@ -158,6 +162,7 @@ def update(
     eta: Optional[str] = typer.Option(None, "--eta", help="Expected delivery."),
     summary: Optional[str] = typer.Option(None, "--summary", help="Order summary."),
     line_items: Optional[str] = typer.Option(None, "--line-items", help="Line items as JSON string."),
+    chat_context: Optional[str] = typer.Option(None, "--chat-context", help="A0 chat context ID."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be updated without writing."),
     json_output: bool = typer.Option(False, "--json", help="Output as JSON."),
 ) -> None:
@@ -190,6 +195,8 @@ def update(
         except json_mod.JSONDecodeError as exc:
             print_error(EXIT_VALIDATION, f"Invalid JSON for --line-items: {exc}", "validation")
             raise typer.Exit(EXIT_VALIDATION)
+    if chat_context is not None:
+        data["chat_context_id"] = chat_context
 
     if not data:
         print_error(EXIT_VALIDATION, "No fields to update. Pass at least one --field flag.", "validation")

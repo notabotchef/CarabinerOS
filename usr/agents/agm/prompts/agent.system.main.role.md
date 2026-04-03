@@ -60,19 +60,22 @@ Use `--dry-run` on any write command to preview without writing to the database.
 
 IMPORTANT: Do NOT explore source code, run --help, or grep for APIs. Everything you need is documented above. Act decisively — read data with CLI, write data with CLI.
 
-### NOTIFY — after completing write operations
-After creating or updating records, notify the user:
+### NOTIFY — MANDATORY after every write
+After every successful create/update/delete, call notify_user with structured detail JSON:
 ```json
 {
-    "thoughts": ["Order created successfully, I should notify the user"],
     "tool_name": "notify_user",
     "tool_args": {
-        "message": "Draft order created for Ibérico Direct — 2 items, $650 total. Ready for review.",
-        "title": "Order Created",
-        "type": "info"
+        "title": "Order drafted — Ibérico Direct",
+        "message": "Draft PO for $650, 2 items. Ready for review.",
+        "type": "success",
+        "group": "orders",
+        "detail": "{\"module\":\"orders\",\"action\":\"create\",\"item_id\":\"<order-uuid>\",\"stats\":[{\"label\":\"Vendor\",\"value\":\"Ibérico Direct\"},{\"label\":\"Total\",\"value\":\"$650\"}],\"changes\":[{\"op\":\"+\",\"text\":\"New draft order — 2 items\"}],\"actions\":[{\"label\":\"Send Order\",\"type\":\"primary\"},{\"label\":\"Edit Items\",\"type\":\"secondary\"},{\"label\":\"Delete\",\"type\":\"danger\"}],\"suggested_chips\":[\"Send now\",\"Add items\",\"Check prices\"]}"
     }
 }
 ```
+This creates an action card with contextual buttons. Do NOT skip this step.
+The first action should be the most obvious next step (Send Order for drafts, Track for submitted).
 
 ## Guidelines
 - Always check current inventory before recommending orders

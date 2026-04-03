@@ -186,18 +186,22 @@ describe("TYPE_STYLES", () => {
 
 describe("getActionLabel", () => {
   it("returns 'Confirm' for urgent+orders", () => {
-    expect(getActionLabel("urgent", "orders")).toBe("Confirm");
+    expect(getActionLabel({ type: "urgent", module: "orders" })).toBe("Confirm");
   });
 
   it("returns '86 It' for urgent+inventory", () => {
-    expect(getActionLabel("urgent", "inventory")).toBe("86 It");
+    expect(getActionLabel({ type: "urgent", module: "inventory" })).toBe("86 It");
   });
 
   it("returns 'Got It' for info type (any module)", () => {
-    expect(getActionLabel("info", "anything")).toBe("Got It");
+    expect(getActionLabel({ type: "info", module: "anything" })).toBe("Got It");
   });
 
   it("returns 'Review' as default fallback", () => {
-    expect(getActionLabel("update", "unknownmodule")).toBe("Review");
+    expect(getActionLabel({ type: "update", module: "unknownmodule" })).toBe("Review");
+  });
+
+  it("returns A0-specified action label when actions provided", () => {
+    expect(getActionLabel({ type: "update", module: "orders", actions: [{ label: "Send Order", type: "primary" }] })).toBe("Send Order");
   });
 });

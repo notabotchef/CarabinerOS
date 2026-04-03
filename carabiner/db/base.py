@@ -5,9 +5,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, MetaData, func
+from sqlalchemy import DateTime, ForeignKey, MetaData, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from typing import Optional
 
 convention = {
     "ix": "ix_%(column_0_label)s",
@@ -42,4 +43,11 @@ class LocationScopedMixin:
         ForeignKey("locations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
+    )
+
+
+class ChatContextMixin:
+    """Stores the A0 chat context ID that last created/modified this record."""
+    chat_context_id: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, index=True,
     )

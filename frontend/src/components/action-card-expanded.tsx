@@ -87,7 +87,7 @@ export function ActionCardExpanded({
 
   const suggestion = card.suggestedAction ?? getDefaultSuggestion(card);
   const chips = getDefaultChips(card);
-  const actionLabel = getActionLabel(card.type, card.module);
+  const actionLabel = getActionLabel(card);
   const style = TYPE_STYLES[card.type];
 
   // Auto-scroll chat thread
@@ -130,9 +130,11 @@ export function ActionCardExpanded({
             Back
           </button>
           <span className="text-muted-foreground/20">|</span>
-          <span className={`inline-block px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm ${style.pill}`}>
-            {card.module}
-          </span>
+          {card.module && card.module !== "general" && (
+            <span className={`inline-block px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-sm ${style.pill}`}>
+              {card.module.replace("_", " ")}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -241,8 +243,30 @@ export function ActionCardExpanded({
         </div>
       </ScrollArea>
 
-      {/* Quick-action chips + chat input */}
+      {/* Action buttons from A0 + chips + chat input */}
       <div className="border-t border-border/60 px-4 py-3 shrink-0">
+        {/* A0-specified action buttons */}
+        {card.actions && card.actions.length > 0 && (
+          <div className="flex gap-2 mb-3">
+            {card.actions.map((action) => (
+              <button
+                key={action.label}
+                onClick={() => handleChipClick(action.label)}
+                disabled={chatLoading}
+                className={[
+                  "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40",
+                  action.type === "primary"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : action.type === "danger"
+                      ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted/80 border border-border/60",
+                ].join(" ")}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )}
         {/* Chips */}
         <div className="flex gap-1.5 mb-2 overflow-x-auto scrollbar-none">
           {chips.map((chip) => (

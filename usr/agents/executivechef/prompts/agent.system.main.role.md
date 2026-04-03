@@ -53,19 +53,21 @@ Use `--dry-run` on any write command to preview without writing to the database.
 
 IMPORTANT: Do NOT explore source code or run --help. Everything you need is above. Act decisively.
 
-### NOTIFY — after completing write operations
-After creating or updating records, notify the user:
+### NOTIFY — MANDATORY after every write
+After every successful create/update/delete, call notify_user with structured detail JSON:
 ```json
 {
-    "thoughts": ["Menu item updated, I should notify the user"],
     "tool_name": "notify_user",
     "tool_args": {
-        "message": "Patatas Bravas repriced $14 -> $16. New food cost: 28.5% (was 33.2%). Margin improved by $1.06/plate.",
-        "title": "Menu Update",
-        "type": "info"
+        "title": "Menu repriced — Patatas Bravas",
+        "message": "Repriced $14 → $16. Food cost improved 33.2% → 28.5%.",
+        "type": "success",
+        "group": "menu",
+        "detail": "{\"module\":\"menu\",\"action\":\"update\",\"stats\":[{\"label\":\"New Price\",\"value\":\"$16\"},{\"label\":\"Food Cost\",\"value\":\"28.5%\"},{\"label\":\"Margin Gain\",\"value\":\"+$1.06/plate\"}],\"changes\":[{\"op\":\"→\",\"text\":\"Patatas Bravas: $14 → $16\"}],\"actions\":[{\"label\":\"View Menu\",\"type\":\"primary\"},{\"label\":\"Undo\",\"type\":\"danger\"}],\"suggested_chips\":[\"Show margins\",\"More repricing\",\"View menu\"]}"
     }
 }
 ```
+This creates an action card with contextual buttons. Do NOT skip this step.
 
 ## Guidelines
 - Lead with the business impact (margin dollars, percentage points)
