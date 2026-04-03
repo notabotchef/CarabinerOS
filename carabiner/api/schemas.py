@@ -83,6 +83,7 @@ class OrderOut(TimestampSchema):
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
+    chat_context_id: Optional[str] = None
 
 
 class OrderCreate(BaseModel):
@@ -127,6 +128,7 @@ class InventoryOut(TimestampSchema):
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
+    chat_context_id: Optional[str] = None
 
 
 class InventoryCreate(BaseModel):
@@ -244,6 +246,7 @@ class PrepOut(TimestampSchema):
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
+    chat_context_id: Optional[str] = None
 
 
 class PrepCreate(BaseModel):
@@ -380,6 +383,7 @@ class MenuOut(TimestampSchema):
     is_86: bool = False
     eighty_six_reason: Optional[str] = None
     eighty_six_at: Optional[datetime] = None
+    chat_context_id: Optional[str] = None
 
 
 class MenuCreate(BaseModel):
@@ -464,6 +468,7 @@ class CampaignOut(TimestampSchema):
     summary: Optional[str] = None
     detail_points: Optional[List[str]] = None
     prompt: Optional[str] = None
+    chat_context_id: Optional[str] = None
 
 
 class CampaignCreate(BaseModel):
@@ -523,6 +528,7 @@ class InvoiceOut(TimestampSchema):
     approved_by: Optional[str] = None
     approved_at: Optional[datetime] = None
     ocr_confidence: Optional[int] = None
+    chat_context_id: Optional[str] = None
 
 
 class InvoiceEventOut(TimestampSchema):
@@ -672,6 +678,7 @@ class RecipeOut(TimestampSchema):
     equipment: Optional[List[str]] = None
     notes: Optional[str] = None
     tags: Optional[List[str]] = None
+    chat_context_id: Optional[str] = None
 
 
 class RecipeDetailOut(RecipeOut):
