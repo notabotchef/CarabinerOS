@@ -274,7 +274,7 @@ export function OrderDetailPanel({
 
   // Normalize line items from DB format {qty, item, price} to display format
   const lineItems: OrderLineItem[] = Array.isArray(order?.line_items)
-    ? (order.line_items as Record<string, unknown>[]).map((raw) => {
+    ? (order.line_items as unknown as Record<string, unknown>[]).map((raw) => {
         // DB format: {qty: "5 cs", item: "Roma Tomatoes", price: "$140.00"}
         // Display format: {name, quantity, unit, unit_price, total}
         const qtyStr = String(raw.qty ?? raw.quantity ?? "1");
