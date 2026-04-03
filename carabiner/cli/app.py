@@ -12,6 +12,7 @@ from carabiner.cli.commands.invoices import app as invoices_app
 from carabiner.cli.commands.prep import app as prep_app
 from carabiner.cli.commands.food_cost import app as food_cost_app
 from carabiner.cli.commands.vendors import app as vendors_app
+from carabiner.cli.commands.campaigns import app as campaigns_app
 
 app = typer.Typer(
     name="carabiner",
@@ -28,6 +29,7 @@ app.add_typer(invoices_app, name="invoices")
 app.add_typer(prep_app, name="prep")
 app.add_typer(food_cost_app, name="food-cost")
 app.add_typer(vendors_app, name="vendors")
+app.add_typer(campaigns_app, name="campaigns")
 
 
 @app.command()
