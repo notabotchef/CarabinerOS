@@ -3,14 +3,12 @@ import { getCsrfToken, clearCsrfToken } from "@/lib/csrf";
 
 let stateSyncSocket: Socket | null = null;
 
-// In dev mode, Next.js rewrites only handle REST endpoints — Socket.IO
-// must connect directly to Agent Zero.  In production (behind nginx),
-// the same-origin default works because nginx proxies /socket.io/.
-const A0_SOCKET_URL = process.env.NEXT_PUBLIC_A0_URL || "";
-
 export function initStateSyncSocket(): Socket {
   if (stateSyncSocket) return stateSyncSocket;
 
+  // Use same-origin so Socket.IO polling goes through Next.js rewrites
+  // (which proxy /socket.io/* to Agent Zero), making the connection
+  // work from any device/network — not just localhost.
   // auth callback is called on every connect attempt (including reconnect),
   // ensuring the CSRF token and session cookie are always fresh.
   // This matches Agent Zero's own webui pattern (webui/js/websocket.js).
@@ -20,7 +18,7 @@ export function initStateSyncSocket(): Socket {
   // the CSRF flow when websocket is the initial transport.  Once the
   // polling connection is established, Socket.IO auto-upgrades to
   // websocket for better performance.
-  stateSyncSocket = io(`${A0_SOCKET_URL}/ws`, {
+  stateSyncSocket = io("/ws", {
     autoConnect: false,
     transports: ["polling", "websocket"],
     withCredentials: true,

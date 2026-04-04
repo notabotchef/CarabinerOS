@@ -22,6 +22,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://carabiner:carabiner@postgres:5432/carabiner
       - FLASK_SECRET_KEY=carabiner-dev-secret-key-2026
+      - ALLOWED_ORIGINS=*://10.0.0.39:*
     volumes:
       - ./usr:/a0/usr
       - ./carabiner:/cos/carabiner

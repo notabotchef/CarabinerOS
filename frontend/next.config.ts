@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const A0_URL = process.env.A0_URL || "http://localhost:5000";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["10.0.0.39"],
   turbopack: {
     root: __dirname,
   },
@@ -32,6 +33,9 @@ const nextConfig: NextConfig = {
       { source: "/api/campaigns/:id", destination: `${A0_URL}/api/campaigns?id=:id` },
       // CarabinerOS + A0 API catch-all
       { source: "/api/:path*", destination: `${A0_URL}/api/:path*` },
+      // Socket.IO (Engine.IO polling + WebSocket upgrade) — must come after
+      // REST rewrites so /api/* is matched first.
+      { source: "/socket.io/:path*", destination: `${A0_URL}/socket.io/:path*` },
     ];
   },
 };
