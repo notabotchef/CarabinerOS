@@ -257,7 +257,20 @@ export function useChat(snapshot: A0Snapshot | null): UseChatReturn {
         const result = updatedMessages.size > 0
           ? prev.map(m => updatedMessages.get(m.id) ?? m)
           : prev;
-        return newMessages.length > 0 ? [...result, ...newMessages] : result;
+        if (newMessages.length === 0) return result;
+
+        // If there are already user messages rendered, any new assistant message
+        // whose timestamp predates the first user message is a greeting that
+        // arrived late (race condition on new-chat creation). Insert it at
+        // position 0 so it appears as a welcome banner above the conversation.
+        const firstUserTs = result.find(m => m.role === "user")?.timestamp;
+        if (firstUserTs !== undefined) {
+          const preUser = newMessages.filter(m => m.role === "assistant" && m.timestamp < firstUserTs);
+          const rest = newMessages.filter(m => !(m.role === "assistant" && m.timestamp < firstUserTs));
+          return [...preUser, ...result, ...rest];
+        }
+
+        return [...result, ...newMessages];
       });
     }
 
