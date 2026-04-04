@@ -33,12 +33,22 @@ Untangled a messy working tree (262 dirty files) caused by an incomplete docs re
 
 ## Open / Still Needs Work
 
-- [ ] Action cards: live test — does A0 produce valid JSON in notify_user.detail, does card render rich? (requires live stack)
+- [ ] Action cards: LIVE TEST — bring up docker stack, send "send my orders", verify cards appear in Tickets panel
+- [ ] Action cards: enhance _action_cards.md system prompt with per-module card creation examples
+- [ ] Action cards: card update flow — A0 re-emits updated card (same id) when user modifies via sidechat
 - [ ] CLI write commands: test end-to-end (orders create via A0 chat)
 - [ ] Real-time sync: cOS doesn't get state_push when conversation started in A0 WebUI (different sessions)
 - [ ] Reporting page: needs `/api/reporting/daily-pl` endpoint
 - [ ] Menu 86-board: needs `/api/menu/86-board` endpoint
 - [ ] A0 self-update shows "unknown" (no .git in /a0/ — cosmetic)
+
+## Completed This Session
+
+- [x] Git tree cleanup: untangled 262 dirty files, docs reorg committed, code changes grouped
+- [x] action_cards_handler.py: websocket handler for card_message/commit/dismiss (19/19 tests)
+- [x] action_card tool: A0 tool for creating/emitting cards with validation (19/19 tests)
+- [x] _20_action_cards.py extension: wires card events into A0's websocket pipeline
+- [x] Plan: action-cards-mobile.md — 4-phase roadmap for mobile-first smart cards
 
 ## Remaining Branches
 
