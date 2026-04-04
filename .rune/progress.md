@@ -8,6 +8,29 @@
 
 ---
 
+## What Just Happened (Session — Git Tree Cleanup)
+
+Untangled a messy working tree (262 dirty files) caused by an incomplete docs reorg session:
+
+1. **Docs reorganization committed** — 246 files moved into numbered sections:
+   - `docs/01-product/` — vision, competitive analysis, user feedback
+   - `docs/02-market-intelligence/` — MiroShark reports, research, simulations
+   - `docs/03-development/` — ADRs, roadmap, specs, bug reports
+   - `docs/04-go-to-market/` — strategy, demo runbook, beta targets
+   - `docs/05-operations/` — Paperclip agent configs, deployment
+   - `docs/_archive/` — generic Agent Zero docs (preserved)
+
+2. **Accumulated code changes committed** (6 logical commits):
+   - Agent-zero submodule: ALLOWED_ORIGINS websocket fix
+   - Frontend connectivity and socket improvements
+   - Backend handlers, restaurant context prompt rewrite, action card emit
+   - Langextract plugin (invoice/recipe/prep extraction)
+   - Rune session state update
+
+3. **Cleanup**: Pruned dead worktree, deleted stale branches (session-13, worktree-agent)
+
+---
+
 ## Open / Still Needs Work
 
 - [ ] Action cards: live test — does A0 produce valid JSON in notify_user.detail, does card render rich? (requires live stack)
@@ -16,6 +39,12 @@
 - [ ] Reporting page: needs `/api/reporting/daily-pl` endpoint
 - [ ] Menu 86-board: needs `/api/menu/86-board` endpoint
 - [ ] A0 self-update shows "unknown" (no .git in /a0/ — cosmetic)
+
+## Remaining Branches
+
+- `fix/campaigns-cli-e2e` — 2 commits ahead of main (campaigns CLI + tool prompts). Ready to merge or rebase.
+- `feature/car-24-tool-prompts` — may be stale, needs review
+- `feature/frontend-redesign` — in worktree at `.worktrees/frontend-redesign`
 
 ## Next Session Should
 
@@ -35,7 +64,7 @@
 - **A0 base image** — `FROM agent0ai/agent-zero-base:latest`. Never `python:3.12-slim`.
 - **Chat context** — `chat_context_id` nullable column on all workspace models. A0 passes `--chat-context` on all writes.
 - **Action cards** — A0 sends structured JSON in `notify_user.detail` (actions, stats, changes, chips). Single path via `notify_user.py`.
-- **Fleet Learning** — ADR-001 approved, post-MVP. Federated ONNX router + anonymous benchmarks. Full doc: `docs/adr/ADR-001-fleet-learning-federated-intelligence.md`.
+- **Fleet Learning** — ADR-001 approved, post-MVP. Federated ONNX router + anonymous benchmarks.
 
 ## Tech Reference
 
