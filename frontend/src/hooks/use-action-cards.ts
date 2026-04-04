@@ -224,8 +224,12 @@ export function useActionCards(notifications?: A0Notification[]): UseActionCards
     const socket = initStateSyncSocket();
     if (!socket || listenersAttached.current) return;
 
-    const handleActionCard = (payload: { card: ActionCard }) => {
-      const incoming = payload.card;
+    const handleActionCard = (payload: Record<string, unknown>) => {
+      // send_data wraps payloads in an envelope: { handlerId, eventId, correlationId, ts, data: {...} }
+      // so the card may be at payload.data.card, payload.card, or payload itself
+      const envelope = (payload?.data && typeof payload.data === "object") ? payload.data as Record<string, unknown> : payload;
+      const incoming = (envelope?.card ?? envelope) as ActionCard | undefined;
+      if (!incoming?.type) return; // guard against malformed or empty payloads
       setLastCardType(incoming.type);
       setCards((prev) => {
         const idx = prev.findIndex((c) => c.id === incoming.id);

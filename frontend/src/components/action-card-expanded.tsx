@@ -5,6 +5,8 @@ import { motion } from "motion/react";
 import {
   Check, X, Loader2, ArrowUp, ChevronLeft,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getActionLabel, TYPE_STYLES } from "@/components/action-card";
 import type {
@@ -164,9 +166,11 @@ export function ActionCardExpanded({
           </h2>
 
           {/* Detail */}
-          <p className="text-[13px] text-muted-foreground/70 leading-relaxed mb-4">
-            {card.detail}
-          </p>
+          <div className="markdown-body text-[13px] text-muted-foreground/70 leading-relaxed mb-4 [&_p]:m-0 [&_ul]:my-1 [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:pl-4 [&_li]:text-[13px] [&_strong]:text-foreground/80">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {card.detail}
+            </ReactMarkdown>
+          </div>
 
           {/* Stats grid */}
           {card.stats.length > 0 && (
@@ -227,7 +231,15 @@ export function ActionCardExpanded({
                         : "bg-muted/30 text-foreground/70 mr-6"
                     }`}
                   >
-                    {msg.text}
+                    {msg.role === "assistant" ? (
+                      <div className="markdown-body [&_p]:m-0 [&_ul]:my-1 [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:pl-4 [&_li]:text-[12px] [&_strong]:text-foreground/80">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {msg.text}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      msg.text
+                    )}
                   </div>
                 ))}
                 {chatLoading && (
