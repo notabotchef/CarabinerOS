@@ -1,66 +1,96 @@
 # Pre-Compact Snapshot
-Generated: 2026-04-01T01:27:00.128Z
-
-## Session Metrics
-- Tool calls: 59
-- Session start: 2026-03-31T20:38:56.084Z
-- Top tools: unknown(59)
+Generated: 2026-04-03T05:02:46.485Z
 
 ## State Files (preview)
 ### .rune/progress.md
 # Progress
 
-## [2026-03-31] Session 12 — Stabilization, Cleanup, and Architecture Decision
+## [2026-04-02] Session 15 — Action Cards v2 + Chat Context Link
 
 **Completed:**
-- [x] Fixed API 404s — blueprint registration moved to run_ui.py startup
-- [x] Fixed CSRF endpoint — nginx proxies /csrf_token → /api/csrf_token
-- [x] Eliminated codex_proxy — removed from settings.json, _model_config, Dockerfile, .env
-- [x] Fixed Socket.IO chat — added `handlers: ["ws_webui"]` to auth (A0 v1.11 requirement)
-- [x] Fixed plugin installer — removed stale `from turtle import stamp` import
-- [x] Docker self-update infrastructure — .git in image, /exe/ scripts, git index synced, stash-safe
-- [x] Fixed startup hang — HF_HUB_OFFLINE=1, hf_cache volume, asyncio.new_event_loop for DB init
-- [x] Cleaned 85 branches → 1, 40 worktrees → 1 (16.6 GB reclaimed), 10 stashes → 0
-- [x] Closed 5 open PRs — documented in docs/future-work/closed-prs-2026-03-31.md
-- [x] Moved 22 research docs from root to docs/research/
-- [x] CarabinerOS README replacing upstream A0 README
-- [x] All changes committed and pushed to GitHub
+- [x] Action Cards v2: A0 sends structured JSON in notify_user.detail (actions, stats, changes, chips)
+- [x] Frontend notificationToCard() parses rich card payload → contextual action buttons
+- [x] Module badge now uses group field from A0 (no more "GENERAL")
+- [x] Extensions moved to usr/extensions/python/ (correct A0 overlay path)
+- [x] New _20_inject_location.py: injects active location into A0 context per-message
+- [x] _30_action_card_emit.py disabled — A0 direct notify_user is the single card path
+- [x] ChatContextMixin: nullable chat_context_id column on all workspace models
+- [x] System prompt injects context ID → A0 passes --chat-context on all writes
+- [x] ModuleChat accepts chatContextId prop, subscribes to the record's conversation
+- [x] CLI orders/prep accept --chat-context flag
+- [x] 4 agent prompts updated: context ID + card JSON schema
+- [x] MiroShark sim2 report committed
 
-**Still Broken (carried to Session 13):**
-- [ ] Chat message rendering — Socket connects, state_push received, but cOS chat page renders blank
-- [ ] DB route async errors — food-cost/summary, prep/today return 500 (event loop conflict)
-- [ ] Home page — Daily Brief and stats widgets not rendering
-- [ ] Model config — openrouter with wrong api_base, needs OpenRouter key or switch to local Ollama
-- [ ] Self-update — version detection works but actual update untested
+**Also Completed (same session):**
+- [x] Fixed: chat_context_id was missing from 7 Pydantic output schemas (OrderOut, InventoryOut, PrepOut, MenuOut, CampaignOut, InvoiceOut, RecipeOut) — Chat Context Link now flows end-to-end
+- [x] Fixed: floating island nav — p-2→p-1.5, gap-2→gap-1, rounded-2xl→rounded-xl, shadow-md→shadow-sm, removed cOS logo, buttons size-8→size-7
 
-**Key Architecture Decision:**
-CarabinerOS was built INSIDE Agent Zero (fork-and-merge), not ON TOP of it. Every fix this session revealed another A0 protocol incompatibility (API paths, WebSocket handlers, config migration, event loop). Decision: **clean rebuild on fresh A0 v1.6** with plugin-only architecture. Zero patches to A0 core files.
+**Also Completed (session 16):**
+- [x] GTM docs committed: NYC beta targets, distributor channel brief, liability framework
+- [x] TypeScript build error fixed: order-detail-panel.tsx double-cast (tsc now clean)
+- [x] Demo seeder parameterized: --restaurant-name flag for personalized NYC pitches
+- [x] Demo runbook written: docs/gtm/demo-runbook.md (15-min script, recovery paths, sim-validated messaging)
+- [x] Action card summary/detail fields corrected: title→summary (headline), message→detail (body) — was reversed in notify_user.py
+- [x] Card timestamp fixed: emitting seconds not ms (frontend stale filter uses seconds)
+
+**Still Needs Work:**
+- [ ] Action cards: live test — does A0 produce valid JSON in notify_user.detail, does card render rich? (requires live stack)
+- [ ] CLI write commands: test end-to-end (orders create via A0 chat)
+- [ ] Real-time sync: cOS doesn't get state_push when conversation started in A0 WebUI
 
 **Next Session Should:**
-1. Fresh clone of agent0ai/agent-zero at v1.6 tag
-2. Set up as git submodule at engine/agent-zero/
-3. Create usr/plugins/carabiner/ plugin (DB init, API routes via plugin lifecycle)
-4. Reconnect frontend to stock A0 WebSocket protocol
-5. Verify: chat works, DB routes return data, module pages render
-6. Session 13 starter prompt saved in conversation
+1. `docker compose -f docker-compose.dev.yml up` — bring stack up
+2. Send "Draft a new order for Pacific Seafood for produce replenishment based on our par levels" in A0 chat
+3. Verify: action card appears with title as headline, structured actions/stats visible
+4. Verify: order appears in Orders page with chat_context_id, side-chat links to that conversation
+5. Real-time sync: investigate why cOS misses state_push from A0 WebUI sessions
+
+**Branch:** main (clean, pushed to GitHub)
 
 ---
 
-## [2026-03-28] Session 11 — Tiny Router Build + A0 Personal Instance Setup
+## [2026-04-01] Session 14 — Get A0 + CarabinerOS Running (Full Stack Restoration)
 
 **Completed:**
-- [x] Deleted OpenClaw — processes, launchd agent, npm package, `~/.openclaw/`, Docker images (~13GB reclaimed)
-- [x] Home directory audit — identified ~72GB of stale files (a0/, a0backup/, a0dev/, agent-zero/, carabiner-os.zip, .ollama, .gemini, .codex, .antigravity)
-- [x] Cleaned Docker images — removed old agent0ai/agent-zero (8.25GB), stale worktree build (4.74GB), curlimages/curl
-- [x] Built `a0-tiny-router` plugin — full ONNX inference pipeline using upstream `tgupj/tiny-router` (DeBERTa-v3-small, 44M params)
-- [x] Extracted inference-only functions into `tiny_router_helpers/upstream.py` — no torch/datasets dependency at runtime
-- [x] Downloaded INT8 ONNX model (172MB) from HuggingFace, verified 6-7ms inference inside A0 container
-- [x] 20/20 tests passing (12 routing logic + 8 smoke tests with real model)
-- [x] Made plugin A0-spec-compliant: renamed to `tiny_router`, `usr.plugins.*` imports, Store Gate webui, LICENSE, execute.py
-- [x] Installed in personal A0 at `/Users/estebannunez/agent-zero/a0/usr/plugins/tiny_router/`
+- [x] Rewrote Dockerfile.agent-zero → FROM agent0ai/agent-zero-base:latest (proper A0 pipeline)
 
 ### .rune/decisions.md
 # Decisions Log
+
+## [2026-04-01] Decision: CLI Replaces 63 MCP Tools
+
+**Context:** 63 MCP tools inject ~14,000 tokens into every A0 prompt. No filtering — all tools, every message. This is the single biggest token cost.
+**Decision:** Replace carabiner-db MCP server with `carabiner` CLI (Typer+Rich). A0 calls via code_execution. Grammar: `carabiner <resource> <verb> [--json]`.
+**Rationale:** 35x token reduction in benchmarks (jannikreinhard.com). Claude Code itself uses CLI (git, gh, npm) — no MCP. LLMs trained on billions of terminal interactions — they know CLI natively.
+**Impact:** carabiner/cli/ (14 new files), usr/settings.json (mcp_servers = {}), system prompt rewritten, knowledge doc added.
+
+## [2026-04-01] Decision: Dockerfile Must Use agent0ai/agent-zero-base
+
+**Context:** Custom python:3.12-slim Dockerfile missing tkinter, HF model cache, proper A0 runtime. Every rebuild reveals another missing dep. Plugin installer crashes, memory dashboard fails.
+**Decision:** Build FROM agent0ai/agent-zero-base:latest (A0's own base image). Add CarabinerOS layer on top (usr/, carabiner/, pip deps).
+**Rationale:** A0's base image has everything A0 needs. Mirrors production deployment — same base for all tenants, CarabinerOS as overlay.
+**Impact:** Dockerfile.agent-zero must be rewritten. Docker-compose mounts remain the same.
+
+## [2026-04-01] Decision: A0 ApiHandler Stubs via Startup Extension
+
+**Context:** Frontend calls `/api/orders`, `/api/prep`, etc. A0's dispatch system looks for `ApiHandler` classes in `/a0/api/<path>.py`. CarabinerOS can't modify A0 engine files, and A0 has no hook to register Flask blueprints post-startup.
+**Decision:** The `_10_carabiner_init.py` startup extension writes thin Python stub files to `/a0/api/` at boot. Each stub imports a factory from `carabiner/api/_a0_handlers.py` that generates A0-compatible `ApiHandler` classes wrapping the repository layer.
+**Rationale:** Zero A0 engine modifications. Stubs are regenerated every boot (idempotent). A0's file-based dispatch natively loads them. Factory pattern keeps boilerplate minimal (~3 lines per resource).
+**Impact:** `carabiner/api/_a0_handlers.py` (handler factory), `_10_carabiner_init.py` (stub writer), `next.config.ts` (detail rewrites `/api/orders/:id` → `?id=:id`)
+
+## [2026-04-01] Decision: No Global DB Engine at Startup
+
+**Context:** The startup_migration extension runs on a separate asyncio event loop (via `asyncio.new_event_loop()`). A0's uvicorn runs on a different loop. Calling `init_db()` at startup creates a global engine bound to the wrong loop, causing intermittent "attached to a different loop" errors on API requests.
+**Decision:** Don't call `init_db()` at startup. Only run `Base.metadata.create_all` (table creation). Let `get_session()` fallback create per-request engines via its cross-loop detection.
+**Rationale:** Per-request engines are slightly less efficient but 100% reliable. The startup extension and uvicorn will never share an event loop.
+**Impact:** `carabiner/db/engine.py` (broadened error detection), `_10_carabiner_init.py` (removed `init_db()` call)
+
+## [2026-04-01] Decision: Production Architecture — Per-Tenant A0 + Shared DB Cluster
+
+**Context:** Planning how restaurants will deploy. Each restaurant needs isolated A0 (stateful: memory, chats) but infra should scale efficiently.
+**Decision:** Per-tenant: own A0 container + own database. Shared: base image, frontend, DB cluster. CarabinerOS layer baked into image, per-tenant config via env vars. Stage 1: OpenRouter LLM, Stage 2: own inference at 500 users, Stage 3: fine-tuned restaurant LLM.
+**Rationale:** A0 is stateful (memory, agent profiles per restaurant). Can't share one A0 across tenants. But base image + PostgreSQL cluster are shared efficiently.
+**Impact:** Architecture supports 10→100→1000 restaurants. Infra cost: ~$1.50/restaurant/month at 100 tenants.
 
 ## [2026-03-31] Decision: Clean Rebuild — Fresh A0 v1.6 with Plugin-Only Architecture
 
@@ -75,41 +105,6 @@ CarabinerOS was built INSIDE Agent Zero (fork-and-merge), not ON TOP of it. Ever
 **Decision:** The auth callback must include `handlers: ["ws_webui"]` for A0 to activate the state sync handler. Without it, all events are silently dropped.
 **Rationale:** A0's WebSocket dispatch checks `_active_handlers[sid]` — if empty (no handlers declared in auth), it returns early with "NO_HANDLERS" without processing any events. This was a protocol change in A0's newer versions that our frontend never knew about.
 **Impact:** `frontend/src/lib/socket-client.ts` — auth callback sends `{ csrf_token, handlers: ["ws_webui"] }`
-
-## [2026-03-31] Decision: All A0 Endpoints Moved to /api/ Prefix
-
-**Context:** CarabinerOS nginx and Next.js rewrites pointed to bare paths (/message_async, /chats, /csrf_token). All returned 404 or 405.
-**Decision:** A0 v1.11 moved all endpoints under /api/. Updated nginx.dev.conf and frontend/next.config.ts to proxy to /api/ prefixed paths.
-**Rationale:** A0's register_api_route() registers a catch-all /api/<path> dispatcher. Bare paths like /message_async don't exist — they're at /api/message_async.
-**Impact:** nginx.dev.conf (7 location blocks), frontend/next.config.ts (7 rewrites)
-
-## [2026-03-28] Decision: Tiny Router A0 Plugin — Inference-Only Extraction
-
-**Context:** The upstream `tgupj/tiny-router` package requires torch, datasets, and other heavy ML deps. At runtime in A0, only ONNX inference is needed.
-**Decision:** Extract only the inference-path functions (`prepare_record`, `scale_logits`, `canonicalize_action`, `normalize_interaction`, `build_prompt`) into `tiny_router_helpers/upstream.py`. Keep upstream as git submodule for reference. Runtime deps: only onnxruntime, transformers, sentencepiece, numpy.
-**Rationale:** Avoids ~2GB torch dependency in A0 container. The extracted functions are pure Python + numpy — no torch needed for ONNX inference.
-**Impact:** `tiny_router_helpers/upstream.py` (standalone), `vendor/tiny-router/` (submodule reference only)
-
-## [2026-03-28] Decision: Codex Proxy Startup at monologue_start
-
-**Context:** Codex proxy started at `message_loop_start` via `_10_codex_proxy.py`. LiteLLM tried to connect to `127.0.0.1:8400` before the proxy was listening, causing connection refused errors.
-**Decision:** Added `monologue_start/_05_codex_proxy_boot.py` that starts the proxy once per conversation before any message loop iteration.
-**Rationale:** `monologue_start` fires before the message loop begins. By the time `message_loop_start` → LLM call happens, the proxy is already listening.
-**Impact:** `/a0/usr/plugins/codex-provider/extensions/python/monologue_start/_05_codex_proxy_boot.py`
-
-## [2026-03-28] Decision: Ollama num_ctx Must Be Passed via kwargs
-
-**Context:** A0's `ctx_length` in model config controls how much history A0 sends to the LLM. But Ollama independently allocates its own context window — defaulting to 65K for GLM-30B (~26GB RAM). This caused OOM and hangs.
-**Decision:** Pass `num_ctx` directly to Ollama via the model config `kwargs` field: `{"kwargs": {"num_ctx": 8192}}`. This controls Ollama's actual memory allocation.
-**Rationale:** A0's `ctx_length` and Ollama's `num_ctx` are independent settings. Without explicit `num_ctx` in kwargs, Ollama uses the model's default (65K for GLM), regardless of what A0 sends.
-**Impact:** `_model_config/config.json` — `kwargs.num_ctx` for both chat and utility models
-
-## [2026-03-28] Decision: Phase 1 Tiny Router — Log Only, No LLM Skip
-
-**Context:** The upstream model is trained on synthetic data (F1: 0.78, exact match: 0.46). Routing decisions might be wrong for real restaurant messages.
-**Decision:** Phase 1 logs every classification but never skips the LLM. Phase 2 (configurable via plugin settings UI) will actually skip for canned responses once thresholds are validated.
-**Rationale:** Collect real classification data before trusting the model with cost-saving decisions. A wrong canned response ("Got it.") to an actual question would be worse than the token cost savings.
-**Impact:** Extension logs `WOULD skip LLM -> "Got it." (Phase 1: pass-through)` — visible in logs for threshold tuning
 
 ### .rune/conventions.md
 # Conventions

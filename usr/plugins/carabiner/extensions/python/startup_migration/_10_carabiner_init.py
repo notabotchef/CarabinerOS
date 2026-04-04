@@ -50,6 +50,10 @@ _CUSTOM_ROUTES = [
     ("inventory/par-levels", "make_inventory_par_levels_handler"),
     ("inventory/waste", "make_inventory_waste_handler"),
     ("prep/today", "make_prep_today_handler"),
+    ("chats", "make_chats_handler"),
+    ("message", "make_message_handler"),
+    ("message_async", "make_message_async_handler"),
+    ("csrf_token", "make_csrf_token_handler"),
 ]
 
 

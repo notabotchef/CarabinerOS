@@ -41,7 +41,7 @@ export function useSocket(): UseSocketReturn {
         notifications_from: 0,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         ts: new Date().toISOString(),
-        correlationId: crypto.randomUUID(),
+        correlationId: crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36),
       };
       console.log("[useSocket] emitting state_request", req);
       socket.emit("state_request", req);

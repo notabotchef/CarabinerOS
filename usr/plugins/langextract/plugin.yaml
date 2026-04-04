@@ -1,0 +1,8 @@
+name: langextract
+title: LangExtract
+description: Structured document extraction powered by google/langextract. Extract invoices, recipes, prep lists, and any structured data from unstructured text with source grounding.
+version: 0.1.0
+settings_sections:
+  - agent
+per_project_config: true
+per_agent_config: false

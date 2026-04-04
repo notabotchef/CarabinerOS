@@ -1,0 +1,23 @@
+# LangExtract Plugin Configuration
+# Model to use for extraction (supports gemini-*, gpt-*, ollama models)
+# Leave empty to use the agent's default model
+model_id: ""
+
+# Number of extraction passes (higher = better recall, more cost)
+extraction_passes: 1
+
+# Max parallel workers for chunked documents
+max_workers: 5
+
+# Character buffer size for chunking (smaller = more accurate, slower)
+max_char_buffer: 2000
+
+# Whether to fence output (required for OpenAI models)
+# Auto-detected based on model_id if left empty
+fence_output: null
+
+# Save HTML visualization alongside JSON output
+save_visualization: true
+
+# Output directory for extraction results (relative to work dir)
+output_dir: "extractions"

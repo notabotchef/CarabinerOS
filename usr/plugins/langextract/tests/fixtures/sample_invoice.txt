@@ -1,0 +1,29 @@
+US FOODS
+Invoice #: USF-2026-11847
+Date: 04/01/2026
+PO #: PO-3847
+Ship To: CarabinerOS Test Kitchen
+         123 W Randolph St
+         Chicago, IL 60601
+
+Delivery Date: 04/02/2026
+Driver: Martinez
+
+Item Code    Description              Qty   Unit   Price     Ext Price
+─────────────────────────────────────────────────────────────────────
+4829104      Choice Striploin 180D     8    LB     $14.75    $118.00
+7281034      Fresh Salmon Fillet       12   LB     $12.50    $150.00
+3019284      Organic Mixed Greens      6    CS     $28.00    $168.00
+9182734      San Marzano Tomatoes 6/#10 2   CS     $42.00    $84.00
+1029384      Extra Virgin Olive Oil    4    GAL    $32.00    $128.00
+5738291      Heavy Cream 36%           8    QT     $6.50     $52.00
+2918374      All Purpose Flour 50lb    1    BAG    $22.00    $22.00
+8273910      Kosher Salt               2    BOX    $8.00     $16.00
+
+                                           Subtotal:        $738.00
+                                           Fuel Surcharge:  $12.50
+                                           Tax:             $0.00
+                                           ────────────────────────
+                                           TOTAL:           $750.50
+
+Received by: ____________  Date: ____________

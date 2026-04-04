@@ -521,6 +521,163 @@ def make_inventory_waste_handler() -> type:
     return InventoryWasteHandler
 
 
+def make_chats_handler() -> type:
+    """Handler for /api/chats — chat management endpoints."""
+    
+    class ChatsHandler(ApiHandler):
+        @classmethod
+        def get_methods(cls): return ["GET", "POST", "DELETE"]
+        @classmethod
+        def requires_auth(cls): return False
+        @classmethod
+        def requires_csrf(cls): return False
+
+        async def process(self, input: dict, request: Any) -> Any:
+            from flask import Response
+            from carabiner.chat_store import chat_store
+            import json
+            
+            method = request.method
+            
+            if method == "GET":
+                # List chats - use fallback chat store for now
+                try:
+                    contexts = [ctx.to_summary() for ctx in chat_store.all()]
+                    return Response(
+                        json.dumps(contexts, default=str),
+                        content_type="application/json"
+                    )
+                except Exception as e:
+                    return Response(
+                        json.dumps({"error": f"Failed to list chats: {e}"}),
+                        status=500,
+                        content_type="application/json"
+                    )
+                    
+            elif method == "POST":
+                # Create new chat
+                try:
+                    ctx = chat_store.create()
+                    return Response(
+                        json.dumps(ctx.to_summary(), default=str),
+                        status=201,
+                        content_type="application/json"
+                    )
+                except Exception as e:
+                    return Response(
+                        json.dumps({"error": f"Failed to create chat: {e}"}),
+                        status=500,
+                        content_type="application/json"
+                    )
+                    
+            elif method == "DELETE":
+                # Delete chat - extract ID from URL path
+                chat_id = request.view_args.get('id') if hasattr(request, 'view_args') else None
+                if not chat_id:
+                    return Response(
+                        json.dumps({"error": "Chat ID required"}),
+                        status=400,
+                        content_type="application/json"
+                    )
+                try:
+                    if chat_store.remove(chat_id):
+                        return Response(status=204)
+                    else:
+                        return Response(
+                            json.dumps({"error": "Chat not found"}),
+                            status=404,
+                            content_type="application/json"
+                        )
+                except Exception as e:
+                    return Response(
+                        json.dumps({"error": f"Failed to delete chat: {e}"}),
+                        status=500,
+                        content_type="application/json"
+                    )
+    
+    return ChatsHandler
+
+
+def make_message_handler() -> type:
+    """Handler for /api/message — synchronous message endpoint."""
+    
+    class MessageHandler(ApiHandler):
+        @classmethod
+        def get_methods(cls): return ["POST"]
+        @classmethod
+        def requires_auth(cls): return False
+        @classmethod
+        def requires_csrf(cls): return False
+
+        async def process(self, input: dict, request: Any) -> Any:
+            from flask import Response
+            import json
+            
+            # Simple echo response for now - can be enhanced later
+            return Response(
+                json.dumps({
+                    "response": "CarabinerOS is running! Chat functionality coming soon.", 
+                    "status": "ok"
+                }),
+                content_type="application/json"
+            )
+    
+    return MessageHandler
+
+
+def make_message_async_handler() -> type:
+    """Handler for /api/message_async — asynchronous message endpoint."""
+    
+    class MessageAsyncHandler(ApiHandler):
+        @classmethod
+        def get_methods(cls): return ["POST"]
+        @classmethod
+        def requires_auth(cls): return False
+        @classmethod
+        def requires_csrf(cls): return False
+
+        async def process(self, input: dict, request: Any) -> Any:
+            from flask import Response
+            import json
+            
+            # Simple async response for now
+            return Response(
+                json.dumps({
+                    "status": "processing",
+                    "message": "Message received"
+                }),
+                content_type="application/json"
+            )
+    
+    return MessageAsyncHandler
+
+
+def make_csrf_token_handler() -> type:
+    """Handler for /api/csrf_token — CSRF token endpoint."""
+    
+    class CsrfTokenHandler(ApiHandler):
+        @classmethod
+        def get_methods(cls): return ["GET"]
+        @classmethod
+        def requires_auth(cls): return False
+        @classmethod
+        def requires_csrf(cls): return False
+
+        async def process(self, input: dict, request: Any) -> Any:
+            from flask import Response
+            import secrets
+            import json
+            
+            # Generate CSRF token
+            token = secrets.token_urlsafe(32)
+            return Response(
+                json.dumps({"csrf_token": token}),
+                content_type="application/json"
+            )
+    
+    return CsrfTokenHandler
+
+
 def make_prep_today_handler() -> type:
     """Handler for /api/prep/today — today's PrepList with its PrepListItems."""
 
