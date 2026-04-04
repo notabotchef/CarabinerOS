@@ -45,10 +45,17 @@ class RestaurantContext(Extension):
             "  carabiner_write(resource='orders', verb='delete', args='<uuid>')",
             "  carabiner_write(resource='inventory', verb='update', args='<uuid> --on-hand 12')",
             "",
-            "carabiner_write automatically:",
-            "  - Injects --chat-context so the record links to this conversation",
-            "  - Fires an action card notification on the chef's dashboard",
-            "  - Returns the created/updated record as JSON",
+            "### --chat-context flag (MANDATORY on every write)",
+            "EVERY carabiner write command MUST include --chat-context with the current conversation ID.",
+            "This links the record to this chat so the chef can find it later in the module page.",
+            "The context ID is available in the conversation metadata. Pass it like this:",
+            "  carabiner orders create --vendor 'US Foods' --chat-context <context_id>",
+            "  carabiner recipes update <uuid> --name 'New Name' --chat-context <context_id>",
+            "If you do not know the context ID, omit the flag — but ALWAYS try to include it.",
+            "",
+            "### MANDATORY after every write",
+            "After every successful create/update/delete, call notify_user with structured detail JSON.",
+            "This creates an action card on the chef's dashboard. See the Action Cards section for format.",
             "",
             "NEVER say 'I don't have data'. ALWAYS call carabiner_read first.",
             "NEVER invent a location ID. Use carabiner_read(resource='orders', verb='list') to find the real location_id.",
@@ -72,5 +79,17 @@ class RestaurantContext(Extension):
                 context_parts.insert(5, f"Active location: {location}")
             if location_id:
                 context_parts.insert(6, f"Location ID: {location_id}")
+
+        # Inject current chat context ID so A0 can pass it to CLI writes
+        try:
+            chat_context_id = self.agent.context.id if self.agent.context else None
+            if chat_context_id:
+                context_parts.append("")
+                context_parts.append(f"## Current Chat Context")
+                context_parts.append(f"Context ID: {chat_context_id}")
+                context_parts.append(f"Use this value for --chat-context on ALL carabiner write commands.")
+                context_parts.append(f"Example: carabiner orders create --vendor 'US Foods' --chat-context {chat_context_id}")
+        except Exception:
+            pass  # don't crash prompt building if context is unavailable
 
         system_prompt.append("\n".join(context_parts))

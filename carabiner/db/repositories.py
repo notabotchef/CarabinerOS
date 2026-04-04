@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Sequence, Type, TypeVar
 
@@ -151,6 +151,30 @@ async def get_order(item_id: uuid.UUID) -> Optional[WorkspaceOrder]:
     return await _get_by_id(WorkspaceOrder, item_id)
 
 async def create_order(data: Dict[str, Any]) -> WorkspaceOrder:
+    """Create an order with dedup guard: if an order with the same vendor AND
+    chat_context_id was created within the last 60 seconds, return the existing
+    order instead of inserting a duplicate."""
+    vendor = data.get("vendor")
+    chat_ctx = data.get("chat_context_id")
+
+    if vendor and chat_ctx:
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=60)
+        async with get_session() as session:
+            stmt = (
+                select(WorkspaceOrder)
+                .where(
+                    WorkspaceOrder.vendor == vendor,
+                    WorkspaceOrder.chat_context_id == chat_ctx,
+                    WorkspaceOrder.created_at >= cutoff,
+                )
+                .order_by(WorkspaceOrder.created_at.desc())
+                .limit(1)
+            )
+            result = await session.execute(stmt)
+            existing = result.scalar_one_or_none()
+            if existing is not None:
+                return existing
+
     return await _create(WorkspaceOrder, data)
 
 async def update_order(item_id: uuid.UUID, data: Dict[str, Any]) -> Optional[WorkspaceOrder]:
