@@ -1,123 +1,126 @@
-![Agent Zero Logo](res/header.png)
-# Agent Zero Documentation
+# CarabinerOS Documentation
 
-Welcome to the Agent Zero documentation hub. Whether you're getting started or diving deep into the framework, you'll find comprehensive guides below.
-
-## Quick Start
-
-- **[Quickstart Guide](quickstart.md):** Get up and running in 5 minutes with Agent Zero.
-- **[Installation Guide](setup/installation.md):** Detailed setup instructions for all platforms (or [update your installation](setup/installation.md#how-to-update-agent-zero)).
-- **[VPS Deployment](setup/vps-deployment.md):** Deploy Agent Zero on a remote server.
-- **[Development Setup](setup/dev-setup.md):** Set up a local development environment.
-
-## User Guides
-
-- **[Usage Guide](guides/usage.md):** Comprehensive guide to Agent Zero's features and capabilities.
-- **[Projects Tutorial](guides/projects.md):** Learn to create isolated workspaces with dedicated context and memory.
-- **[API Integration](guides/api-integration.md):** Add external APIs without writing code.
-- **[MCP Setup](guides/mcp-setup.md):** Configure Model Context Protocol servers.
-- **[A2A Setup](guides/a2a-setup.md):** Enable agent-to-agent communication.
-- **[Troubleshooting](guides/troubleshooting.md):** Solutions to common issues and FAQs.
-
-## Developer Documentation
-
-- **[Architecture Overview](developer/architecture.md):** Understand Agent Zero's internal structure and components.
-- **[Plugins](developer/plugins.md):** Build plugins with `plugin.yaml`, scoped settings, and activation toggles.
-- **[Extensions](developer/extensions.md):** Create custom extensions to extend functionality.
-- **[Connectivity](developer/connectivity.md):** Connect to Agent Zero from external applications.
-- **[WebSockets](developer/websockets.md):** Real-time communication infrastructure.
-- **[MCP Configuration](developer/mcp-configuration.md):** Advanced MCP server configuration.
-- **[Notifications](developer/notifications.md):** Notification system architecture and setup.
-- **[Contributing Skills](developer/contributing-skills.md):** Create and share agent skills.
-- **[Contributing Guide](guides/contribution.md):** Contribute to the Agent Zero project.
-
-## Community & Support
-
-- **Join the Community:** Connect with other users on [Discord](https://discord.gg/B8KZKNsPpj) to discuss ideas, ask questions, and collaborate.
-- **Share Your Work:** Show off your Agent Zero creations and workflows in the [Show and Tell](https://github.com/agent0ai/agent-zero/discussions/categories/show-and-tell) area.
-- **Report Issues:** Use the [GitHub issue tracker](https://github.com/agent0ai/agent-zero/issues) to report bugs or suggest features.
-- **Follow Updates:** Subscribe to the [YouTube channel](https://www.youtube.com/@AgentZeroFW) for tutorials and release videos.
+**AI-native restaurant management platform built by a chef, for chefs.**
 
 ---
 
-## Table of Contents
+## What is CarabinerOS?
 
-- [Quick Start](#quick-start)
-  - [Quickstart Guide](quickstart.md)
-  - [Installation Guide](setup/installation.md)
-    - [Step 1: Install Docker Desktop](setup/installation.md#step-1-install-docker-desktop)
-      - [Windows Installation](setup/installation.md#-windows-installation)
-      - [macOS Installation](setup/installation.md#-macos-installation)
-      - [Linux Installation](setup/installation.md#-linux-installation)
-    - [Step 2: Run Agent Zero](setup/installation.md#step-2-run-agent-zero)
-      - [Pull Docker Image](setup/installation.md#21-pull-the-agent-zero-docker-image)
-      - [Map Folders for Persistence](setup/installation.md#22-optional-map-folders-for-persistence)
-      - [Run the Container](setup/installation.md#23-run-the-container)
-      - [Access the Web UI](setup/installation.md#24-access-the-web-ui)
-    - [Step 3: Configure Agent Zero](setup/installation.md#step-3-configure-agent-zero)
-      - [Settings Configuration](setup/installation.md#settings-configuration)
-      - [Agent Configuration](setup/installation.md#agent-configuration)
-      - [Chat Model Settings](setup/installation.md#chat-model-settings)
-      - [API Keys](setup/installation.md#api-keys)
-      - [Authentication](setup/installation.md#authentication)
-    - [Choosing Your LLMs](setup/installation.md#choosing-your-llms)
-    - [Installing Ollama (Local Models)](setup/installation.md#installing-and-using-ollama-local-models)
-    - [Using on Mobile Devices](setup/installation.md#using-agent-zero-on-your-mobile-device)
-    - [How to Update Agent Zero](setup/installation.md#how-to-update-agent-zero)
-  - [VPS Deployment](setup/vps-deployment.md)
-  - [Development Setup](setup/dev-setup.md)
+CarabinerOS replaces the 15-screen CRUD grind with an agent that understands restaurant operations. Independent operators say it, don't click it. The AI drafts, humans approve, the ledger is deterministic.
 
-- [User Guides](#user-guides)
-  - [Usage Guide](guides/usage.md)
-    - [Basic Operations](guides/usage.md#basic-operations)
-    - [Plugins and Plugin Hub](guides/usage.md#plugins-and-plugin-hub)
-    - [Tool Usage](guides/usage.md#tool-usage)
-    - [Projects](guides/usage.md#projects)
-      - [What Projects Provide](guides/usage.md#what-projects-provide)
-      - [Creating Projects](guides/usage.md#creating-projects)
-      - [Project Configuration](guides/usage.md#project-configuration)
-      - [Activating Projects](guides/usage.md#activating-projects)
-      - [Common Use Cases](guides/usage.md#common-use-cases)
-    - [Tasks & Scheduling](guides/usage.md#tasks--scheduling)
-      - [Task Types](guides/usage.md#task-types)
-      - [Creating Tasks](guides/usage.md#creating-tasks)
-      - [Task Configuration](guides/usage.md#task-configuration)
-      - [Integration with Projects](guides/usage.md#integration-with-projects)
-    - [Secrets & Variables](guides/usage.md#secrets--variables)
-    - [Remote Access via Tunneling](guides/usage.md#remote-access-via-tunneling)
-    - [Voice Interface](guides/usage.md#voice-interface)
-    - [Memory Management](guides/usage.md#memory-management)
-    - [Backup & Restore](guides/usage.md#backup--restore)
-  - [Projects Tutorial](guides/projects.md)
-  - [API Integration](guides/api-integration.md)
-  - [MCP Setup](guides/mcp-setup.md)
-  - [A2A Setup](guides/a2a-setup.md)
-  - [Troubleshooting](guides/troubleshooting.md)
-
-- [Developer Documentation](#developer-documentation)
-  - [Architecture Overview](developer/architecture.md)
-    - [System Architecture](developer/architecture.md#system-architecture)
-    - [Runtime Architecture](developer/architecture.md#runtime-architecture)
-    - [Implementation Details](developer/architecture.md#implementation-details)
-    - [Core Components](developer/architecture.md#core-components)
-      - [Agents](developer/architecture.md#1-agents)
-      - [Tools](developer/architecture.md#2-tools)
-      - [Memory System](developer/architecture.md#3-memory-system)
-      - [Prompts](developer/architecture.md#4-prompts)
-      - [Knowledge](developer/architecture.md#5-knowledge)
-      - [Skills](developer/architecture.md#6-skills)
-      - [Extensions](developer/architecture.md#7-extensions)
-  - [Plugins](developer/plugins.md)
-  - [Extensions](developer/extensions.md)
-  - [Connectivity](developer/connectivity.md)
-  - [WebSockets](developer/websockets.md)
-  - [MCP Configuration](developer/mcp-configuration.md)
-  - [Notifications](developer/notifications.md)
-  - [Contributing Skills](developer/contributing-skills.md)
-  - [Contributing Guide](guides/contribution.md)
+- **Stack:** Next.js 16, React 19, Tailwind CSS 4, Python/Flask, PostgreSQL, Agent Zero
+- **Target:** 3+ location independent operators, $3M+ revenue
+- **Mission:** Build the first AI-native restaurant management platform that independent operators actually trust with their food cost
 
 ---
 
-### Your journey with Agent Zero starts now!
+## 🗂️ Documentation Structure
 
-Ready to dive in? Start with the [Quickstart Guide](quickstart.md) for the fastest path to your first chat, or follow the [Installation Guide](setup/installation.md) for a detailed setup walkthrough.
+### 📦 [01-Product](01-product/)
+Product vision, competitive analysis, and user feedback
+- [Competitive Analysis](01-product/competitive-analysis.md) - Market positioning vs Toast, Square, MarginEdge
+- [Audit Report](01-product/audit-report.md) - Technical audit findings
+- [User Feedback](01-product/user-feedback/) - Chef insights and validation
+
+### 📊 [02-Market Intelligence](02-market-intelligence/)
+Market simulations and competitive intelligence
+- [MiroShark Reports](02-market-intelligence/miroshark-reports/) - Prediction market simulations
+- [Simulations](02-market-intelligence/simulations/) - Market adoption modeling
+- [Research](02-market-intelligence/research/) - Industry analysis
+
+**Key Insights from MiroShark Simulations:**
+- Integration depth is the #1 concern (not product features)
+- $149/mo pricing validated
+- "Screen 16" attack line against competitors
+- Will Guidara (target user) betting against adoption despite liking product
+
+### 🛠️ [03-Development](03-development/)
+Technical roadmap, architecture decisions, and bug tracking
+- [Architecture](03-development/architecture/) - ADRs and technical decisions
+- [Roadmap](03-development/roadmap/) - Development plans, specs, and open work
+- [Bug Reports](03-development/bug-reports/) - Current issues and fixes
+
+**Current Priority Stack:**
+1. End-to-end chat (A0 calling CLI) — Hermes Engineer
+2. Content pipeline posting daily — Content Producer
+3. Beta restaurant list — Market Researcher
+4. Next: Toast integration, onboarding flow, personalized demo generator
+
+### 🚀 [04-Go-to-Market](04-go-to-market/)
+Launch strategy, demo materials, and beta program
+- [Strategy](04-go-to-market/strategy/) - GTM approach and positioning
+- [Demo Materials](04-go-to-market/demo-materials/) - Demo runbooks and scripts
+- [Beta Program](04-go-to-market/beta-program/) - NYC targets and testing plans
+
+**Demo-Ready:** 15-minute demo script validates "say it, don't click it" value prop
+
+### ⚙️ [05-Operations](05-operations/)
+Multi-agent organization and deployment guides
+- [Agents](05-operations/agents/) - Paperclip organization structure
+- [Deployment](05-operations/deployment/) - Production deployment guides
+
+**Paperclip Org:** CEO (Opus) → CTO (Sonnet) → Hermes Engineer (coding agent)
+
+---
+
+## 🏃‍♂️ Quick Start
+
+**Prerequisites:**
+- Read `CLAUDE.md` before any code work
+- Read `DESIGN_TOKENS.md` before frontend work
+- Check `.rune/progress.md` for current build status
+
+**Key Context:**
+- Codebase: `~/Projects/carabiner-os`
+- Current: Action Cards v2, Toast integration planning, NYC beta targeting
+- Zero budget — never suggest paid services without acknowledging it
+
+**Development Workflow:**
+- Always work on branches, never main
+- Tasks >30 lines → delegate to agent or use rune:cook
+- Don't add features beyond what was asked
+
+---
+
+## 📋 Current Status (April 2026)
+
+**✅ Recently Completed:**
+- Action Cards v2: A0 sends structured JSON in notify_user.detail
+- Frontend notificationToCard() parses rich card payload
+- Chat Context Link: nullable chat_context_id on workspace models
+- MiroShark sim2 report committed
+- GTM docs: NYC beta targets, demo runbook, liability framework
+
+**🔄 In Progress:**
+- End-to-end chat integration (A0 ↔ CarabinerOS)
+- Real-time sync between A0 WebUI and cOS
+- Toast/Square integration architecture
+
+**📋 Next Up:**
+- Daily Ops Briefing ("The Matrix") — #1 chef pain point
+- Smart Ordering Assistant — prevent staff over-ordering
+- Third-party integrations (OAuth-based MCP servers)
+
+---
+
+## 🎯 Key Files to Review
+
+- **Market Intelligence:** [MiroShark Sim2 Report](02-market-intelligence/miroshark-reports/sim2_report_claude.md)
+- **Development Roadmap:** [Open Work Items](03-development/roadmap/plans/open-work.md)
+- **GTM Strategy:** [Demo Runbook](04-go-to-market/strategy/demo-runbook.md)
+- **User Feedback:** [Chef Feedback](01-product/user-feedback/)
+- **Multi-Agent Org:** [Paperclip Company](05-operations/agents/paperclip-company/COMPANY.md)
+
+---
+
+## 📞 Contact & Context
+
+**Esteban Nunez** - Former exec chef (Alinea Group / Roister, Chicago)
+- **Goal:** Fund a ground-up Michelin-starred restaurant + food R&D lab
+- **GitHub:** Nunezchef
+- **Email:** nunez.chef@icloud.com
+- **Still active in the industry** — building CarabinerOS to solve real chef pain points
+
+---
+
+*Last Updated: April 2026 - Session 15*

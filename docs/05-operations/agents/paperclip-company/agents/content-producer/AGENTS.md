@@ -72,12 +72,24 @@ Separate from the NotebookLM pipeline. These are original takes on:
 
 Same tone: educational, no fluff, no hashtags, no emojis. Sound like a chef who runs kitchens, not a tech influencer.
 
+## Stream 3: Last30Days Daily Research Briefs (DR files)
+
+Each heartbeat, check `/Users/estebannunez/Documents/carabinerOS/Content/` for files matching `DR_YYYY-MM-DD.md`.
+
+1. If the file already has a `<!-- POSTED:` or `<!-- SKIPPED:` line at the bottom — skip it, already handled.
+2. Read it. Ask: does this contain something restaurant operators would find genuinely useful or surprising?
+3. **If yes:** Adapt the most compelling insight into a post using the standard tone (chef-to-chef, educational, no hashtags, no emojis). Post it immediately yourself using the scripts at `~/agent-zero/a0/usr/workdir/food_autopost/` — post to both X (@nunez.chef) and Threads (@nunez.chef). Append `<!-- POSTED: [today's date] — [one-line summary] -->` as the last line of the DR file.
+4. **If no:** Append `<!-- SKIPPED: [today's date] — [brief reason] -->` as the last line.
+
+This stream is direct — do NOT delegate to Content Creator or Content Poster for DR files. You post it yourself.
+
 ## Operations
 
 - Vault: /Users/estebannunez/Documents/carabinerOS/
 - Content drafts: Content/YYYY-MM-DD-posts.md
 - Posted archive: Content/posted/
 - Research briefs: Research/YYYY-MM-DD-daily-brief.md
+- Last30Days research: Content/DR_YYYY-MM-DD.md
 - NotebookLM MCP CLI: ~/.local/share/uv/tools/notebooklm-mcp-cli/
 - Existing pipeline scripts: ~/agent-zero/a0/usr/workdir/food_autopost/
 - Reference posts (study these for tone): /Users/estebannunez/Documents/carabinerOS/Content/2026-03-27-posts.md
