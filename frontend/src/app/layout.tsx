@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
 import { ThemeScript } from "@/components/theme-script";
-import { SocketProvider } from "@/components/socket-provider";
-import { Shell } from "@/components/shell";
+import { AppRouteShell } from "@/components/app-route-shell";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -38,11 +37,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `if(typeof crypto!=='undefined'&&!crypto.randomUUID){crypto.randomUUID=function(){return([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,function(c){return(c^(Math.random()*16>>c/4)).toString(16)});};}` }} />
       </head>
       <body className="min-h-full flex">
-        <SocketProvider>
-          <Shell>
-            {children}
-          </Shell>
-        </SocketProvider>
+        <AppRouteShell>{children}</AppRouteShell>
       </body>
     </html>
   );
