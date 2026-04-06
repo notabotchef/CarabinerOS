@@ -62,10 +62,20 @@ from carabiner.api.schemas import (
     RecipeUpdate,
 )
 from carabiner.db import repositories as repo
+from carabiner.services.demo_payload_factory import (
+    authenticate_demo_account,
+    build_demo_landing_payload,
+    build_demo_tutorial_payload,
+    build_demo_user,
+    create_demo_account,
+    update_demo_tutorial_progress,
+)
+from carabiner.api.demo_routes import demo_blueprint
 
 logger = logging.getLogger(__name__)
 
 blueprint = Blueprint("carabiner_workspace_api", __name__)
+blueprint.register_blueprint(demo_blueprint)
 
 
 # ---------------------------------------------------------------------------

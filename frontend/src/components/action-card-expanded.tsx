@@ -72,6 +72,8 @@ interface ActionCardExpandedProps {
   onCommit: (id: string) => void;
   onDismiss: (id: string) => void;
   onSendMessage: (id: string, text: string) => void;
+  collapseOnCommit?: boolean;
+  collapseOnDismiss?: boolean;
 }
 
 export function ActionCardExpanded({
@@ -82,6 +84,8 @@ export function ActionCardExpanded({
   onCommit,
   onDismiss,
   onSendMessage,
+  collapseOnCommit = true,
+  collapseOnDismiss = true,
 }: ActionCardExpandedProps) {
   const [message, setMessage] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -140,14 +144,20 @@ export function ActionCardExpanded({
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => { onDismiss(card.id); onBack(); }}
+            onClick={() => {
+              onDismiss(card.id);
+              if (collapseOnDismiss) onBack();
+            }}
             className="flex size-7 items-center justify-center rounded-lg text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
             title="Dismiss"
           >
             <X className="size-4" />
           </button>
           <button
-            onClick={() => { onCommit(card.id); onBack(); }}
+            onClick={() => {
+              onCommit(card.id);
+              if (collapseOnCommit) onBack();
+            }}
             className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-gradient-to-br from-primary to-primary/80 text-primary-foreground hover:shadow-md transition-all text-[10px] font-bold uppercase tracking-wider"
             title="Commit this card"
           >
