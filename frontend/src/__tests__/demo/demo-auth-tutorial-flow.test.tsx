@@ -16,9 +16,12 @@ vi.mock("next/navigation", () => ({
 }));
 
 const { AppRouteShell } = await import("@/components/app-route-shell");
-const { default: DemoInvitePage } = await import("@/app/(demo)/demo/[restaurantSlug]/page");
-const { default: DemoCreateAccountPage } = await import("@/app/(demo)/demo/create-account/page");
-const { default: DemoTutorialPage } = await import("@/app/(demo)/demo/tutorial/page");
+// All four demo pages are thin async-server-component wrappers around client screens
+// that take a resolved restaurantSlug string. In tests we render the inner screens
+// directly so we don't have to fight Next.js 16's async params/searchParams shape.
+const { DemoInviteScreen } = await import("@/components/demo/demo-invite-screen");
+const { DemoCreateAccountScreen } = await import("@/components/demo/demo-create-account-screen");
+const { DemoTutorialScreen } = await import("@/components/demo/demo-tutorial-screen");
 
 const landingPayload = {
   slug: "targetrestaurant",
@@ -134,7 +137,7 @@ describe("demo auth and tutorial flow", () => {
 
     renderRoute(
       "/demo/targetrestaurant",
-      <DemoInvitePage params={{ restaurantSlug: "targetrestaurant" }} />,
+      <DemoInviteScreen restaurantSlug="targetrestaurant" />,
     );
 
     expect(await screen.findByRole("heading", { name: "Targetrestaurant prepared demo" })).toBeInTheDocument();
@@ -144,7 +147,7 @@ describe("demo auth and tutorial flow", () => {
     cleanup();
     mockSearchParams = new URLSearchParams("restaurantSlug=targetrestaurant");
 
-    renderRoute("/demo/create-account", <DemoCreateAccountPage />);
+    renderRoute("/demo/create-account", <DemoCreateAccountScreen restaurantSlug="targetrestaurant" />);
 
     await user.type(screen.getByLabelText("Name"), "Chef Demo");
     await user.type(screen.getByLabelText("Work email"), "chef@targetrestaurant.com");
@@ -157,7 +160,7 @@ describe("demo auth and tutorial flow", () => {
 
     cleanup();
     mockPathname = "/demo/tutorial";
-    renderRoute("/demo/tutorial", <DemoTutorialPage />);
+    renderRoute("/demo/tutorial", <DemoTutorialScreen restaurantSlug="targetrestaurant" />);
 
     expect(await screen.findByRole("heading", { name: "Demo tutorial" })).toBeInTheDocument();
     expect(screen.getByText("This tutorial is a guided preview of CarabinerOS for Targetrestaurant. It is separate from onboarding.")).toBeInTheDocument();
