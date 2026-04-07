@@ -111,6 +111,12 @@ export interface ActionCardAction {
   type: "primary" | "secondary" | "danger";
 }
 
+export interface DemoCardMetadata {
+  badgeLabel: string;
+  provenanceLabel: string;
+  sandboxLabel: string;
+}
+
 export interface ActionCard {
   id: string;
   type: ActionCardType;
@@ -129,6 +135,60 @@ export interface ActionCard {
   source: "reactive" | "proactive";
   suggestedAction?: string;
   suggestedChips?: string[];
+  demo?: DemoCardMetadata;
+}
+
+export interface DemoWorkspaceNotification {
+  id: string;
+  title: string;
+  detail: string;
+  tone: "info" | "warning" | "success";
+  timestamp: string;
+}
+
+export interface DemoEmailPreview {
+  subject: string;
+  to: string;
+  previewLabel: string;
+  body: string[];
+  disclaimer: string;
+}
+
+export interface DemoSimulationSummary {
+  label: string;
+  integration_status: string;
+  prepared_copy?: string;
+  public_source_summary: string[];
+  provenance: string[];
+}
+
+export interface DemoWorkspaceRestaurant {
+  slug: string;
+  name: string;
+  identity: string;
+  location: string;
+  brief: string;
+  prepared_from: string;
+}
+
+export interface DemoSandboxResult {
+  cardId: string;
+  operation: string;
+  title: string;
+  detail: string;
+  sandboxOnly: boolean;
+  realSendAttempted: boolean;
+  deliveryChannel: string;
+  timestamp: string;
+}
+
+export interface DemoWorkspacePayload {
+  restaurant: DemoWorkspaceRestaurant;
+  notifications: DemoWorkspaceNotification[];
+  cards: ActionCard[];
+  emailPreview: DemoEmailPreview;
+  actionEndpoint: string;
+  simulation: DemoSimulationSummary;
 }
 
 /** Structured payload A0 sends in notify_user detail field as JSON */
@@ -425,4 +485,64 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   events?: InvoiceEvent[];
+}
+
+export type DemoBadgeTone = "prepared" | "simulated" | "public-info";
+
+export interface DemoProofTile {
+  title: string;
+  body: string;
+  metric_label: string;
+  metric_value: string;
+}
+
+export interface DemoRestaurantLanding {
+  slug: string;
+  name: string;
+  concept_line: string;
+  location_label: string;
+  trust_line: string;
+  operational_read: string;
+  proof_tiles: DemoProofTile[];
+  public_sources: string[];
+  inferred_points: string[];
+  simulated_objects: string[];
+  onboarding_differences: string[];
+}
+
+export interface DemoUser {
+  name: string;
+  email: string;
+  mobile?: string | null;
+  restaurantSlug: string;
+}
+
+export interface DemoAuthResponse {
+  user: DemoUser;
+  nextPath: string;
+  sessionMode: "http-only-cookie";
+}
+
+export interface DemoTutorialStep {
+  id: string;
+  title: string;
+  description: string;
+  proof: string;
+  cta_label: string;
+  status: "complete" | "current" | "upcoming";
+}
+
+export interface DemoTutorialPayload {
+  restaurant: {
+    name: string;
+    slug: string;
+    conceptLine: string;
+    trustLine: string;
+    operationalRead: string;
+  };
+  steps: DemoTutorialStep[];
+  currentStepId: string;
+  completedStepIds: string[];
+  allComplete: boolean;
+  nextWorkspacePath: string;
 }

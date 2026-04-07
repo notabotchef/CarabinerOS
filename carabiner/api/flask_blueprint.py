@@ -16,7 +16,7 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
-from flask import Blueprint, Response, request
+from flask import Blueprint, Response, request, session
 
 from carabiner.db.engine import get_session
 from carabiner.db.workspace_models import (
@@ -62,12 +62,18 @@ from carabiner.api.schemas import (
     RecipeUpdate,
 )
 from carabiner.db import repositories as repo
-from carabiner.api.demo import blueprint as demo_blueprint
+from carabiner.services.demo_payload_factory import (
+    authenticate_demo_account,
+    build_demo_landing_payload,
+    build_demo_tutorial_payload,
+    build_demo_user,
+    create_demo_account,
+    update_demo_tutorial_progress,
+)
 
 logger = logging.getLogger(__name__)
 
 blueprint = Blueprint("carabiner_workspace_api", __name__)
-blueprint.register_blueprint(demo_blueprint)
 
 
 # ---------------------------------------------------------------------------
@@ -1240,3 +1246,128 @@ async def mark_invoice_paid(invoice_id: str):
             json.dumps({"ok": False, "error": "Payment recording failed"}),
             status=500, mimetype="application/json",
         )
+
+
+# ---------------------------------------------------------------------------
+# Demo auth + tutorial routes (HTTP-only, session-cookie backed)
+# ---------------------------------------------------------------------------
+
+
+def _demo_json(data: dict, status: int = 200) -> Response:
+    return Response(
+        response=json.dumps(data, default=str),
+        status=status,
+        mimetype="application/json",
+    )
+
+
+def _demo_error(message: str, status: int = 400) -> Response:
+    return _demo_json({"ok": False, "error": message}, status=status)
+
+
+@blueprint.route("/api/demo/<restaurant_slug>", methods=["GET"])
+def get_demo_landing(restaurant_slug: str):
+    return _demo_json({"ok": True, "data": build_demo_landing_payload(restaurant_slug)})
+
+
+@blueprint.route("/api/demo/account", methods=["POST"])
+def create_demo_account_route():
+    body = request.get_json(silent=True) or {}
+    name = str(body.get("name", "")).strip()
+    email = str(body.get("email", "")).strip().lower()
+    password = str(body.get("password", "")).strip()
+    restaurant_slug = str(body.get("restaurantSlug", "")).strip() or "targetrestaurant"
+    mobile = body.get("mobile")
+
+    if not name or not email or not password:
+        return _demo_error("Name, work email, and password are required.")
+
+    account = create_demo_account(
+        restaurant_slug=restaurant_slug,
+        name=name,
+        email=email,
+        password=password,
+        mobile=mobile,
+    )
+    session.permanent = True
+    session["demo_user_email"] = account["email"]
+    session["demo_restaurant_slug"] = account["restaurant_slug"]
+    session["demo_tutorial_progress"] = []
+
+    return _demo_json(
+        {
+            "ok": True,
+            "data": {
+                "user": build_demo_user(account),
+                "nextPath": "/demo/tutorial",
+                "sessionMode": "http-only-cookie",
+            },
+        }
+    )
+
+
+@blueprint.route("/api/demo/login", methods=["POST"])
+def demo_login_route():
+    body = request.get_json(silent=True) or {}
+    email = str(body.get("email", "")).strip().lower()
+    password = str(body.get("password", "")).strip()
+    restaurant_slug = str(body.get("restaurantSlug", "")).strip()
+
+    if not email or not password:
+        return _demo_error("Work email and password are required.")
+
+    account = authenticate_demo_account(email, password)
+    if account is None:
+        return _demo_error("Invalid demo credentials.", status=401)
+
+    if restaurant_slug and account["restaurant_slug"] != restaurant_slug:
+        account["restaurant_slug"] = restaurant_slug
+
+    session.permanent = True
+    session["demo_user_email"] = account["email"]
+    session["demo_restaurant_slug"] = account["restaurant_slug"]
+    session.setdefault("demo_tutorial_progress", [])
+
+    return _demo_json(
+        {
+            "ok": True,
+            "data": {
+                "user": build_demo_user(account),
+                "nextPath": "/demo/tutorial",
+                "sessionMode": "http-only-cookie",
+            },
+        }
+    )
+
+
+@blueprint.route("/api/demo/tutorial", methods=["GET"])
+def get_demo_tutorial_route():
+    email = session.get("demo_user_email")
+    restaurant_slug = str(session.get("demo_restaurant_slug") or request.args.get("restaurantSlug") or "targetrestaurant")
+    if not email:
+        return _demo_error("Demo session required.", status=401)
+
+    progress = list(session.get("demo_tutorial_progress", []))
+    session["demo_restaurant_slug"] = restaurant_slug
+    return _demo_json({"ok": True, "data": build_demo_tutorial_payload(restaurant_slug, progress)})
+
+
+@blueprint.route("/api/demo/tutorial/progress", methods=["POST"])
+def update_demo_tutorial_route():
+    email = session.get("demo_user_email")
+    if not email:
+        return _demo_error("Demo session required.", status=401)
+
+    body = request.get_json(silent=True) or {}
+    step_id = str(body.get("stepId", "")).strip()
+    progress = list(session.get("demo_tutorial_progress", []))
+    updated_progress = update_demo_tutorial_progress(progress, step_id)
+    session["demo_tutorial_progress"] = updated_progress
+    restaurant_slug = str(session.get("demo_restaurant_slug") or body.get("restaurantSlug") or "targetrestaurant")
+
+    return _demo_json(
+        {
+            "ok": True,
+            "data": build_demo_tutorial_payload(restaurant_slug, updated_progress),
+        }
+    )
