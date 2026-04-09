@@ -18,7 +18,7 @@ carabiner orders list [--location-id UUID] [--status draft|submitted|delivered] 
 carabiner orders get <uuid> --json
 
 # Write
-carabiner orders create --location-id UUID --vendor "US Foods" [--channel manual] [--total 0.00] --json
+carabiner orders create --location-id UUID --vendor "US Foods" [--channel manual] [--total 0.00] [--line-items 'JSON_ARRAY'] --json
 carabiner orders update <uuid> [--vendor NAME] [--status STATUS] [--total AMT] [--eta ETA] [--summary TEXT] [--line-items 'JSON_ARRAY'] --json
 carabiner orders delete <uuid> --json
 ```
