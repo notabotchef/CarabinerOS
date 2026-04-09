@@ -126,6 +126,15 @@ def load_demo_workspace_payload(slug: str = CANONICAL_DEMO_SLUG) -> dict[str, An
     }
 
 
+def clear_demo_account_store() -> None:
+    """Reset the in-memory demo account store.
+
+    Exposed primarily for tests — the demo auth routes keep accounts in a
+    module-level dict, so pytest needs a hook to reset it between cases.
+    """
+    _DEMO_ACCOUNTS.clear()
+
+
 def create_demo_account(
     *,
     restaurant_slug: str,
