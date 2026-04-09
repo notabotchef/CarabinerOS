@@ -388,12 +388,12 @@ function FoodCostLineChart({ data }: { data: FoodCostChartDatum[] }) {
 function DowBarChart({ data }: { data: DowChartDatum[] }) {
   const t = useChartTheme();
   const tick = useAxisTick();
+  // Hooks must precede any early return to satisfy rules-of-hooks.
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   if (data.length === 0) {
     return <ChartEmptyState />;
   }
-
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
     <ResponsiveContainer width="100%" height={280}>
