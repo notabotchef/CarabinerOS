@@ -136,12 +136,17 @@ describe("ModuleChat", () => {
     expect(screen.getByText("There are 3 pending orders.")).toBeInTheDocument();
   });
 
-  it("shows new conversation button when there are messages", () => {
+  it("no longer renders an inline 'New conversation' button (session 15 redesign)", () => {
+    // The inline new-conversation button was intentionally removed when
+    // module chats were reworked to attach to the current main chat context
+    // instead of owning their own thread. New conversations are now started
+    // from the main chat area. This test pins that behavior so a future
+    // refactor can't silently reintroduce the button.
     mockMessages = [
       makeMessage({ id: "u1", role: "user", content: "Any 86s?" }),
     ];
     render(<ModuleChat moduleId="orders" buildContext={() => ""} />);
-    expect(screen.getByTitle("New conversation")).toBeInTheDocument();
+    expect(screen.queryByTitle("New conversation")).not.toBeInTheDocument();
   });
 
   it("displays progress indicator when loading is true", () => {
