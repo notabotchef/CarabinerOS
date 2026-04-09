@@ -141,7 +141,7 @@ export function DemoActionCardSequence({ initialCards, actionEndpoint }: DemoAct
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Action cards</p>
-          <h2 className="mt-1 text-lg font-semibold text-foreground">Prepared next actions for today's service</h2>
+          <h2 className="mt-1 text-lg font-semibold text-foreground">Prepared next actions for today&apos;s service</h2>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <BellDot className="size-4 text-primary" />
