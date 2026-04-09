@@ -106,15 +106,16 @@ export function ChatComposer({
   showSuggestions = false,
 }: ChatComposerProps) {
   const [value, setValue] = useState("");
-  const [promptIndex, setPromptIndex] = useState(0);
+  // Lazy-init: randomize starting index once at mount without a setState-in-effect.
+  // React 19's set-state-in-effect rule flags the old pattern where we did
+  // `setPromptIndex(random)` inside an empty-deps useEffect. A lazy initializer
+  // runs exactly once, during the initial render, with the same practical effect.
+  const [promptIndex, setPromptIndex] = useState(() =>
+    Math.floor(Math.random() * ROTATING_PROMPTS.length),
+  );
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Randomize starting index on mount, then rotate every 4 seconds
-  useEffect(() => {
-    setPromptIndex(Math.floor(Math.random() * ROTATING_PROMPTS.length));
-  }, []);
 
   useEffect(() => {
     if (value || isFocused) return;
