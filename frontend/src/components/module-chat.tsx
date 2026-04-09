@@ -112,7 +112,10 @@ export function ModuleChat({
 
       setValue("");
     },
-    [createNewChat, buildContext, sendMessage, snapshot, subscribe],
+    // React Compiler infers `chatContextId` from the `hasContext` check on
+    // line 95. Keep the dep list aligned with inference so the compiler can
+    // preserve its own memoization (otherwise it bails out entirely).
+    [createNewChat, buildContext, sendMessage, snapshot, subscribe, chatContextId],
   );
 
   const handleSubmit = useCallback(() => {
@@ -153,7 +156,11 @@ export function ModuleChat({
       .replace(/^Executing tool:\s*/i, "")
       .replace(/^carabiner_db\./i, "")
       .replace(/_/g, " ");
-  }, [snapshot?.log_progress_active, snapshot?.log_progress]);
+    // React Compiler infers the whole `snapshot` object as the source
+    // dependency (it cannot statically prove the two optional-chain reads are
+    // the only ones). Use the broader dep so the compiler's own memoization
+    // sticks — the cost of recomputing when snapshot changes is trivial.
+  }, [snapshot]);
 
   return (
     <div className="flex flex-col border-t border-border">
