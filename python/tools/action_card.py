@@ -110,6 +110,19 @@ class ActionCard(_ToolBase):
         if source not in VALID_SOURCES:
             source = "reactive"
 
+        # Extract chat context ID from the agent's current context.
+        # AgentContext.first() returns the active context; its .id is the
+        # chat_context_id that links this card back to the originating chat.
+        chat_id = args.get("chatId", None)
+        if chat_id is None:
+            try:
+                from agent import AgentContext  # type: ignore
+                ctx = AgentContext.first()
+                if ctx is not None:
+                    chat_id = getattr(ctx, "id", None)
+            except Exception:
+                pass  # chat_id stays None — non-critical
+
         # Build card
         card = {
             "id": str(uuid.uuid4()),
@@ -119,6 +132,7 @@ class ActionCard(_ToolBase):
             "summary": summary,
             "detail": detail,
             "itemId": item_id,
+            "chatId": chat_id,
             "changes": changes,
             "stats": stats,
             "priority": priority,

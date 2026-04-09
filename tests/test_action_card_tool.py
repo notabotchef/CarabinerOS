@@ -169,7 +169,7 @@ async def test_invalid_action_returns_error():
 
 
 # ---------------------------------------------------------------------------
-# Successful emit — now via send_data (namespace /ws, default)
+# Successful emit — via send_data (namespace /ws, default)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -205,6 +205,7 @@ async def test_emit_success(mock_send_data):
     assert card["stats"] == [{"label": "Total", "value": "$100"}]
     assert isinstance(card["timestamp"], int)
     assert "id" in card
+    assert "chatId" in card
 
 
 @pytest.mark.asyncio
@@ -225,6 +226,7 @@ async def test_emit_defaults(mock_send_data):
     assert card["stats"] == []
     assert card["itemId"] is None
     assert card["deadline"] is None
+    assert "chatId" in card
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +245,7 @@ async def test_card_has_all_interface_fields(mock_send_data):
 
     expected_keys = {
         "id", "type", "module", "action", "summary", "detail",
-        "itemId", "changes", "stats", "priority", "deadline",
+        "itemId", "chatId", "changes", "stats", "priority", "deadline",
         "status", "timestamp", "source",
     }
     assert set(card.keys()) == expected_keys
@@ -258,7 +260,6 @@ async def test_no_ws_manager_returns_warning():
     """If helpers.ws_manager can't be imported, returns a graceful error."""
     tool = _make_tool(_valid_args())
 
-    # Ensure helpers.ws_manager is NOT in sys.modules
     original = sys.modules.pop("helpers.ws_manager", None)
     try:
         resp = await tool.execute()

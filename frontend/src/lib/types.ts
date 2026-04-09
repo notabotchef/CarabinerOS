@@ -109,8 +109,6 @@ export type ActionCardStatus = "new" | "read" | "committed" | "dismissed";
 export interface ActionCardAction {
   label: string;
   type: "primary" | "secondary" | "danger";
-  /** Optional Next.js route. If set, the button navigates instead of sending the label to chat. */
-  href?: string;
 }
 
 export interface DemoCardMetadata {
@@ -135,6 +133,7 @@ export interface ActionCard {
   status: ActionCardStatus;
   timestamp: number;
   source: "reactive" | "proactive";
+  chatId?: string;
   suggestedAction?: string;
   suggestedChips?: string[];
   demo?: DemoCardMetadata;

@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
-import { useRouter } from "next/navigation";
 import {
   Check, X, Loader2, ArrowUp, ChevronLeft,
 } from "lucide-react";
@@ -10,6 +9,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getActionLabel, TYPE_STYLES } from "@/components/action-card";
+import { getCardRecipe } from "@/lib/card-recipes";
+import type { CardRecipe, CardRecipeButton } from "@/lib/card-recipes";
+import { OrderDetailCard } from "@/components/card-details/order-detail-card";
+import { InventoryDetailCard } from "@/components/card-details/inventory-detail-card";
 import type {
   ActionCard,
   CardChatMessage,
@@ -63,6 +66,20 @@ export function getDefaultChips(card: ActionCard): string[] {
   return map[key] ?? ["Notify team", "Remind me later", "Show details"];
 }
 
+// --- Detail renderer dispatcher ---
+
+function DetailRenderer({ renderer, itemId }: { renderer: string; itemId: string }) {
+  switch (renderer) {
+    case "order":
+      return <OrderDetailCard itemId={itemId} />;
+    case "inventory":
+      return <InventoryDetailCard itemId={itemId} />;
+    // Future: "invoice", "prep" renderers will go here
+    default:
+      return null;
+  }
+}
+
 // --- Component ---
 
 interface ActionCardExpandedProps {
@@ -91,12 +108,18 @@ export function ActionCardExpanded({
   const [message, setMessage] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
+
+  // Recipe lookup — progressive enhancement
+  const recipe: CardRecipe | undefined = card.itemId && card.module
+    ? getCardRecipe(card.module, card.action)
+    : undefined;
 
   const suggestion = card.suggestedAction ?? getDefaultSuggestion(card);
-  const chips = getDefaultChips(card);
+  const chips = recipe?.chips ?? getDefaultChips(card);
+  const recipeButtons: CardRecipeButton[] | undefined = recipe?.buttons;
   const actionLabel = getActionLabel(card);
   const style = TYPE_STYLES[card.type];
+  const hasDetailRenderer = !!(recipe && card.itemId && recipe.detailRenderer !== "briefing" && recipe.detailRenderer !== "generic");
 
   // Auto-scroll chat thread
   useEffect(() => {
@@ -119,6 +142,13 @@ export function ActionCardExpanded({
 
   const handleChipClick = (chipLabel: string) => {
     handleSend(chipLabel);
+  };
+
+  const handleRecipeButton = (btn: CardRecipeButton) => {
+    if (btn.action.startsWith("chat:")) {
+      handleSend(btn.action.slice(5));
+    }
+    // Future: "/" prefix for navigation, "api:" for direct API calls
   };
 
   return (
@@ -177,12 +207,18 @@ export function ActionCardExpanded({
             {card.summary}
           </h2>
 
-          {/* Detail */}
-          <div className="markdown-body text-[13px] text-muted-foreground/70 leading-relaxed mb-4 [&_p]:m-0 [&_ul]:my-1 [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:pl-4 [&_li]:text-[13px] [&_strong]:text-foreground/80">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {card.detail}
-            </ReactMarkdown>
-          </div>
+          {/* Detail — recipe-based rich renderer or generic markdown */}
+          {hasDetailRenderer ? (
+            <div className="mb-4">
+              <DetailRenderer renderer={recipe!.detailRenderer} itemId={card.itemId!} />
+            </div>
+          ) : (
+            <div className="markdown-body text-[13px] text-muted-foreground/70 leading-relaxed mb-4 [&_p]:m-0 [&_ul]:my-1 [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:pl-4 [&_li]:text-[13px] [&_strong]:text-foreground/80">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {card.detail}
+              </ReactMarkdown>
+            </div>
+          )}
 
           {/* Stats grid */}
           {card.stats.length > 0 && (
@@ -269,38 +305,48 @@ export function ActionCardExpanded({
 
       {/* Action buttons from A0 + chips + chat input */}
       <div className="border-t border-border/60 px-4 py-3 shrink-0">
-        {/* A0-specified action buttons */}
-        {card.actions && card.actions.length > 0 && (
+        {/* Recipe-smart buttons (preferred) or A0-specified action buttons (fallback) */}
+        {recipeButtons && recipeButtons.length > 0 ? (
           <div className="flex gap-2 mb-3">
-            {card.actions.map((action) => {
-              const isNav = typeof action.href === "string" && action.href.length > 0;
-              const handleClick = () => {
-                if (isNav) {
-                  router.push(action.href as string);
-                } else {
-                  handleChipClick(action.label);
-                }
-              };
-              return (
-                <button
-                  key={action.label}
-                  onClick={handleClick}
-                  disabled={chatLoading}
-                  className={[
-                    "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40",
-                    action.type === "primary"
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                      : action.type === "danger"
-                        ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-                        : "bg-muted/50 text-muted-foreground hover:bg-muted/80 border border-border/60",
-                  ].join(" ")}
-                >
-                  {action.label}
-                </button>
-              );
-            })}
+            {recipeButtons.map((btn) => (
+              <button
+                key={btn.label}
+                onClick={() => handleRecipeButton(btn)}
+                disabled={chatLoading}
+                className={[
+                  "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40",
+                  btn.type === "primary"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : btn.type === "danger"
+                      ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted/80 border border-border/60",
+                ].join(" ")}
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
-        )}
+        ) : card.actions && card.actions.length > 0 ? (
+          <div className="flex gap-2 mb-3">
+            {card.actions.map((action) => (
+              <button
+                key={action.label}
+                onClick={() => handleChipClick(action.label)}
+                disabled={chatLoading}
+                className={[
+                  "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40",
+                  action.type === "primary"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : action.type === "danger"
+                      ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted/80 border border-border/60",
+                ].join(" ")}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
         {/* Chips */}
         <div className="flex gap-1.5 mb-2 overflow-x-auto scrollbar-none">
           {chips.map((chip) => (

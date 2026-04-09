@@ -247,11 +247,28 @@ export function useActionCards(notifications?: A0Notification[]): UseActionCards
 
       setLastCardType(incoming.type);
       setCards((prev) => {
+        // Exact ID match — update in place
         const idx = prev.findIndex((c) => c.id === incoming.id);
         if (idx >= 0) {
           const updated = [...prev];
           updated[idx] = incoming;
           return updated;
+        }
+        // Dedup: if a card with the same itemId + module already exists, merge
+        // into the existing card (keep its ID, update content). This prevents
+        // multiple cards when A0 emits per-tool-call for the same entity.
+        if (incoming.itemId) {
+          const dupIdx = prev.findIndex(
+            (c) => c.itemId === incoming.itemId && c.module === incoming.module,
+          );
+          if (dupIdx >= 0) {
+            const updated = [...prev];
+            updated[dupIdx] = {
+              ...incoming,
+              id: prev[dupIdx].id, // keep original card ID for React key stability
+            };
+            return updated;
+          }
         }
         return [...prev, incoming];
       });
