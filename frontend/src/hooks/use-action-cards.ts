@@ -234,6 +234,17 @@ export function useActionCards(notifications?: A0Notification[]): UseActionCards
       const envelope = (payload?.data && typeof payload.data === "object") ? payload.data as Record<string, unknown> : payload;
       const incoming = (envelope?.card ?? envelope) as ActionCard | undefined;
       if (!incoming?.type) return; // guard against malformed or empty payloads
+
+      // Filter out A0 system notifications (restarts, errors, progress updates)
+      // that aren't structured operational cards. Real cards have a domain module
+      // and/or structured data (stats, changes, actions).
+      const isSystemNoise =
+        (!incoming.module || incoming.module === "general") &&
+        (!incoming.stats || incoming.stats.length === 0) &&
+        (!incoming.changes || incoming.changes.length === 0) &&
+        (!incoming.actions || incoming.actions.length === 0);
+      if (isSystemNoise) return;
+
       setLastCardType(incoming.type);
       setCards((prev) => {
         const idx = prev.findIndex((c) => c.id === incoming.id);

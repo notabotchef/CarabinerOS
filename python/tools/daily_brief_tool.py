@@ -5,31 +5,41 @@ operational summary, or "what's happening today". It queries Postgres via the
 existing carabiner repositories and emits a single ``info``/``urgent`` action
 card to the frontend via Socket.IO.
 
-Pure-python module (no ``helpers.tool`` import) so it can be exercised in tests
-without dragging the full Agent Zero runtime in. The thin shim at
-``tools/daily_brief_tool.py`` re-exports ``DailyBriefTool`` so the agent's
-file-based tool discovery (``agent.py:get_tool``) can find it by filename.
+The tool inherits from A0's ``helpers.tool.Tool`` so the agent's class-based
+discovery (``extract_tools.load_classes_from_file``) can find it. In test
+environments where the A0 runtime isn't available, the import falls back to
+a plain object base so the module remains importable.
 """
 
 from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
+# Import A0 base classes — required for tool discovery.
+# Falls back to plain stubs for test environments.
+try:
+    from helpers.tool import Tool as _ToolBase, Response  # type: ignore
+except ImportError:
+    from dataclasses import dataclass
+
+    class _ToolBase:  # type: ignore[no-redef]
+        def __init__(self, agent, name, method, args, message, loop_data, **kwargs):
+            self.agent = agent
+            self.name = name
+            self.method = method
+            self.args = args or {}
+            self.message = message
+            self.loop_data = loop_data
+
+    @dataclass
+    class Response:  # type: ignore[no-redef]
+        message: str = ""
+        break_loop: bool = False
+
 __all__ = ["DailyBriefTool", "Response", "build_brief_card"]
-
-
-# ---------------------------------------------------------------------------
-# Pure-Python Response (mirrors python/tools/action_card.py)
-# ---------------------------------------------------------------------------
-
-@dataclass
-class Response:
-    message: str = ""
-    break_loop: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -323,24 +333,8 @@ async def _fetch_today_pl(location_id: Any) -> dict | None:
 # Tool class — discovered by agent.py:get_tool via filename
 # ---------------------------------------------------------------------------
 
-class DailyBriefTool:
+class DailyBriefTool(_ToolBase):
     """Agent Zero tool: emits a live Daily Brief action card."""
-
-    def __init__(self, agent, name, method, args, message, loop_data, **kwargs):
-        self.agent = agent
-        self.name = name
-        self.method = method
-        self.args = args or {}
-        self.message = message
-        self.loop_data = loop_data
-
-    async def before_execution(self, **kwargs):
-        # No-op; the real Tool base class logs the call. Kept for interface
-        # compatibility with agent.py's tool invocation pipeline.
-        return None
-
-    async def after_execution(self, response, **kwargs):
-        return None
 
     async def execute(self, **kwargs) -> Response:
         location_arg = self.args.get("location_id") or kwargs.get("location_id")

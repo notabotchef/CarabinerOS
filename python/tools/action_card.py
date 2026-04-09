@@ -2,20 +2,34 @@
 
 import time
 import uuid
-from dataclasses import dataclass
 
-__all__ = ["ActionCard", "Response", "_validate_changes", "_validate_stats", "_get_sio_fallback"]
+# Import A0 base classes — required for tool discovery.
+# Falls back to plain stubs for test environments.
+try:
+    from helpers.tool import Tool as _ToolBase, Response  # type: ignore
+except ImportError:
+    from dataclasses import dataclass
+
+    class _ToolBase:  # type: ignore[no-redef]
+        def __init__(self, agent, name, method, args, message, loop_data, **kwargs):
+            self.agent = agent
+            self.name = name
+            self.method = method
+            self.args = args or {}
+            self.message = message
+            self.loop_data = loop_data
+
+    @dataclass
+    class Response:  # type: ignore[no-redef]
+        message: str = ""
+        break_loop: bool = False
+
+__all__ = ["ActionCard", "Response", "_validate_changes", "_validate_stats"]
 
 VALID_TYPES = {"urgent", "action", "update", "info"}
 VALID_ACTIONS = {"create", "update", "delete", "review", "alert", "report"}
 VALID_OPS = {"+", "!", "\u2192"}
 VALID_SOURCES = {"reactive", "proactive"}
-
-
-@dataclass
-class Response:
-    message: str = ""
-    break_loop: bool = False
 
 
 def _validate_changes(changes):
@@ -44,33 +58,10 @@ def _validate_stats(stats):
     return result
 
 
-def _get_sio_fallback():
-    """Try to import the sio instance from A0's runtime."""
-    try:
-        from webui import sio
-        return sio
-    except Exception:
-        pass
-    try:
-        import socketio_server
-        return socketio_server.sio
-    except Exception:
-        pass
-    return None
-
-
-class ActionCard:
+class ActionCard(_ToolBase):
     """A0 tool that creates and emits action cards to the frontend."""
 
-    def __init__(self, agent, name, method, args, message, loop_data):
-        self.agent = agent
-        self.name = name
-        self.method = method
-        self.args = args or {}
-        self.message = message
-        self.loop_data = loop_data
-
-    async def execute(self):
+    async def execute(self, **kwargs):
         args = self.args
 
         # Required fields
