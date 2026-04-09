@@ -55,6 +55,8 @@ agent_history.gif
 # Rune / Claude state
 .agent/**
 .worktrees/
+.claude/worktrees/
+.rune/metrics/
 
 # Global .gitkeep
 !**/.gitkeep
