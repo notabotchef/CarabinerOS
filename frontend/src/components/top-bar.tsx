@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -48,23 +48,26 @@ export function TopBar({ unreadCount, onBellClick, locationName = "Main Kitchen"
   const prevUnreadRef = useRef(unreadCount);
   const lastAnimTimeRef = useRef(0);
 
-  const playNotifyAnimation = useCallback((cardType?: string) => {
-    const colors = TYPE_COLORS[cardType ?? "info"] ?? TYPE_COLORS.info;
-    setNotifyColor(colors);
-    // Flash the type color for 600ms then clear
-    setTimeout(() => setNotifyColor(null), 600);
-  }, []);
-
+  // Play a short flash animation when unreadCount rises. React 19's
+  // set-state-in-effect rule forbids calling setState synchronously inside
+  // an effect body, so we schedule both the start and end of the flash via
+  // setTimeout — the effect itself only schedules timers, it does not mutate
+  // React state directly.
   useEffect(() => {
-    if (unreadCount > prevUnreadRef.current) {
-      const now = Date.now();
-      if (now - lastAnimTimeRef.current >= 500) {
-        lastAnimTimeRef.current = now;
-        playNotifyAnimation(lastCardType);
-      }
-    }
+    const prev = prevUnreadRef.current;
     prevUnreadRef.current = unreadCount;
-  }, [unreadCount, lastCardType, playNotifyAnimation]);
+    if (unreadCount <= prev) return;
+    const now = Date.now();
+    if (now - lastAnimTimeRef.current < 500) return;
+    lastAnimTimeRef.current = now;
+    const colors = TYPE_COLORS[lastCardType ?? "info"] ?? TYPE_COLORS.info;
+    const startTimer = setTimeout(() => setNotifyColor(colors), 0);
+    const endTimer = setTimeout(() => setNotifyColor(null), 600);
+    return () => {
+      clearTimeout(startTimer);
+      clearTimeout(endTimer);
+    };
+  }, [unreadCount, lastCardType]);
 
   return (
     <header className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-border bg-card/80 glass-subtle">
