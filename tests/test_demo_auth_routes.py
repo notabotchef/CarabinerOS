@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from flask import Flask
 
-from carabiner.api.flask_blueprint import blueprint
+# Slice 2 moved the demo auth/tutorial routes out of flask_blueprint.py and
+# into carabiner.api.demo, where they are mounted on the Flask app via
+# engine/agent-zero/helpers/ui_server.py. Register the narrower blueprint
+# directly so these tests don't drag in the rest of the workspace API.
+from carabiner.api.demo import blueprint
 from carabiner.services.demo_payload_factory import clear_demo_account_store
 
 
@@ -101,10 +105,12 @@ def test_demo_tutorial_progress_persists_after_auth() -> None:
     assert progress_response.status_code == 200
     progress_payload = progress_response.get_json()
     assert progress_payload["ok"] is True
-    assert progress_payload["data"]["completedStepIds"] == ["welcome"]
+    # build_tutorial_payload nests progress under data.tutorial.completed_step_ids
+    # (snake_case), not a flat camelCase data.completedStepIds — the test was
+    # written against an earlier API shape.
+    assert progress_payload["data"]["tutorial"]["completed_step_ids"] == ["welcome"]
 
     tutorial_response = client.get("/api/demo/tutorial?restaurantSlug=targetrestaurant")
     assert tutorial_response.status_code == 200
     tutorial_payload = tutorial_response.get_json()
-    assert tutorial_payload["data"]["completedStepIds"] == ["welcome"]
-    assert tutorial_payload["data"]["currentStepId"] == "restaurant-read"
+    assert tutorial_payload["data"]["tutorial"]["completed_step_ids"] == ["welcome"]

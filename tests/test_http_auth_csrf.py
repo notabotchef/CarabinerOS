@@ -30,7 +30,11 @@ def _set_csrf_cookie(client, token: str) -> None:
 
 
 def test_http_auth_enforced_when_configured(monkeypatch) -> None:
-    from run_ui import csrf_protect, requires_auth
+    # v1.8 moved csrf_protect/requires_auth out of run_ui.py and into the
+    # helpers.api module — they used to live at the top of run_ui back when
+    # run_ui was the only Flask entry point. The Carabiner layer re-uses the
+    # same decorators, so the test just needs the new import path.
+    from helpers.api import csrf_protect, requires_auth
 
     monkeypatch.setattr("helpers.login.get_credentials_hash", lambda: "hash")
 
@@ -48,7 +52,11 @@ def test_http_auth_enforced_when_configured(monkeypatch) -> None:
 
 
 def test_http_csrf_required_even_when_auth_not_configured(monkeypatch) -> None:
-    from run_ui import csrf_protect, requires_auth
+    # v1.8 moved csrf_protect/requires_auth out of run_ui.py and into the
+    # helpers.api module — they used to live at the top of run_ui back when
+    # run_ui was the only Flask entry point. The Carabiner layer re-uses the
+    # same decorators, so the test just needs the new import path.
+    from helpers.api import csrf_protect, requires_auth
 
     monkeypatch.setattr("helpers.login.get_credentials_hash", lambda: None)
 
@@ -67,7 +75,11 @@ def test_http_csrf_required_even_when_auth_not_configured(monkeypatch) -> None:
 
 
 def test_http_csrf_rejects_missing_token(monkeypatch) -> None:
-    from run_ui import csrf_protect, requires_auth
+    # v1.8 moved csrf_protect/requires_auth out of run_ui.py and into the
+    # helpers.api module — they used to live at the top of run_ui back when
+    # run_ui was the only Flask entry point. The Carabiner layer re-uses the
+    # same decorators, so the test just needs the new import path.
+    from helpers.api import csrf_protect, requires_auth
 
     monkeypatch.setattr("helpers.login.get_credentials_hash", lambda: "hash")
 
@@ -86,7 +98,11 @@ def test_http_csrf_rejects_missing_token(monkeypatch) -> None:
 
 
 def test_http_csrf_accepts_valid_header_without_cookie(monkeypatch) -> None:
-    from run_ui import csrf_protect, requires_auth
+    # v1.8 moved csrf_protect/requires_auth out of run_ui.py and into the
+    # helpers.api module — they used to live at the top of run_ui back when
+    # run_ui was the only Flask entry point. The Carabiner layer re-uses the
+    # same decorators, so the test just needs the new import path.
+    from helpers.api import csrf_protect, requires_auth
 
     monkeypatch.setattr("helpers.login.get_credentials_hash", lambda: "hash")
 
@@ -105,7 +121,11 @@ def test_http_csrf_accepts_valid_header_without_cookie(monkeypatch) -> None:
 
 
 def test_http_csrf_accepts_valid_cookie(monkeypatch) -> None:
-    from run_ui import csrf_protect, requires_auth
+    # v1.8 moved csrf_protect/requires_auth out of run_ui.py and into the
+    # helpers.api module — they used to live at the top of run_ui back when
+    # run_ui was the only Flask entry point. The Carabiner layer re-uses the
+    # same decorators, so the test just needs the new import path.
+    from helpers.api import csrf_protect, requires_auth
 
     monkeypatch.setattr("helpers.login.get_credentials_hash", lambda: "hash")
 
