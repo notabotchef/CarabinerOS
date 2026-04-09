@@ -137,22 +137,20 @@ class ActionCard:
             "source": source,
         }
 
-        # Get sio
-        sio = self.agent.config.additional.get("sio")
-        if sio is None:
-            sio = _get_sio_fallback()
-            if sio is not None:
-                self.agent.config.additional["sio"] = sio
-
-        if sio is None:
+        # Emit via send_data() which defaults to namespace "/ws" — the
+        # namespace the frontend actually subscribes to in socket-client.ts.
+        # Do NOT use sio.emit(namespace="/state_sync") — no frontend listens
+        # on /state_sync, so cards emitted there are silently dropped.
+        try:
+            from helpers.ws_manager import send_data  # type: ignore
+        except Exception as exc:
             return Response(
-                message="Warning: Socket.IO server not available. Could not emit action card.",
+                message=f"Warning: ws_manager not available ({exc}). Could not emit action card.",
                 break_loop=False,
             )
 
-        # Emit
         try:
-            await sio.emit("action_card", {"card": card}, namespace="/state_sync")
+            await send_data("action_card", {"card": card})
         except Exception as e:
             return Response(
                 message=f"Emit failed: {e}",

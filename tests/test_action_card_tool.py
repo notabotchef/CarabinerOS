@@ -1,9 +1,9 @@
 """Tests for the action_card tool."""
 
 import sys
-import time
 import uuid
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,6 +12,34 @@ ENGINE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ENGINE_DIR))
 
 from tools.action_card import ActionCard, _validate_changes, _validate_stats
+
+
+# ---------------------------------------------------------------------------
+# Fixture: inject fake helpers.ws_manager with AsyncMock send_data
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def mock_send_data():
+    fake_module = ModuleType("helpers.ws_manager")
+    send_data_mock = AsyncMock()
+    fake_module.send_data = send_data_mock  # type: ignore[attr-defined]
+
+    original_ws = sys.modules.get("helpers.ws_manager")
+    original_helpers = sys.modules.get("helpers")
+
+    if "helpers" not in sys.modules:
+        sys.modules["helpers"] = ModuleType("helpers")
+    sys.modules["helpers.ws_manager"] = fake_module
+
+    try:
+        yield send_data_mock
+    finally:
+        if original_ws is not None:
+            sys.modules["helpers.ws_manager"] = original_ws
+        else:
+            sys.modules.pop("helpers.ws_manager", None)
+        if original_helpers is None:
+            sys.modules.pop("helpers", None)
 
 
 # ---------------------------------------------------------------------------
@@ -31,14 +59,6 @@ def _make_tool(args: dict) -> ActionCard:
         loop_data=None,
     )
     return tool
-
-
-def _make_tool_with_sio(args: dict):
-    """Create an ActionCard tool with a mocked sio server."""
-    tool = _make_tool(args)
-    sio = AsyncMock()
-    tool.agent.config.additional["sio"] = sio
-    return tool, sio
 
 
 def _valid_args(**overrides) -> dict:
@@ -149,12 +169,12 @@ async def test_invalid_action_returns_error():
 
 
 # ---------------------------------------------------------------------------
-# Successful emit
+# Successful emit — now via send_data (namespace /ws, default)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_emit_success():
-    tool, sio = _make_tool_with_sio(_valid_args(
+async def test_emit_success(mock_send_data):
+    tool = _make_tool(_valid_args(
         detail="Test detail",
         priority=1,
         source="proactive",
@@ -166,10 +186,11 @@ async def test_emit_success():
     assert "emitted successfully" in resp.message.lower()
     assert resp.break_loop is False
 
-    sio.emit.assert_called_once()
-    call_args = sio.emit.call_args
+    mock_send_data.assert_called_once()
+    call_args = mock_send_data.call_args
     assert call_args[0][0] == "action_card"
-    assert call_args[1]["namespace"] == "/state_sync"
+    # send_data defaults to endpoint_name="/ws" — no explicit namespace kwarg
+    assert "namespace" not in call_args[1]
 
     card = call_args[0][1]["card"]
     assert card["type"] == "action"
@@ -187,13 +208,13 @@ async def test_emit_success():
 
 
 @pytest.mark.asyncio
-async def test_emit_defaults():
+async def test_emit_defaults(mock_send_data):
     """Verify defaults for optional fields."""
-    tool, sio = _make_tool_with_sio({"module": "prep", "summary": "Test"})
+    tool = _make_tool({"module": "prep", "summary": "Test"})
     resp = await tool.execute()
 
     assert "emitted successfully" in resp.message.lower()
-    card = sio.emit.call_args[0][1]["card"]
+    card = mock_send_data.call_args[0][1]["card"]
     assert card["type"] == "info"          # default type
     assert card["action"] == "update"      # default action
     assert card["priority"] == 0           # default priority
@@ -211,14 +232,14 @@ async def test_emit_defaults():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_card_has_all_interface_fields():
+async def test_card_has_all_interface_fields(mock_send_data):
     """Every field from the frontend ActionCard interface must be present."""
-    tool, sio = _make_tool_with_sio(_valid_args(
+    tool = _make_tool(_valid_args(
         itemId="order-123",
         deadline="2026-03-21T17:00:00Z",
     ))
     await tool.execute()
-    card = sio.emit.call_args[0][1]["card"]
+    card = mock_send_data.call_args[0][1]["card"]
 
     expected_keys = {
         "id", "type", "module", "action", "summary", "detail",
@@ -229,32 +250,24 @@ async def test_card_has_all_interface_fields():
 
 
 # ---------------------------------------------------------------------------
-# No sio available
+# ws_manager unavailable
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_no_sio_returns_warning():
+async def test_no_ws_manager_returns_warning():
+    """If helpers.ws_manager can't be imported, returns a graceful error."""
     tool = _make_tool(_valid_args())
-    with patch("python.tools.action_card._get_sio_fallback", return_value=None):
+
+    # Ensure helpers.ws_manager is NOT in sys.modules
+    original = sys.modules.pop("helpers.ws_manager", None)
+    try:
         resp = await tool.execute()
+    finally:
+        if original is not None:
+            sys.modules["helpers.ws_manager"] = original
+
     assert "not available" in resp.message.lower() or "could not emit" in resp.message.lower()
     assert resp.break_loop is False
-
-
-# ---------------------------------------------------------------------------
-# sio fallback import
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-async def test_sio_fallback_used_when_not_in_config():
-    mock_sio = AsyncMock()
-    tool = _make_tool(_valid_args())
-    with patch("python.tools.action_card._get_sio_fallback", return_value=mock_sio):
-        resp = await tool.execute()
-    assert "emitted successfully" in resp.message.lower()
-    mock_sio.emit.assert_called_once()
-    # Verify it was cached in config
-    assert tool.agent.config.additional["sio"] is mock_sio
 
 
 # ---------------------------------------------------------------------------
@@ -262,9 +275,9 @@ async def test_sio_fallback_used_when_not_in_config():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_emit_exception_returns_error():
-    tool, sio = _make_tool_with_sio(_valid_args())
-    sio.emit.side_effect = ConnectionError("socket dead")
+async def test_emit_exception_returns_error(mock_send_data):
+    tool = _make_tool(_valid_args())
+    mock_send_data.side_effect = ConnectionError("socket dead")
     resp = await tool.execute()
     assert "emit failed" in resp.message.lower()
     assert resp.break_loop is False
@@ -275,26 +288,26 @@ async def test_emit_exception_returns_error():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_priority_string_coerced_to_int():
-    tool, sio = _make_tool_with_sio(_valid_args(priority="2"))
+async def test_priority_string_coerced_to_int(mock_send_data):
+    tool = _make_tool(_valid_args(priority="2"))
     await tool.execute()
-    card = sio.emit.call_args[0][1]["card"]
+    card = mock_send_data.call_args[0][1]["card"]
     assert card["priority"] == 2
 
 
 @pytest.mark.asyncio
-async def test_invalid_priority_defaults_to_zero():
-    tool, sio = _make_tool_with_sio(_valid_args(priority=99))
+async def test_invalid_priority_defaults_to_zero(mock_send_data):
+    tool = _make_tool(_valid_args(priority=99))
     await tool.execute()
-    card = sio.emit.call_args[0][1]["card"]
+    card = mock_send_data.call_args[0][1]["card"]
     assert card["priority"] == 0
 
 
 @pytest.mark.asyncio
-async def test_non_numeric_priority_defaults_to_zero():
-    tool, sio = _make_tool_with_sio(_valid_args(priority="high"))
+async def test_non_numeric_priority_defaults_to_zero(mock_send_data):
+    tool = _make_tool(_valid_args(priority="high"))
     await tool.execute()
-    card = sio.emit.call_args[0][1]["card"]
+    card = mock_send_data.call_args[0][1]["card"]
     assert card["priority"] == 0
 
 
@@ -303,8 +316,8 @@ async def test_non_numeric_priority_defaults_to_zero():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-async def test_invalid_source_defaults_to_reactive():
-    tool, sio = _make_tool_with_sio(_valid_args(source="unknown"))
+async def test_invalid_source_defaults_to_reactive(mock_send_data):
+    tool = _make_tool(_valid_args(source="unknown"))
     await tool.execute()
-    card = sio.emit.call_args[0][1]["card"]
+    card = mock_send_data.call_args[0][1]["card"]
     assert card["source"] == "reactive"

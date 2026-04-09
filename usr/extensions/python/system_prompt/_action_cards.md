@@ -158,6 +158,23 @@ Every card should include TWO action buttons in the `actions` array. The primary
 }
 ```
 
+### Briefings and daily summaries
+
+When the user asks for a brief, briefing, daily summary, "what's today's brief", "what's happening", "morning brief", or any operational overview of today, you **MUST** call the `daily_brief_tool` — NEVER reply with a prose summary alone. The tool queries the live database (orders, invoices, prep, par levels, today's P&L) and emits a single, properly structured action card on the dashboard with stats, attention items, and navigation buttons.
+
+```json
+{
+    "tool_name": "daily_brief_tool",
+    "tool_args": {}
+}
+```
+
+You may optionally pass `{"location_id": "<uuid>"}` if the user has specified a location; otherwise the tool defaults to the workspace's first location.
+
+After the tool emits the card, briefly acknowledge in chat — one short sentence such as "Here's your brief for today." or "Brief is on the rail." Do **NOT** repeat the stats, attention items, or numbers in chat — the card already shows them. Trying to re-narrate the data wastes the chef's attention; the card IS the answer.
+
+Do not call `notify_user` for daily briefs. The dedicated `daily_brief_tool` is the only correct path.
+
 ### Best Practices
 
 1. **Title is the headline** — include the vendor name, total, or key metric. Under 120 chars.

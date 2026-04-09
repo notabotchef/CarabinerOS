@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
+import { useRouter } from "next/navigation";
 import {
   Check, X, Loader2, ArrowUp, ChevronLeft,
 } from "lucide-react";
@@ -90,6 +91,7 @@ export function ActionCardExpanded({
   const [message, setMessage] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   const suggestion = card.suggestedAction ?? getDefaultSuggestion(card);
   const chips = getDefaultChips(card);
@@ -270,23 +272,33 @@ export function ActionCardExpanded({
         {/* A0-specified action buttons */}
         {card.actions && card.actions.length > 0 && (
           <div className="flex gap-2 mb-3">
-            {card.actions.map((action) => (
-              <button
-                key={action.label}
-                onClick={() => handleChipClick(action.label)}
-                disabled={chatLoading}
-                className={[
-                  "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40",
-                  action.type === "primary"
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : action.type === "danger"
-                      ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted/80 border border-border/60",
-                ].join(" ")}
-              >
-                {action.label}
-              </button>
-            ))}
+            {card.actions.map((action) => {
+              const isNav = typeof action.href === "string" && action.href.length > 0;
+              const handleClick = () => {
+                if (isNav) {
+                  router.push(action.href as string);
+                } else {
+                  handleChipClick(action.label);
+                }
+              };
+              return (
+                <button
+                  key={action.label}
+                  onClick={handleClick}
+                  disabled={chatLoading}
+                  className={[
+                    "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40",
+                    action.type === "primary"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : action.type === "danger"
+                        ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted/80 border border-border/60",
+                  ].join(" ")}
+                >
+                  {action.label}
+                </button>
+              );
+            })}
           </div>
         )}
         {/* Chips */}
