@@ -174,17 +174,21 @@ export function useActionCards(notifications?: A0Notification[]): UseActionCards
   const listenersAttached = useRef(false);
   const hydrated = useRef(false);
 
-  // Hydrate from sessionStorage on mount (client-only, avoids hydration mismatch)
+  // Hydrate from sessionStorage after mount. We can't lazy-init useState from
+  // sessionStorage because this component is client-rendered within an SSR
+  // page — doing so would cause a hydration mismatch between the server-
+  // rendered empty list and the client-rendered populated list. Instead we
+  // schedule the hydration via setTimeout(0) so the setState runs OUTSIDE the
+  // effect body, satisfying React 19's set-state-in-effect rule.
   useEffect(() => {
     const storedCards = readCardsFromStorage();
-    if (storedCards.length > 0) {
-      setCards(storedCards);
-    }
     const storedThreads = readThreadsFromStorage();
-    if (storedThreads.size > 0) {
-      setChatThreads(storedThreads);
-    }
-    hydrated.current = true;
+    const timer = setTimeout(() => {
+      if (storedCards.length > 0) setCards(storedCards);
+      if (storedThreads.size > 0) setChatThreads(storedThreads);
+      hydrated.current = true;
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // Convert incoming A0 notifications into action cards.
