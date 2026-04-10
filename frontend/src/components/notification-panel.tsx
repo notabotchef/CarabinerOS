@@ -67,7 +67,10 @@ export function NotificationPanel({
   onDismiss,
   onSendMessage,
 }: NotificationPanelProps) {
-  const activeCards = cards.filter((c) => c.status !== "dismissed" && c.status !== "committed");
+  const activeCards = cards
+    .filter((c) => c.status !== "dismissed" && c.status !== "committed")
+    // Briefing cards pin to the top of the grid
+    .sort((a, b) => (a.module === "briefing" ? -1 : b.module === "briefing" ? 1 : 0));
   const committedCards = cards.filter((c) => c.status === "committed");
 
   return (
@@ -145,6 +148,7 @@ export function NotificationPanel({
                                 ...CARD_ENTER.transition,
                                 delay: i * 0.04,
                               }}
+                              className={card.module === "briefing" ? "col-span-2 row-span-2" : undefined}
                             >
                               <ActionCard
                                 card={card}

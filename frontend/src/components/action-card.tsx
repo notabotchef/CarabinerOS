@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
-import { X, ArrowUp, Check } from "lucide-react";
-import type { ActionCard as ActionCardType, ActionCardType as CardType } from "@/lib/types";
+import { X, ArrowUp, Check, Sun } from "lucide-react";
+import type { ActionCard as ActionCardType, ActionCardType as CardType, ActionCardChange } from "@/lib/types";
 
 interface ActionCardProps {
   card: ActionCardType;
@@ -75,7 +75,103 @@ export function getActionLabel(card: { type: CardType; module: string; actions?:
   return "Review";
 }
 
+// --- Briefing change op colors (compact) ---
+const BRIEF_OP_STYLES: Record<string, string> = {
+  "!": "text-amber-400",
+  "+": "text-emerald-400",
+  "→": "text-muted-foreground/60",
+};
+
+/** Collapsed briefing card — 4-space dashboard widget with stats + attention items. */
+function BriefingCardCollapsed({ card, onExpand, onDismiss }: Omit<ActionCardProps, "onCommit">) {
+  return (
+    <motion.div
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => onExpand(card.id)}
+      className="relative rounded-xl bg-card cursor-pointer shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col h-full overflow-hidden"
+    >
+      {/* Gradient header strip */}
+      <div className="bg-gradient-to-r from-violet-500/10 via-violet-500/5 to-transparent px-4 pt-4 pb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sun className="size-4 text-violet-400" />
+          <span className="text-[9px] font-bold uppercase tracking-wider text-violet-300">
+            Daily Brief
+          </span>
+        </div>
+        {onDismiss && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDismiss(card.id); }}
+            className="size-6 flex items-center justify-center rounded-full text-muted-foreground/40 hover:bg-destructive/10 hover:text-destructive transition-colors"
+            title="Dismiss"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Title */}
+      <div className="px-4 pb-2">
+        <p className="text-sm font-bold leading-tight">{card.summary}</p>
+      </div>
+
+      {/* Stats 2x2 mini-grid */}
+      {card.stats.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 px-4 pb-3">
+          {card.stats.slice(0, 4).map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-muted/20 rounded-lg px-3 py-2 border border-border/40"
+            >
+              <div className="text-[9px] font-medium text-muted-foreground/60">
+                {stat.label}
+              </div>
+              <div className="text-base font-extrabold tabular-nums font-mono">
+                {stat.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Attention items (compact) */}
+      {card.changes.length > 0 && (
+        <div className="px-4 pb-3 flex flex-col gap-1">
+          {card.changes.slice(0, 4).map((change: ActionCardChange, i: number) => (
+            <div key={i} className="flex items-start gap-1.5">
+              <span className={`text-[10px] font-bold shrink-0 font-mono ${BRIEF_OP_STYLES[change.op] ?? "text-muted-foreground/40"}`}>
+                {change.op}
+              </span>
+              <span className="text-[10px] text-muted-foreground/60 leading-tight line-clamp-1">
+                {change.text}
+              </span>
+            </div>
+          ))}
+          {card.changes.length > 4 && (
+            <span className="text-[9px] text-muted-foreground/40 font-mono">
+              +{card.changes.length - 4} more
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="mt-auto bg-violet-500/5 px-3 py-2 rounded-b-xl border-t border-violet-500/10 flex items-center justify-between">
+        <p className="text-[10px] font-bold text-violet-400">Tap to expand</p>
+        <div className="size-6 rounded-lg flex items-center justify-center bg-violet-500/20 text-violet-300">
+          <ArrowUp className="size-3 rotate-45" />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export function ActionCard({ card, onExpand, onCommit, onDismiss }: ActionCardProps) {
+  // Briefing module gets a special 4-space widget layout
+  if (card.module === "briefing") {
+    return <BriefingCardCollapsed card={card} onExpand={onExpand} onDismiss={onDismiss} />;
+  }
+
   const style = TYPE_STYLES[card.type];
   const isCommitted = card.status === "committed";
   const actionLabel = getActionLabel(card);
