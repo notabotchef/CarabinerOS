@@ -207,9 +207,10 @@ export function ActionCardExpanded({
   const actionLabel = getActionLabel(card);
   const style = TYPE_STYLES[card.type];
   const isBriefing = card.module === "briefing";
+  const IMPLEMENTED_RENDERERS = new Set(["order", "inventory", "briefing"]);
   const hasDetailRenderer = isBriefing
     ? !!(recipe && recipe.detailRenderer === "briefing")
-    : !!(recipe && card.itemId && recipe.detailRenderer !== "briefing" && recipe.detailRenderer !== "generic");
+    : !!(recipe && card.itemId && IMPLEMENTED_RENDERERS.has(recipe.detailRenderer));
 
   // Auto-scroll chat thread
   useEffect(() => {
