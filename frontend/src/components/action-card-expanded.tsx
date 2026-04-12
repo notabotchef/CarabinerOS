@@ -3,12 +3,16 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "motion/react";
 import {
-  Check, X, Loader2, ArrowUp, ChevronLeft,
+  Check, X, Loader2, ArrowUp, ChevronLeft, Sun,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getActionLabel, TYPE_STYLES } from "@/components/action-card";
+import { getCardRecipe } from "@/lib/card-recipes";
+import type { CardRecipe, CardRecipeButton } from "@/lib/card-recipes";
+import { OrderDetailCard } from "@/components/card-details/order-detail-card";
+import { InventoryDetailCard } from "@/components/card-details/inventory-detail-card";
 import type {
   ActionCard,
   CardChatMessage,
@@ -62,6 +66,107 @@ export function getDefaultChips(card: ActionCard): string[] {
   return map[key] ?? ["Notify team", "Remind me later", "Show details"];
 }
 
+// --- Briefing detail renderer (inline — no separate file needed) ---
+
+const BRIEFING_OP_STYLES: Record<string, string> = {
+  "+": "text-emerald-400 bg-emerald-400/5 border-l-2 border-emerald-400/40",
+  "!": "text-amber-400 bg-amber-400/5 border-l-2 border-amber-400/40",
+  "→": "text-muted-foreground bg-muted/20 border-l-2 border-muted-foreground/20",
+};
+
+function BriefingDetailCard({ card }: { card: ActionCard }) {
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Header with icon */}
+      <div className="flex items-center gap-2 bg-gradient-to-r from-violet-500/10 via-violet-500/5 to-transparent rounded-lg px-3 py-2">
+        <Sun className="size-4 text-violet-400" />
+        <span className="text-xs font-bold text-violet-300">Operations Overview</span>
+      </div>
+
+      {/* Stats — large 2x2 grid */}
+      {card.stats.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {card.stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-muted/20 rounded-xl p-4 border border-border/40"
+            >
+              <div className="text-[10px] font-medium text-muted-foreground/60 mb-1">
+                {stat.label}
+              </div>
+              <div className="text-2xl font-extrabold tabular-nums font-mono">
+                {stat.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Attention items */}
+      {card.changes.length > 0 && (
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/40 mb-2">
+            Attention Items
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {card.changes.map((change, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-2 px-3 py-2 rounded-lg ${BRIEFING_OP_STYLES[change.op] ?? "bg-muted/20"}`}
+              >
+                <span className="text-xs font-bold w-4 text-center shrink-0 font-mono">
+                  {change.op}
+                </span>
+                <span className="text-xs text-foreground/60 leading-relaxed">
+                  {change.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Navigation actions */}
+      {card.actions && card.actions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {card.actions.map((action) => (
+            <a
+              key={action.label}
+              href={"href" in action ? (action as { href: string }).href : "#"}
+              className={[
+                "inline-flex items-center px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors",
+                action.type === "primary"
+                  ? "bg-primary/10 text-primary hover:bg-primary/20"
+                  : action.type === "danger"
+                    ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                    : "bg-muted/40 text-muted-foreground hover:bg-muted/60",
+              ].join(" ")}
+            >
+              {action.label}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Detail renderer dispatcher ---
+
+function DetailRenderer({ renderer, itemId, card }: { renderer: string; itemId: string; card?: ActionCard }) {
+  switch (renderer) {
+    case "order":
+      return <OrderDetailCard itemId={itemId} />;
+    case "inventory":
+      return <InventoryDetailCard itemId={itemId} />;
+    case "briefing":
+      return card ? <BriefingDetailCard card={card} /> : null;
+    // Future: "invoice", "prep" renderers will go here
+    default:
+      return null;
+  }
+}
+
 // --- Component ---
 
 interface ActionCardExpandedProps {
@@ -91,10 +196,20 @@ export function ActionCardExpanded({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Recipe lookup — progressive enhancement
+  const recipe: CardRecipe | undefined = card.module
+    ? getCardRecipe(card.module, card.action)
+    : undefined;
+
   const suggestion = card.suggestedAction ?? getDefaultSuggestion(card);
-  const chips = getDefaultChips(card);
+  const chips = recipe?.chips ?? getDefaultChips(card);
+  const recipeButtons: CardRecipeButton[] | undefined = recipe?.buttons;
   const actionLabel = getActionLabel(card);
   const style = TYPE_STYLES[card.type];
+  const isBriefing = card.module === "briefing";
+  const hasDetailRenderer = isBriefing
+    ? !!(recipe && recipe.detailRenderer === "briefing")
+    : !!(recipe && card.itemId && recipe.detailRenderer !== "briefing" && recipe.detailRenderer !== "generic");
 
   // Auto-scroll chat thread
   useEffect(() => {
@@ -117,6 +232,13 @@ export function ActionCardExpanded({
 
   const handleChipClick = (chipLabel: string) => {
     handleSend(chipLabel);
+  };
+
+  const handleRecipeButton = (btn: CardRecipeButton) => {
+    if (btn.action.startsWith("chat:")) {
+      handleSend(btn.action.slice(5));
+    }
+    // Future: "/" prefix for navigation, "api:" for direct API calls
   };
 
   return (
@@ -175,15 +297,21 @@ export function ActionCardExpanded({
             {card.summary}
           </h2>
 
-          {/* Detail */}
-          <div className="markdown-body text-[13px] text-muted-foreground/70 leading-relaxed mb-4 [&_p]:m-0 [&_ul]:my-1 [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:pl-4 [&_li]:text-[13px] [&_strong]:text-foreground/80">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {card.detail}
-            </ReactMarkdown>
-          </div>
+          {/* Detail — recipe-based rich renderer or generic markdown */}
+          {hasDetailRenderer ? (
+            <div className="mb-4">
+              <DetailRenderer renderer={recipe!.detailRenderer} itemId={card.itemId ?? ""} card={card} />
+            </div>
+          ) : (
+            <div className="markdown-body text-[13px] text-muted-foreground/70 leading-relaxed mb-4 [&_p]:m-0 [&_ul]:my-1 [&_ul]:pl-4 [&_ol]:my-1 [&_ol]:pl-4 [&_li]:text-[13px] [&_strong]:text-foreground/80">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {card.detail}
+              </ReactMarkdown>
+            </div>
+          )}
 
-          {/* Stats grid */}
-          {card.stats.length > 0 && (
+          {/* Stats grid — skip for briefing (rendered by BriefingDetailCard) */}
+          {card.stats.length > 0 && !isBriefing && (
             <div className="grid grid-cols-2 gap-2 mb-4">
               {card.stats.map((stat) => (
                 <div
@@ -201,8 +329,8 @@ export function ActionCardExpanded({
             </div>
           )}
 
-          {/* Changes diff */}
-          {card.changes.length > 0 && (
+          {/* Changes diff — skip for briefing (rendered by BriefingDetailCard) */}
+          {card.changes.length > 0 && !isBriefing && (
             <div className="mb-4">
               <div className="text-xs font-medium text-muted-foreground/60 mb-2">
                 Changes
@@ -267,8 +395,28 @@ export function ActionCardExpanded({
 
       {/* Action buttons from A0 + chips + chat input */}
       <div className="border-t border-border/60 px-4 py-3 shrink-0">
-        {/* A0-specified action buttons */}
-        {card.actions && card.actions.length > 0 && (
+        {/* Recipe-smart buttons (preferred) or A0-specified action buttons (fallback) */}
+        {recipeButtons && recipeButtons.length > 0 ? (
+          <div className="flex gap-2 mb-3">
+            {recipeButtons.map((btn) => (
+              <button
+                key={btn.label}
+                onClick={() => handleRecipeButton(btn)}
+                disabled={chatLoading}
+                className={[
+                  "flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40",
+                  btn.type === "primary"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : btn.type === "danger"
+                      ? "bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted/80 border border-border/60",
+                ].join(" ")}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+        ) : card.actions && card.actions.length > 0 ? (
           <div className="flex gap-2 mb-3">
             {card.actions.map((action) => (
               <button
@@ -288,7 +436,7 @@ export function ActionCardExpanded({
               </button>
             ))}
           </div>
-        )}
+        ) : null}
         {/* Chips */}
         <div className="flex gap-1.5 mb-2 overflow-x-auto scrollbar-none">
           {chips.map((chip) => (

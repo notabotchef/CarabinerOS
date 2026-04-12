@@ -2,20 +2,34 @@
 
 import time
 import uuid
-from dataclasses import dataclass
 
-__all__ = ["ActionCard", "Response", "_validate_changes", "_validate_stats", "_get_sio_fallback"]
+# Import A0 base classes — required for tool discovery.
+# Falls back to plain stubs for test environments.
+try:
+    from helpers.tool import Tool as _ToolBase, Response  # type: ignore
+except ImportError:
+    from dataclasses import dataclass
+
+    class _ToolBase:  # type: ignore[no-redef]
+        def __init__(self, agent, name, method, args, message, loop_data, **kwargs):
+            self.agent = agent
+            self.name = name
+            self.method = method
+            self.args = args or {}
+            self.message = message
+            self.loop_data = loop_data
+
+    @dataclass
+    class Response:  # type: ignore[no-redef]
+        message: str = ""
+        break_loop: bool = False
+
+__all__ = ["ActionCard", "Response", "_validate_changes", "_validate_stats"]
 
 VALID_TYPES = {"urgent", "action", "update", "info"}
 VALID_ACTIONS = {"create", "update", "delete", "review", "alert", "report"}
 VALID_OPS = {"+", "!", "\u2192"}
 VALID_SOURCES = {"reactive", "proactive"}
-
-
-@dataclass
-class Response:
-    message: str = ""
-    break_loop: bool = False
 
 
 def _validate_changes(changes):
@@ -44,33 +58,10 @@ def _validate_stats(stats):
     return result
 
 
-def _get_sio_fallback():
-    """Try to import the sio instance from A0's runtime."""
-    try:
-        from webui import sio
-        return sio
-    except Exception:
-        pass
-    try:
-        import socketio_server
-        return socketio_server.sio
-    except Exception:
-        pass
-    return None
-
-
-class ActionCard:
+class ActionCard(_ToolBase):
     """A0 tool that creates and emits action cards to the frontend."""
 
-    def __init__(self, agent, name, method, args, message, loop_data):
-        self.agent = agent
-        self.name = name
-        self.method = method
-        self.args = args or {}
-        self.message = message
-        self.loop_data = loop_data
-
-    async def execute(self):
+    async def execute(self, **kwargs):
         args = self.args
 
         # Required fields
@@ -119,6 +110,19 @@ class ActionCard:
         if source not in VALID_SOURCES:
             source = "reactive"
 
+        # Extract chat context ID from the agent's current context.
+        # AgentContext.first() returns the active context; its .id is the
+        # chat_context_id that links this card back to the originating chat.
+        chat_id = args.get("chatId", None)
+        if chat_id is None:
+            try:
+                from agent import AgentContext  # type: ignore
+                ctx = AgentContext.first()
+                if ctx is not None:
+                    chat_id = getattr(ctx, "id", None)
+            except Exception:
+                pass  # chat_id stays None — non-critical
+
         # Build card
         card = {
             "id": str(uuid.uuid4()),
@@ -128,6 +132,7 @@ class ActionCard:
             "summary": summary,
             "detail": detail,
             "itemId": item_id,
+            "chatId": chat_id,
             "changes": changes,
             "stats": stats,
             "priority": priority,
@@ -137,22 +142,20 @@ class ActionCard:
             "source": source,
         }
 
-        # Get sio
-        sio = self.agent.config.additional.get("sio")
-        if sio is None:
-            sio = _get_sio_fallback()
-            if sio is not None:
-                self.agent.config.additional["sio"] = sio
-
-        if sio is None:
+        # Emit via send_data() which defaults to namespace "/ws" — the
+        # namespace the frontend actually subscribes to in socket-client.ts.
+        # Do NOT use sio.emit(namespace="/state_sync") — no frontend listens
+        # on /state_sync, so cards emitted there are silently dropped.
+        try:
+            from helpers.ws_manager import send_data  # type: ignore
+        except Exception as exc:
             return Response(
-                message="Warning: Socket.IO server not available. Could not emit action card.",
+                message=f"Warning: ws_manager not available ({exc}). Could not emit action card.",
                 break_loop=False,
             )
 
-        # Emit
         try:
-            await sio.emit("action_card", {"card": card}, namespace="/state_sync")
+            await send_data("action_card", {"card": card})
         except Exception as e:
             return Response(
                 message=f"Emit failed: {e}",

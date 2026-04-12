@@ -133,6 +133,7 @@ export interface ActionCard {
   status: ActionCardStatus;
   timestamp: number;
   source: "reactive" | "proactive";
+  chatId?: string;
   suggestedAction?: string;
   suggestedChips?: string[];
   demo?: DemoCardMetadata;

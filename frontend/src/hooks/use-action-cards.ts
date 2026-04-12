@@ -234,13 +234,41 @@ export function useActionCards(notifications?: A0Notification[]): UseActionCards
       const envelope = (payload?.data && typeof payload.data === "object") ? payload.data as Record<string, unknown> : payload;
       const incoming = (envelope?.card ?? envelope) as ActionCard | undefined;
       if (!incoming?.type) return; // guard against malformed or empty payloads
+
+      // Filter out A0 system notifications (restarts, errors, progress updates)
+      // that aren't structured operational cards. Real cards have a domain module
+      // and/or structured data (stats, changes, actions).
+      const isSystemNoise =
+        (!incoming.module || incoming.module === "general") &&
+        (!incoming.stats || incoming.stats.length === 0) &&
+        (!incoming.changes || incoming.changes.length === 0) &&
+        (!incoming.actions || incoming.actions.length === 0);
+      if (isSystemNoise) return;
+
       setLastCardType(incoming.type);
       setCards((prev) => {
+        // Exact ID match — update in place
         const idx = prev.findIndex((c) => c.id === incoming.id);
         if (idx >= 0) {
           const updated = [...prev];
           updated[idx] = incoming;
           return updated;
+        }
+        // Dedup: if a card with the same itemId + module already exists, merge
+        // into the existing card (keep its ID, update content). This prevents
+        // multiple cards when A0 emits per-tool-call for the same entity.
+        if (incoming.itemId) {
+          const dupIdx = prev.findIndex(
+            (c) => c.itemId === incoming.itemId && c.module === incoming.module,
+          );
+          if (dupIdx >= 0) {
+            const updated = [...prev];
+            updated[dupIdx] = {
+              ...incoming,
+              id: prev[dupIdx].id, // keep original card ID for React key stability
+            };
+            return updated;
+          }
         }
         return [...prev, incoming];
       });

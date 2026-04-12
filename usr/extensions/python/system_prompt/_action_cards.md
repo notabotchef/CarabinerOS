@@ -158,6 +158,31 @@ Every card should include TWO action buttons in the `actions` array. The primary
 }
 ```
 
+### Briefings and daily summaries
+
+When the user asks for a brief, briefing, daily summary, "what's today's brief", "what's happening", "morning brief", or any operational overview of today, you must do **TWO things**:
+
+1. **Call `daily_brief_tool`** to emit the dashboard card with live stats and attention items:
+
+```json
+{
+    "tool_name": "daily_brief_tool",
+    "tool_args": {}
+}
+```
+
+You may optionally pass `{"location_id": "<uuid>"}` if the user has specified a location; otherwise the tool defaults to the workspace's first location.
+
+2. **Give a proper conversational brief in chat.** The card is a dashboard widget — it does NOT replace the morning briefing conversation. After the tool runs, read the data you have (orders, prep, inventory, food cost, menu) and write a real operational brief like a GM reporting to the chef:
+   - Financial health check (food cost %, revenue, variance)
+   - Operational flags (prep behind, shortages, pending orders/invoices)
+   - Recommendations and action items (what to promote, what to watch, what to fix)
+   - Keep it concise but substantive — 3-5 paragraphs, not one sentence
+
+The card and the brief serve different purposes: the card lives on the dashboard rail for quick reference all day. The brief is the morning conversation that sets the chef's priorities.
+
+Do not call `notify_user` for daily briefs. The dedicated `daily_brief_tool` is the only correct path for the card.
+
 ### Best Practices
 
 1. **Title is the headline** — include the vendor name, total, or key metric. Under 120 chars.

@@ -106,11 +106,13 @@ def create(
     vendor: str = typer.Option(..., "--vendor", help="Vendor name."),
     channel: str = typer.Option("manual", "--channel", help="Order channel."),
     total: str = typer.Option("0.00", "--total", help="Order total."),
+    line_items: Optional[str] = typer.Option(None, "--line-items", help="Line items as JSON string."),
     chat_context: Optional[str] = typer.Option(None, "--chat-context", help="A0 chat context ID."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be created without writing."),
     json_output: bool = typer.Option(False, "--json", help="Output as JSON."),
 ) -> None:
     """Create a new purchase order."""
+    import json as json_mod
     from carabiner.db import repositories
 
     try:
@@ -126,6 +128,12 @@ def create(
         "total": total,
         "status": "Drafting",
     }
+    if line_items is not None:
+        try:
+            data["line_items"] = json_mod.loads(line_items)
+        except json_mod.JSONDecodeError as exc:
+            print_error(EXIT_VALIDATION, f"Invalid JSON for --line-items: {exc}", "validation")
+            raise typer.Exit(EXIT_VALIDATION)
     if chat_context:
         data["chat_context_id"] = chat_context
 

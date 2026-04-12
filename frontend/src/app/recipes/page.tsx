@@ -36,8 +36,8 @@ const STATUS_FILTERS: StatusFilter[] = ["All", "Active", "Draft", "Archived"];
 /* ------------------------------------------------------------------ */
 
 const STATUS_DOT: Record<string, string> = {
-  Active: "bg-emerald-500",
-  Draft: "bg-amber-400",
+  Active: "bg-emerald-500 shadow-[0_0_6px_oklch(0.72_0.17_155)]",
+  Draft: "bg-muted-foreground/40",
   Archived: "bg-muted-foreground/40",
 };
 

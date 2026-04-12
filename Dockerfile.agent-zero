@@ -25,6 +25,11 @@ RUN bash -c 'source /opt/venv-a0/bin/activate && \
 # Copy domain code (runtime volume mount overrides this for dev)
 COPY carabiner/ /cos/carabiner/
 
+# CarabinerOS tool overlays — shims in /a0/tools/ for A0 discovery,
+# implementations in /a0/python/tools/ for import resolution.
+COPY tools/ /a0/tools/
+COPY python/ /a0/python/
+
 # Make carabiner.* importable from A0's code_execution
 ENV PYTHONPATH="/cos:${PYTHONPATH}"
 

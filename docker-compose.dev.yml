@@ -26,6 +26,9 @@ services:
     volumes:
       - ./usr:/a0/usr
       - ./carabiner:/cos/carabiner
+      - ./python:/a0/python
+      - ./tools/action_card.py:/a0/tools/action_card.py
+      - ./tools/daily_brief_tool.py:/a0/tools/daily_brief_tool.py
     ports:
       - "5050:80"
     extra_hosts:
