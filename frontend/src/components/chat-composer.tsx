@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef, type KeyboardEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ArrowUp, Paperclip } from "lucide-react";
+import { ArrowUp, Mic, Square, Loader2, Paperclip } from "lucide-react";
+import { useVoiceRecorder, type RecordingState } from "@/hooks/use-voice-recorder";
 
 // Prompts that exercise real Agent Zero tool capabilities
 const ROTATING_PROMPTS = [
@@ -96,6 +97,14 @@ interface ChatComposerProps {
   placeholder?: string;
   queueCount?: number;
   showSuggestions?: boolean;
+  contextId?: string;
+}
+
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 export function ChatComposer({
@@ -104,14 +113,32 @@ export function ChatComposer({
   placeholder,
   queueCount = 0,
   showSuggestions = false,
+  contextId,
 }: ChatComposerProps) {
   const [value, setValue] = useState("");
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   // Start at a fixed index so SSR and the first client render produce identical
   // markup (no hydration mismatch). Randomize once after mount, then rotate.
   const [promptIndex, setPromptIndex] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const voice = useVoiceRecorder({
+    contextId: contextId ?? "",
+    onTranscript: useCallback((text: string) => {
+      setValue(text);
+      inputRef.current?.focus();
+    }, []),
+    onError: useCallback((error: string) => {
+      setVoiceError(error);
+      // Auto-dismiss error after 4 seconds
+      setTimeout(() => setVoiceError(null), 4000);
+    }, []),
+  });
+
+  const isRecordingOrTranscribing = voice.state !== "idle";
+  const hasMic = contextId && typeof MediaRecorder !== "undefined";
 
   // Randomize starting prompt on the client only, after hydration.
   useEffect(() => {
@@ -182,6 +209,20 @@ export function ChatComposer({
         )}
       </AnimatePresence>
 
+      {/* Voice error message */}
+      <AnimatePresence>
+        {voiceError && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-4 pt-2"
+          >
+            <p className="text-xs text-destructive">{voiceError}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="flex items-center gap-2 px-4 py-3">
         {/* Attachment button */}
         <button
@@ -198,6 +239,11 @@ export function ChatComposer({
           accept="image/*,.pdf,.csv,.xlsx,.xls,.doc,.docx,.txt"
           onChange={handleFileChange}
         />
+
+        {/* Microphone button */}
+        {hasMic && (
+          <MicButton state={voice.state} elapsedMs={voice.elapsedMs} onStart={voice.startRecording} onStop={voice.stopRecording} onCancel={voice.cancelRecording} />
+        )}
 
         {/* Input container */}
         <div className="relative flex-1">
@@ -230,7 +276,8 @@ export function ChatComposer({
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder={loading ? "Type your next message\u2026" : (showSuggestions ? "" : (placeholder ?? "Ask CarabinerOS anything\u2026"))}
+            disabled={isRecordingOrTranscribing}
+            placeholder={isRecordingOrTranscribing ? "Recording\u2026" : (loading ? "Type your next message\u2026" : (showSuggestions ? "" : (placeholder ?? "Ask CarabinerOS anything\u2026")))}
             className="
               w-full rounded-2xl border border-border bg-card/80 glass-subtle
               px-4 py-3 pr-12 text-sm text-foreground
@@ -243,7 +290,7 @@ export function ChatComposer({
           />
           <motion.button
             onClick={handleSubmit}
-            disabled={!value.trim() && !showSuggestions}
+            disabled={isRecordingOrTranscribing || (!value.trim() && !showSuggestions)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="
@@ -260,5 +307,68 @@ export function ChatComposer({
         </div>
       </div>
     </div>
+  );
+}
+
+// --- Mic button sub-component ---
+
+function MicButton({
+  state,
+  elapsedMs,
+  onStart,
+  onStop,
+  onCancel,
+}: {
+  state: RecordingState;
+  elapsedMs: number;
+  onStart: () => Promise<void>;
+  onStop: () => void;
+  onCancel: () => void;
+}) {
+  if (state === "transcribing") {
+    return (
+      <button
+        disabled
+        className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground/40"
+        title="Transcribing..."
+      >
+        <Loader2 className="size-4 animate-spin" />
+      </button>
+    );
+  }
+
+  if (state === "recording") {
+    return (
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={onStop}
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 transition-colors animate-pulse"
+          title="Stop recording"
+        >
+          <Square className="size-4" />
+        </button>
+        <span className="text-[11px] font-mono text-destructive/60 tabular-nums">
+          {formatElapsed(elapsedMs)}
+        </span>
+        <button
+          onClick={onCancel}
+          className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
+          title="Cancel recording"
+        >
+          cancel
+        </button>
+      </div>
+    );
+  }
+
+  // idle
+  return (
+    <button
+      onClick={onStart}
+      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent transition-colors"
+      title="Record voice message"
+    >
+      <Mic className="size-4" />
+    </button>
   );
 }

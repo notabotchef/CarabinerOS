@@ -15,9 +15,10 @@ interface ChatViewProps {
   onSend: (text: string) => void;
   loading: boolean;
   queueCount?: number;
+  contextId?: string;
 }
 
-export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: ChatViewProps) {
+export function ChatView({ messages, expo, onSend, loading, queueCount = 0, contextId }: ChatViewProps) {
   const [ticketExpanded, setTicketExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -63,7 +64,7 @@ export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: Ch
 
       <div className="border-t border-border/50">
         <div className="mx-auto w-full max-w-4xl px-2 sm:px-6 lg:px-12">
-          <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} />
+          <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} contextId={contextId} />
         </div>
       </div>
       <div ref={endRef} />
