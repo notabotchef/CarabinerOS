@@ -5,7 +5,9 @@ import { motion, AnimatePresence } from "motion/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MessageTtsButton } from "@/components/message-tts-button";
 import type { ChatMessage, InlineStep } from "@/lib/types";
+import type { TtsState } from "@/hooks/use-tts";
 import type { Components } from "react-markdown";
 
 // --- Data card table: renders markdown tables as standalone briefing-style cards ---
@@ -25,6 +27,10 @@ const markdownComponents: Components = {
 
 interface MessageListProps {
   messages: ChatMessage[];
+  ttsState?: TtsState;
+  ttsCurrentMessageId?: string | null;
+  onTtsPlay?: (messageId: string, text: string) => Promise<void>;
+  onTtsStop?: () => void;
 }
 
 const messageVariants = {
@@ -133,7 +139,8 @@ function stripContext(text: string): string {
   return text.replace(/^\[.*?\]\s*/, "");
 }
 
-export function MessageList({ messages }: MessageListProps) {
+export function MessageList({ messages, ttsState, ttsCurrentMessageId, onTtsPlay, onTtsStop }: MessageListProps) {
+  const hasTts = Boolean(onTtsPlay && onTtsStop);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -196,6 +203,19 @@ export function MessageList({ messages }: MessageListProps) {
                     <div className="markdown-body text-sm leading-relaxed text-foreground">
                       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
                     </div>
+                    {/* TTS play button */}
+                    {hasTts && msg.content && (
+                      <div className="mt-2 flex justify-end">
+                        <MessageTtsButton
+                          messageId={msg.id}
+                          text={msg.content}
+                          ttsState={ttsState ?? "idle"}
+                          currentMessageId={ttsCurrentMessageId ?? null}
+                          onPlay={onTtsPlay!}
+                          onStop={onTtsStop!}
+                        />
+                      </div>
+                    )}
                   </div>
                 </>
               )}

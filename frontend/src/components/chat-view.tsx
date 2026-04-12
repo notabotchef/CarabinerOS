@@ -6,6 +6,7 @@ import { ThoughtsStream } from "@/components/thoughts-stream";
 import { ExpoTicket } from "@/components/expo-ticket";
 import { ExpoBar } from "@/components/expo-bar";
 import { ChatComposer } from "@/components/chat-composer";
+import { useTts } from "@/hooks/use-tts";
 import type { ChatMessage } from "@/lib/types";
 import type { ExpoState } from "@/hooks/use-expo-stream";
 
@@ -19,6 +20,7 @@ interface ChatViewProps {
 }
 
 export function ChatView({ messages, expo, onSend, loading, queueCount = 0, contextId }: ChatViewProps) {
+  const tts = useTts({ contextId: contextId ?? "" });
   const [ticketExpanded, setTicketExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -45,7 +47,13 @@ export function ChatView({ messages, expo, onSend, loading, queueCount = 0, cont
 
   return (
     <div ref={containerRef} onScroll={handleScroll} className="flex flex-1 flex-col min-h-0 overflow-y-auto">
-      <MessageList messages={messages} />
+      <MessageList
+        messages={messages}
+        ttsState={tts.state}
+        ttsCurrentMessageId={tts.currentMessageId}
+        onTtsPlay={tts.play}
+        onTtsStop={tts.stop}
+      />
 
       {/* Thoughts stream — ghostly inner monologue above expo bar */}
       <ThoughtsStream thoughts={expo.thoughts} active={expo.active} />

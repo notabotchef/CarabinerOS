@@ -7,7 +7,7 @@ Add voice recognition (STT) and text-to-speech (TTS) to the main chat UI. Backen
 | # | Name | Status | Plan File | Summary |
 |---|------|--------|-----------|---------|
 | 1 | Voice Input (STT) | ✅ Complete | plan-voice-chat-phase1.md | useVoiceRecorder hook, mic button in composer, transcribe flow |
-| 2 | Voice Output (TTS) | ⬚ Pending | plan-voice-chat-phase2.md | Audio player, speaker icon on messages, synthesize flow |
+| 2 | Voice Output (TTS) | ✅ Complete | plan-voice-chat-phase2.md | Audio player, speaker icon on messages, synthesize flow |
 | 3 | Mobile Voice (TODO) | ⬚ Pending | plan-voice-chat-phase3.md | PWA manifest, mobile-optimized voice UI, hands-free mode |
 
 ## Key Decisions
