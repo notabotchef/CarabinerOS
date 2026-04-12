@@ -31,6 +31,7 @@ export default function ChatPage() {
         onSend={handleSend}
         loading={loading}
         queueCount={queuedMessages.length}
+        contextId={contextId}
       />
     </div>
   );

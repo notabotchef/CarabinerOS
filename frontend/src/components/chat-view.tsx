@@ -6,6 +6,7 @@ import { ThoughtsStream } from "@/components/thoughts-stream";
 import { ExpoTicket } from "@/components/expo-ticket";
 import { ExpoBar } from "@/components/expo-bar";
 import { ChatComposer } from "@/components/chat-composer";
+import { useTts } from "@/hooks/use-tts";
 import type { ChatMessage } from "@/lib/types";
 import type { ExpoState } from "@/hooks/use-expo-stream";
 
@@ -15,9 +16,11 @@ interface ChatViewProps {
   onSend: (text: string) => void;
   loading: boolean;
   queueCount?: number;
+  contextId?: string;
 }
 
-export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: ChatViewProps) {
+export function ChatView({ messages, expo, onSend, loading, queueCount = 0, contextId }: ChatViewProps) {
+  const tts = useTts({ contextId: contextId ?? "" });
   const [ticketExpanded, setTicketExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -44,7 +47,13 @@ export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: Ch
 
   return (
     <div ref={containerRef} onScroll={handleScroll} className="flex flex-1 flex-col min-h-0 overflow-y-auto">
-      <MessageList messages={messages} />
+      <MessageList
+        messages={messages}
+        ttsState={tts.state}
+        ttsCurrentMessageId={tts.currentMessageId}
+        onTtsPlay={tts.play}
+        onTtsStop={tts.stop}
+      />
 
       {/* Thoughts stream — ghostly inner monologue above expo bar */}
       <ThoughtsStream thoughts={expo.thoughts} active={expo.active} />
@@ -63,7 +72,7 @@ export function ChatView({ messages, expo, onSend, loading, queueCount = 0 }: Ch
 
       <div className="border-t border-border/50">
         <div className="mx-auto w-full max-w-4xl px-2 sm:px-6 lg:px-12">
-          <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} />
+          <ChatComposer onSend={onSend} loading={loading} queueCount={queueCount} contextId={contextId} />
         </div>
       </div>
       <div ref={endRef} />
