@@ -53,8 +53,13 @@ export function useTts(options: UseTtsOptions): UseTtsReturn {
   const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const stop = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.removeAttribute("src");
@@ -67,6 +72,10 @@ export function useTts(options: UseTtsOptions): UseTtsReturn {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (abortRef.current) {
+        abortRef.current.abort();
+        abortRef.current = null;
+      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.removeAttribute("src");
@@ -94,11 +103,16 @@ export function useTts(options: UseTtsOptions): UseTtsReturn {
       setState("loading");
       setCurrentMessageId(messageId);
 
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
         const res = await fetch("/api/synthesize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: cleanText, ctxid: contextId }),
+          signal: controller.signal,
         });
 
         if (!res.ok) {

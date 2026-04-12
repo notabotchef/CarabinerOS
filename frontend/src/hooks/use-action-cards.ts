@@ -202,7 +202,8 @@ export function useActionCards(notifications?: A0Notification[]): UseActionCards
     );
     if (fresh.length === 0) return;
     for (const n of fresh) seenNotifIds.current.add(n.id);
-    const newCards = fresh.map(notificationToCard);
+    // Filter out A0 system notifications (no module/group) — only show cOS business cards
+    const newCards = fresh.map(notificationToCard).filter((c) => c.module !== "general");
     setLastCardType(newCards[newCards.length - 1].type);
     setCards((prev) => {
       // Deduplicate by id — prevent duplicate key React warnings

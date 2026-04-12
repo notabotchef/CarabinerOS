@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, type KeyboardEvent } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type KeyboardEvent,
+} from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowUp, Mic, Square, Loader2, Paperclip } from "lucide-react";
 import { useVoiceRecorder, type RecordingState } from "@/hooks/use-voice-recorder";
@@ -124,17 +130,29 @@ export function ChatComposer({
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const voiceErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTranscript = useCallback((text: string) => {
+    setValue(text);
+    inputRef.current?.focus();
+  }, []);
+
+  const handleVoiceError = useCallback((error: string) => {
+    setVoiceError(error);
+    if (voiceErrorTimerRef.current) clearTimeout(voiceErrorTimerRef.current);
+    voiceErrorTimerRef.current = setTimeout(() => setVoiceError(null), 4000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (voiceErrorTimerRef.current) clearTimeout(voiceErrorTimerRef.current);
+    };
+  }, []);
+
   const voice = useVoiceRecorder({
     contextId: contextId ?? "",
-    onTranscript: useCallback((text: string) => {
-      setValue(text);
-      inputRef.current?.focus();
-    }, []),
-    onError: useCallback((error: string) => {
-      setVoiceError(error);
-      // Auto-dismiss error after 4 seconds
-      setTimeout(() => setVoiceError(null), 4000);
-    }, []),
+    onTranscript: handleTranscript,
+    onError: handleVoiceError,
   });
 
   const isRecordingOrTranscribing = voice.state !== "idle";
@@ -347,12 +365,12 @@ function MicButton({
         >
           <Square className="size-4" />
         </button>
-        <span className="text-[11px] font-mono text-destructive/60 tabular-nums">
+        <span className="text-xs font-mono text-destructive/60 tabular-nums">
           {formatElapsed(elapsedMs)}
         </span>
         <button
           onClick={onCancel}
-          className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
+          className="text-xs text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors"
           title="Cancel recording"
         >
           cancel
