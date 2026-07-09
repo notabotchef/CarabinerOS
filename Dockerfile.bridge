@@ -13,9 +13,15 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends curl build-essential libpq-dev \
  && rm -rf /var/lib/apt/lists/*
 
-# Install bridge deps first (cached layer).
-COPY carabiner/runtime/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+# Install bridge deps first (cached layer). Includes the bridge-only
+# stack (fastapi, socketio, mcp==1.26.0) AND the carabiner backend
+# stack (sqlalchemy[asyncio], asyncpg, alembic, typer, rich) so the
+# MCP surface can call repositories and the read_api router can hit
+# the DB.
+COPY carabiner/runtime/requirements.txt /app/requirements.bridge.txt
+COPY carabiner/requirements.txt /app/requirements.carabiner.txt
+RUN pip install --no-cache-dir -r /app/requirements.bridge.txt \
+ && pip install --no-cache-dir -r /app/requirements.carabiner.txt
 
 # Install the rest of the bridge package. The legacy agent-zero
 # submodule is NOT required for the beta runtime — see
@@ -24,5 +30,8 @@ COPY carabiner/ /app/carabiner/
 
 EXPOSE 8641
 
-# uvicorn entrypoint — matches ``python -m carabiner.runtime.server``.
-CMD ["python", "-m", "uvicorn", "carabiner.runtime.server:app", "--host", "0.0.0.0", "--port", "8641"]
+# uvicorn entrypoint. The module has no module-level ``app``
+# attribute (it builds it via ``create_app()``), so we use the
+# factory import string uvicorn understands natively.
+# Equivalent to ``python -m carabiner.runtime.server``.
+CMD ["python", "-m", "uvicorn", "carabiner.runtime.server:create_app", "--factory", "--host", "0.0.0.0", "--port", "8641"] 
