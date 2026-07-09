@@ -26,6 +26,7 @@ RUN pip install --no-cache-dir -r /app/requirements.bridge.txt \
 # Install the rest of the bridge package. The legacy agent-zero
 # submodule is NOT required for the beta runtime — see
 # docs/FABLE_REPO_REAUDIT.md.
+COPY alembic.ini /app/alembic.ini
 COPY carabiner/ /app/carabiner/
 
 EXPOSE 8641
