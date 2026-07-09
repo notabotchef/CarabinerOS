@@ -67,3 +67,4 @@ var/
 *.local
 # Runtime artifacts from chat_store fallback (disk persistence).
 data/chats/
+hermes-src/

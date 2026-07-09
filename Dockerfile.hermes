@@ -1,31 +1,37 @@
-# Hermes gateway — pinned ``hermes-agent==0.18.2``.
-# Bump the version in lockstep with /usr/local/lib/hermes-agent on
-# the build host; the Fable audit said 0.14.0 but the local install
-# is 0.18.2 as of 2026-07-09.
-FROM python:3.11-slim
+# Dedicated CarabinerOS Hermes gateway (OpenAI-compatible API on :8642).
+FROM python:3.11-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    HERMES_HOME=/opt/data
+    HERMES_HOME=/opt/data \
+    PATH=/opt/hermes-agent/venv/bin:/usr/local/bin:$PATH
 
-WORKDIR /opt/hermes
+WORKDIR /opt/hermes-agent
 
-# System deps — curl for the docker healthcheck.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends curl \
+ && apt-get install -y --no-install-recommends \
+      curl git build-essential ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-# Pin to the version we actually verified.
-RUN pip install --no-cache-dir hermes-agent==0.18.2
+ARG HERMES_PIP_SPEC=hermes-agent==0.18.2
+COPY hermes-src/ /opt/hermes-agent/
 
-# Config is rendered by scripts/run_hermes_beta.sh (local dev) or
-# baked in here (Docker). In Docker we ship the template directly.
-COPY hermes/config.template.yaml /opt/hermes/config.yaml
+# aiohttp is required by gateway/platforms/api_server.py
+RUN python -m venv /opt/hermes-agent/venv \
+ && /opt/hermes-agent/venv/bin/pip install -U pip setuptools wheel \
+ && if [ -f /opt/hermes-agent/pyproject.toml ] || [ -f /opt/hermes-agent/setup.py ]; then \
+      /opt/hermes-agent/venv/bin/pip install -e /opt/hermes-agent ; \
+    else \
+      /opt/hermes-agent/venv/bin/pip install "${HERMES_PIP_SPEC}" ; \
+    fi \
+ && /opt/hermes-agent/venv/bin/pip install "aiohttp>=3.9"
 
 RUN mkdir -p /opt/data
 
 EXPOSE 8642
 
-# Start the hermes-agent gateway with the API server on :8642.
-CMD ["python", "-m", "hermes_agent.gateway", "--config", "/opt/hermes/config.yaml"]
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=10 \
+  CMD curl -sf -H "Authorization: Bearer ${API_SERVER_KEY}" http://127.0.0.1:8642/v1/models || exit 1
+
+CMD ["hermes", "gateway", "run", "--accept-hooks"]
