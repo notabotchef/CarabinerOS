@@ -1,0 +1,31 @@
+# Hermes gateway — pinned ``hermes-agent==0.18.2``.
+# Bump the version in lockstep with /usr/local/lib/hermes-agent on
+# the build host; the Fable audit said 0.14.0 but the local install
+# is 0.18.2 as of 2026-07-09.
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HERMES_HOME=/opt/data
+
+WORKDIR /opt/hermes
+
+# System deps — curl for the docker healthcheck.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/*
+
+# Pin to the version we actually verified.
+RUN pip install --no-cache-dir hermes-agent==0.18.2
+
+# Config is rendered by scripts/run_hermes_beta.sh (local dev) or
+# baked in here (Docker). In Docker we ship the template directly.
+COPY hermes/config.template.yaml /opt/hermes/config.yaml
+
+RUN mkdir -p /opt/data
+
+EXPOSE 8642
+
+# Start the hermes-agent gateway with the API server on :8642.
+CMD ["python", "-m", "hermes_agent.gateway", "--config", "/opt/hermes/config.yaml"]

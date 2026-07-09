@@ -1,0 +1,94 @@
+name: carabiner-hermes
+
+# Self-contained Hermes-beta compose stack. The legacy
+# docker-compose.dev.yml stays untouched for reference; this is the
+# new path the migration plan ships.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-carabiner}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-carabiner}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.bridge
+    env_file:
+      - .env
+    environment:
+      CARABINER_RUNTIME: ${CARABINER_RUNTIME:-hermes}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-carabiner}
+      BRIDGE_PORT: "8641"
+    ports:
+      - "8641:8641"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8641/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  hermes:
+    build:
+      context: .
+      dockerfile: Dockerfile.hermes
+    env_file:
+      - .env
+    environment:
+      API_SERVER_HOST: 0.0.0.0
+      API_SERVER_PORT: "8642"
+      HERMES_HOME: /opt/data
+      API_SERVER_KEY: ${API_SERVER_KEY:?API_SERVER_KEY is required}
+      HERMES_MODEL: ${HERMES_MODEL:-hermes-default}
+    volumes:
+      - hermes_home:/opt/data
+    ports:
+      - "8642:8642"
+    depends_on:
+      bridge:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-H", "Authorization: Bearer ${API_SERVER_KEY}", "http://localhost:8642/v1/models"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://bridge:8641
+      A0_URL: http://bridge:8641
+    depends_on:
+      bridge:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx.hermes.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      - bridge
+      - frontend
+
+volumes:
+  pgdata:
+  hermes_home:

@@ -4,14 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Carabiner OS is a restaurant management dashboard built on top of Agent Zero, an agentic AI framework. It combines a **Next.js 16 frontend** with a **Python/Flask + Socket.IO backend** and a **PostgreSQL database** (via SQLAlchemy async).
+Carabiner OS is a restaurant management dashboard with Hermes (NousResearch `hermes-agent` ≥ v0.18.2, see `docs/HERMES_REQUIREMENTS_AND_CAPABILITIES.md` for the version on the build host) as the backend intelligence. It combines a **Next.js 16 frontend** with a **Python bridge + Socket.IO backend** and a **PostgreSQL database** (via SQLAlchemy async).
+
+> **SUPERSEDED — 2026-07-09.** The previous "Agent Zero / Flask / run_ui.py / .venv at root" framing in this file described the absent `engine/agent-zero` submodule and is no longer accurate. The beta runtime is the in-repo bridge under `carabiner/runtime/`. See `docs/FABLE_REPO_REAUDIT.md` for the audit trail and `docs/HERMES_BETA_MIGRATION_PLAN.md` for the current plan.
 
 ## Tech Stack
 - **Frontend**: Next.js 16.2 (App Router), React 19, TypeScript 5, Tailwind CSS 4, Framer Motion, shadcn/ui, Socket.IO client
-- **Backend**: Python 3.10+, Flask 3.0, Uvicorn (ASGI), Socket.IO AsyncServer, LiteLLM
+- **Backend bridge**: `carabiner/runtime/` — FastAPI + python-socketio ASGI; `python -m carabiner.runtime.server`. Defaults `CARABINER_RUNTIME=echo` for hermetic dev; `hermes` for production.
+- **Intelligence backend**: Hermes (`hermes-agent` ≥ v0.18.2) running as a separate gateway on `127.0.0.1:8642`. See `docs/HERMES_REQUIREMENTS_AND_CAPABILITIES.md`.
 - **Database**: PostgreSQL 16, SQLAlchemy 2.0 async + asyncpg, Alembic migrations
-- **Package Managers**: pnpm (frontend), pip + venv (backend)
-- **Testing**: pytest with pytest-asyncio (backend only, in `tests/`)
+- **Package Managers**: pnpm (frontend), pip + venv (backend bridge + hermes env)
+- **Testing**: pytest with pytest-asyncio (backend, in `tests/`); bridge tests in `tests/runtime/`
 - **Linting**: ESLint flat config (frontend), no Python linter configured
 - **Python Environment**: venv (`.venv/` at project root)
 
@@ -48,40 +51,53 @@ This is non-negotiable. Think like an executive chef during service: if the chiv
 
 ### Frontend (from `frontend/`)
 ```bash
-pnpm dev          # Start Next.js dev server (proxies API to backend at A0_URL, default http://localhost:5000)
+pnpm dev          # Start Next.js dev server (proxies API to bridge at A0_URL, default http://localhost:8641)
 pnpm build        # Production build
 pnpm lint         # ESLint (flat config, next/core-web-vitals + typescript)
 ```
 
-### Backend (from project root)
+### Bridge backend (from project root)
 ```bash
-pip install -r requirements.txt    # Install Python deps
-playwright install chromium         # Browser automation binary
-python run_ui.py                    # Start Flask/Uvicorn on port 5000
+pip install -r carabiner/runtime/requirements.txt   # bridge deps (fastapi, socketio, httpx, mcp==1.26.0)
+python -m carabiner.runtime.server                  # bridge on :8641 (CARABINER_RUNTIME=echo by default)
+CARABINER_RUNTIME=hermes HERMES_BASE_URL=http://127.0.0.1:8642 API_SERVER_KEY=... \
+  python -m carabiner.runtime.server                # bridge with real hermes intelligence
 ```
 
-### Docker (full stack)
+### Hermes gateway (separate process, from project root)
 ```bash
-docker compose -f docker-compose.dev.yml up    # PostgreSQL + backend + frontend + nginx on :8080
+pip install hermes-agent==0.18.2
+hermes-agent gateway --config var/hermes-home/config.yaml    # binds 127.0.0.1:8642
+```
+
+### Local end-to-end (one script)
+```bash
+scripts/run_hermes_beta.sh   # renders var/hermes-home/, starts bridge + hermes, waits for /api/health
+```
+
+### Docker (full stack — Hermes beta)
+```bash
+docker compose -f docker-compose.hermes.yml up    # PostgreSQL + bridge + hermes + frontend + nginx on :8080
 ```
 
 ### Tests
 ```bash
-pytest tests/                       # Run all tests (pytest, in tests/ directory)
-pytest tests/test_http_auth_csrf.py # Run a single test file
+pytest tests/                                   # all backend tests
+pytest tests/runtime/ -q                        # bridge tests only
+pytest tests/runtime/test_chat_flow.py -q       # one file
 ```
 
-## Architecture
+### Architecture
 
-### Two-Layer System
-1. **Agent Zero** (upstream framework) — `agent.py`, `models.py`, `run_ui.py`, `initialize.py`, `python/` directory. Provides the agentic runtime, LLM orchestration (via LiteLLM), tools, memory, and the Flask+Socket.IO server.
-2. **Carabiner** (restaurant domain) — `carabiner/` directory. Adds restaurant-specific ORM models, API routes, and business logic on top of Agent Zero without modifying core files.
+### Two-Layer System (beta)
+1. **Hermes bridge** (`carabiner/runtime/`) — FastAPI + python-socketio. Owns the frontend contract verbatim (CSRF, `/message_async`, `/chats`, socket envelope). Delegates intelligence to either the pinned hermes gateway (`CARABINER_RUNTIME=hermes`) or a canned responder (`CARABINER_RUNTIME=echo`). Scoped 2-tool MCP surface mounted at `/mcp`. Host-side policy gate (`carabiner/runtime/policy.py`) enforces verb×resource allowlist before any mutation; AUDIT_REQUIRED fails closed.
+2. **Carabiner domain** (`carabiner/` root) — restaurant-specific ORM models, repositories, MCP helpers (`carabiner/mcp/server.py` is the helper source — `_resolve_repo_fn`, `_coerce_types`, `_prepare_data`, `_MODULE_REGISTRY` with 8 modules). ActionLog model at `carabiner/db/workspace_models.py:388`.
 
-### Backend (`run_ui.py` entry point)
-- Flask app wrapped in Starlette + Uvicorn with Socket.IO AsyncServer
-- API endpoints in `python/api/` (75+ handlers) — chat, memory, settings, MCP, scheduler, notifications
-- Carabiner REST routes registered via Flask blueprint (`carabiner/api/flask_blueprint.py`) — all GET-only, JSON responses, optional `?location_id=UUID` filtering
-- Real-time communication via Socket.IO events (action cards, chat streaming, expo)
+### Bridge entry point (`carabiner/runtime/server.py`)
+- FastAPI app wrapped via `socketio.ASGIApp` with `/ws` namespace; mounted at `/socket.io`; HTTP routes under `/api`
+- `GET /csrf_token`, `POST /message_async`, `POST /chat_create`, `GET /chats`, `POST /chat_remove`, `POST /chat_load`, `GET /api/health`, plus 8 module read routes (`/api/orders`, `/api/inventory`, `/api/prep`, `/api/food-cost`, `/api/menu`, `/api/recipes`, `/api/invoices`, `/api/campaigns`)
+- Socket handlers: `connect` (CSRF + handlers), `state_request` (always full snapshot), `card_commit` / `card_dismiss` / `card_message` (real lifecycle — replaces the A0-side no-ops)
+- Mounts FastMCP `streamable_http_app()` at `/mcp` so hermes can register the scoped 2-tool surface
 
 ### Frontend (`frontend/`)
 - **Next.js 16** App Router with **React 19**, **Tailwind CSS 4**, **Framer Motion**, **shadcn/ui**
@@ -122,14 +138,17 @@ Orders, Inventory, Prep, Menu, Recipes, Invoices, Marketing, Reporting, Food Cos
 ## Common Issues
 
 ### Frontend dev server returns 500 / connection refused on API calls
-The Next.js dev server proxies all API requests to the backend via `A0_URL` (default `http://localhost:5000`). If the Flask/Uvicorn backend is not running, every `/api/*`, `/message`, `/chats`, etc. request will fail. Always start the backend first:
+The Next.js dev server proxies all API requests to the bridge via `A0_URL` (default `http://localhost:8641`). If the bridge is not running, every `/api/*`, `/message`, `/chats`, etc. request will fail. Always start the bridge first:
 ```bash
-python run_ui.py        # terminal 1 (from project root)
-cd frontend && pnpm dev # terminal 2
+python -m carabiner.runtime.server  # terminal 1 (from project root)
+cd frontend && pnpm dev             # terminal 2
 ```
 
-### MCP server "command not found"
-The `mcp_servers` field in `usr/settings.json` uses `.venv/bin/python` (a relative path). This requires the backend to be started from the project root. If you need a machine-specific override, copy `usr/settings.local.json.example` to `usr/settings.local.json` and adjust paths there.
+### Bridge falls back to echo when hermes is unreachable
+If `HERMES_BASE_URL` is unreachable, `message_async` returns `{context}` and pushes an apology log instead of 500. The bridge stays up so the frontend never sees a hard failure. See `tests/runtime/test_chat_flow_hermes.py`.
+
+### MCP surface vs legacy 63-tool server
+The bridge exposes a **scoped 2-tool** FastMCP at `/mcp` (`carabiner_read`, `carabiner_propose_write`) — NOT the 63-tool legacy server. The hermes config points at it by URL (`mcp_servers.carabiner.url: "http://localhost:8641/mcp"` in local dev).
 
 ## Key Environment Variables
 - `A0_URL` — Backend URL for Next.js rewrites (default: `http://localhost:5000`)

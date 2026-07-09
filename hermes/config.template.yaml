@@ -1,0 +1,33 @@
+# Minimal hermes-agent config for the Carabiner bridge beta.
+# Bump HERMES_MODEL via env when a different model is wanted; this
+# file just sets defaults the gateway reads at startup.
+#
+# In Docker: bridge container is reachable as ``bridge`` on the
+# compose network. In local dev: bridge is ``http://localhost:8641``.
+# Override via ``HERMES_MCP_URL`` env if your network differs.
+
+api_server:
+  host: 0.0.0.0
+  port: 8642
+  require_api_key: true
+
+model:
+  default: hermes-default
+
+mcp_servers:
+  carabiner:
+    url: "${HERMES_MCP_URL:-http://localhost:8641/mcp}"
+    timeout: 120
+    connect_timeout: 60
+    keepalive_interval: 30
+
+sessions:
+  backend: sqlite
+  path: /opt/data/sessions.db
+
+auth:
+  api_key: "${API_SERVER_KEY}"
+
+logging:
+  level: INFO
+  file: /opt/data/hermes.log

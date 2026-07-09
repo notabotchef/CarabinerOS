@@ -1,5 +1,7 @@
 # Fable Hermes Execution Brief
 
+> **SUPERSEDED — 2026-07-09.** This document was written blind to hermes-agent (NousResearch, v0.14.0). The facts it assumes ("Hermes not present as active code", "no concrete Hermes package/API is assumed") are wrong; the package is installed locally and pin-publishable as `hermes-agent==0.14.0`. The **adapter-boundary thinking** (chat/tools/cards/audit/policy/realtime; test-first; A0 fallback) is sound and is adopted in `docs/HERMES_BETA_MIGRATION_PLAN.md`. For the current plan, read **FABLE_REPO_REAUDIT.md** + **HERMES_REQUIREMENTS_AND_CAPABILITIES.md** + **HERMES_BETA_MIGRATION_PLAN.md** instead.
+
 ## 1. Purpose
 
 Fable's job is to create a Hermes execution plan for CarabinerOS. This is planning work, not a blind coding sprint and not the Hermes migration itself.

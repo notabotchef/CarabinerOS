@@ -1,0 +1,28 @@
+# Carabiner bridge — FastAPI + python-socketio ASGI.
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# System deps — curl for the docker healthcheck, build-essential for
+# any wheel that needs compiling (asyncpg, cryptography, etc).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl build-essential libpq-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install bridge deps first (cached layer).
+COPY carabiner/runtime/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Install the rest of the bridge package. The legacy agent-zero
+# submodule is NOT required for the beta runtime — see
+# docs/FABLE_REPO_REAUDIT.md.
+COPY carabiner/ /app/carabiner/
+
+EXPOSE 8641
+
+# uvicorn entrypoint — matches ``python -m carabiner.runtime.server``.
+CMD ["python", "-m", "uvicorn", "carabiner.runtime.server:app", "--host", "0.0.0.0", "--port", "8641"]

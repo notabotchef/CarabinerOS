@@ -1,5 +1,7 @@
 # Fable Hermes Execution Plan
 
+> **SUPERSEDED — 2026-07-09.** This document was written blind to hermes-agent (NousResearch, v0.14.0). The facts it assumes ("Hermes not present as active code", "no concrete Hermes package/API is assumed") are wrong; the package is installed locally and pin-publishable as `hermes-agent==0.14.0`. The **adapter-boundary thinking** (chat/tools/cards/audit/policy/realtime; test-first; A0 fallback) is sound and is adopted in `docs/HERMES_BETA_MIGRATION_PLAN.md`. For the current plan, read **FABLE_REPO_REAUDIT.md** + **HERMES_REQUIREMENTS_AND_CAPABILITIES.md** + **HERMES_BETA_MIGRATION_PLAN.md** instead.
+
 ## 1. Executive Summary
 
 CarabinerOS is currently a restaurant operations platform layered over Agent Zero. Agent Zero owns the active runtime boundary: chat orchestration, tool execution, role agents, Socket.IO assumptions, startup plugin registration, and Docker service wiring. CarabinerOS owns the restaurant product layer: Next.js module UI, Python domain/API/CLI code, PostgreSQL/SQLAlchemy/Alembic data model, action-card payloads, audit/event models, and restaurant role identity.
