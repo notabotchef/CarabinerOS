@@ -4,6 +4,14 @@ AI-powered restaurant management platform. Built on [Agent Zero](https://github.
 
 CarabinerOS replaces the spreadsheet-and-gut-feeling ops stack with an AI general manager that reads your data, drafts orders, tracks food cost, and manages prep — all through natural conversation.
 
+## Current Planning Docs
+
+- [Current state audit](docs/CARABINEROS_CURRENT_STATE_AUDIT.md) — factual repo audit for ChatGPT, Fable, and Esteban.
+- [Fable Hermes execution brief](docs/FABLE_HERMES_EXECUTION_BRIEF.md) — what Fable should read and produce before Hermes work.
+- [Hermes execution plan request](docs/HERMES_EXECUTION_PLAN_REQUEST.md) — clean prompt/request for a phased Hermes plan.
+
+Hermes is not active runtime code yet. Agent Zero remains the active orchestration/runtime boundary.
+
 ## Stack
 
 | Layer | Technology |
@@ -40,6 +48,13 @@ carabiner-os/
 ## Quick Start
 
 ```bash
+# Clone with Agent Zero submodule
+git clone --recurse-submodules https://github.com/notabotchef/CarabinerOS.git
+cd CarabinerOS
+
+# Or, after a normal clone
+git submodule update --init --recursive
+
 # Full stack: PostgreSQL + Agent Zero + Frontend + nginx
 docker compose -f docker-compose.dev.yml up
 
@@ -82,11 +97,14 @@ carabiner prep update UUID --readiness Ready --json
 ## Development
 
 ```bash
+# Environment template
+cp .env.example .env.local  # optional; do not commit real env files
+
+# Frontend dependencies
+cd frontend && pnpm install
+
 # Frontend only (proxies API to backend)
 cd frontend && pnpm dev
-
-# Backend only (from project root)
-python run_ui.py
 
 # Full Docker stack
 docker compose -f docker-compose.dev.yml up
@@ -95,6 +113,17 @@ docker compose -f docker-compose.dev.yml up
 docker compose exec agent-zero bash -c \
   'source /opt/venv-a0/bin/activate && PYTHONPATH=/cos python -m carabiner.db.seed_realistic --no-confirm'
 ```
+
+## Checks
+
+```bash
+docker compose -f docker-compose.dev.yml config
+python3 -m pytest tests/test_action_card_tool.py tests/test_daily_brief_tool.py tests/test_action_cards_handler.py -q
+cd frontend && pnpm test -- --runInBand
+cd frontend && pnpm lint
+```
+
+Known current issue from the July 2026 audit: frontend lint may fail on `frontend/src/components/chat-composer.tsx:163`.
 
 ## Database
 
