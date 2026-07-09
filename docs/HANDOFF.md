@@ -1,8 +1,19 @@
 # 📨 CarabinerOS — Hermes Beta Handoff
 
 **For:** Codex (or any successor agent) picking up where I left off.
-**From:** Hermes session, 2026-07-09, ~19:36 server time (committed in `main` as `9ac64d9`).
+**From:** Hermes session, 2026-07-09 (original) · **updated same day** after schema follow-up.
+**HEAD when this was last verified:** `210ecb2` on `main`.
 **Read time to act:** ~30 minutes to read, ~2 hours to test the live stack end-to-end.
+
+## Status update (schema follow-up — DONE)
+
+Follow-up #2 is **done** on the live VPS and pushed as `210ecb2`:
+
+- Migration `011_chat_context` (revises `008`) adds `chat_context_id` + stalled 010 Phase-1 columns.
+- All **8** read APIs return `ok:true` with seed data: orders, inventory, menu, recipes, prep, food-cost, invoices, campaigns.
+- Live public tunnel (ephemeral): `https://parker-communications-indianapolis-yesterday.trycloudflare.com`
+- Tests: `45 passed, 7 skipped, 0 failed` on host venv.
+- Bridge still `runtime=echo` / `hermes_reachable=false` — Follow-up #1 still needs explicit auth.
 
 ## What "done" looks like
 
