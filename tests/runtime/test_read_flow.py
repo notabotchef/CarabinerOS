@@ -141,4 +141,4 @@ def test_carabiner_propose_write_missing_location_id_denied() -> None:
 def _run(coro):
     import asyncio
 
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)

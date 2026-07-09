@@ -124,3 +124,49 @@ def create_action_log(
             "AUDIT_REQUIRED=false; audit write failed but caller proceeds: %s", exc
         )
         return None
+
+
+def create_action_log_sync(
+    *,
+    action_type: str,
+    status: str,
+    card_id: str | None = None,
+    location_id: str | uuid.UUID | None = None,
+    org_id: str | uuid.UUID | None = None,
+    provider_id: str | None = None,
+    agent_context_id: str | None = None,
+    extra: Mapping[str, Any] | None = None,
+) -> Any:
+    """Sync wrapper around :func:`create_action_log` (async).
+
+    The underlying ``carabiner.db.repositories.create_action_log`` is
+    async because it goes through SQLAlchemy's async session. This
+    wrapper runs it in a fresh event loop so the bridge's *sync*
+    call sites (e.g. :func:`carabiner.runtime.cards.propose`) can use
+    it without converting the whole cards module to async.
+
+    If called from inside a running loop (e.g. inside the MCP tool
+    handler), this raises — use :func:`create_action_log` directly
+    and ``await`` it from the async caller.
+    """
+    import asyncio
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(
+            create_action_log(
+                action_type=action_type,
+                status=status,
+                card_id=card_id,
+                location_id=location_id,
+                org_id=org_id,
+                provider_id=provider_id,
+                agent_context_id=agent_context_id,
+                extra=extra,
+            )
+        )
+    raise RuntimeError(
+        "create_action_log_sync called inside a running event loop; "
+        "use the async create_action_log() and await it instead"
+    )

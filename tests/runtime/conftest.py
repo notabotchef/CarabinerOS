@@ -85,7 +85,7 @@ async def http_client(app):
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(
-        transport=transport, base_url="http://testserver"
+        transport=transport, base_url="http://127.0.0.1"
     ) as client:
         yield client
 
@@ -111,3 +111,55 @@ async def composed_app():
     cfg = load_config()
     store = SnapshotStore()
     return create_app(cfg=cfg, store=store)
+
+
+# ---- real-server fixture for socketio.AsyncClient tests --------------------
+
+
+@pytest_asyncio.fixture
+async def running_server(ephemeral_port):
+    """Serve the composed ASGI app on a real TCP port via uvicorn.
+
+    The python-socketio ``AsyncClient`` always opens a real HTTP
+    connection (no in-process transport), so we need a real listening
+    socket for the 3 chat-flow tests that drive the wire protocol.
+    """
+    import asyncio
+    import socket as _socket
+
+    import uvicorn
+
+    from carabiner.runtime.config import load_config
+    from carabiner.runtime.server import create_app
+    from carabiner.runtime.state import SnapshotStore
+
+    cfg = load_config()
+    store = SnapshotStore()
+    app = create_app(cfg=cfg, store=store)
+
+    config = uvicorn.Config(
+        app,
+        host="127.0.0.1",
+        port=ephemeral_port,
+        log_level="error",
+        lifespan="off",
+    )
+    server = uvicorn.Server(config)
+    task = asyncio.create_task(server.serve())
+
+    # Wait for the port to actually accept connections.
+    deadline = asyncio.get_event_loop().time() + 5.0
+    while asyncio.get_event_loop().time() < deadline:
+        try:
+            with _socket.create_connection(("127.0.0.1", ephemeral_port), timeout=0.5):
+                break
+        except OSError:
+            await asyncio.sleep(0.05)
+    else:
+        raise RuntimeError(f"uvicorn did not bind to port {ephemeral_port}")
+
+    try:
+        yield f"http://127.0.0.1:{ephemeral_port}"
+    finally:
+        server.should_exit = True
+        await task

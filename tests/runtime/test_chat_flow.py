@@ -44,8 +44,8 @@ REQUIRED_SNAPSHOT_FIELDS = {
 }
 
 
-async def _connect(composed_app, csrf_token: str):
-    """Connect a real AsyncClient to the in-process ASGI app."""
+async def _connect(base_url: str, csrf_token: str):
+    """Connect a real AsyncClient to a running bridge (base_url like ``http://127.0.0.1:NNNN``)."""
     sio = socketio.AsyncClient(logger=False, engineio_logger=False)
 
     connected = asyncio.Event()
@@ -64,10 +64,8 @@ async def _connect(composed_app, csrf_token: str):
     def _on_state_push(data):
         state_push_events.append(data)
 
-    # The python-socketio ASGI client connects to the app directly
-    # via the ``transports=`` arg, no HTTP URL required.
     await sio.connect(
-        "http://testserver",
+        base_url,
         socketio_path="/socket.io",
         transports=["websocket"],
         namespaces=["/ws"],
@@ -76,21 +74,65 @@ async def _connect(composed_app, csrf_token: str):
     return sio, connected, disconnected, state_push_events
 
 
-async def _fetch_csrf_token(composed_app):
-    """Get a fresh CSRF token via the ASGI HTTP layer."""
+# Backwards-compat alias — old tests passed ``composed_app`` and relied
+# on the ASGI transport. We keep the new signature (base_url) but
+# accept an ASGI app for the legacy callers that still need it.
+async def _connect_at(base_url_or_app, csrf_token: str):
+    """Compat shim — accepts a base_url string OR an ASGI app.
+
+    If given an ASGI app (anything truthy that isn't a str), falls
+    back to legacy httpx.ASGITransport mode and connects to a local
+    ephemeral server started for that app.
+    """
+    if isinstance(base_url_or_app, str):
+        return await _connect(base_url_or_app, csrf_token)
+    # Legacy ASGI-app path — start a one-shot server.
+    import socket as _socket
+
+    import uvicorn
+
+    from carabiner.runtime.config import load_config
+    from carabiner.runtime.server import create_app
+    from carabiner.runtime.state import SnapshotStore
+
+    cfg = load_config()
+    store = SnapshotStore()
+    app = create_app(cfg=cfg, store=store)
+    s = _socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error", lifespan="off")
+    server = uvicorn.Server(config)
+    task = asyncio.create_task(server.serve())
+    # Wait
+    deadline = asyncio.get_event_loop().time() + 5.0
+    while asyncio.get_event_loop().time() < deadline:
+        try:
+            with _socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                break
+        except OSError:
+            await asyncio.sleep(0.05)
+    try:
+        return await _connect(f"http://127.0.0.1:{port}", csrf_token)
+    finally:
+        server.should_exit = True
+        await task
+
+
+async def _fetch_csrf_token_at(base_url: str):
+    """Get a fresh CSRF token via real HTTP at the given base_url."""
     import httpx
 
-    transport = httpx.ASGITransport(app=composed_app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as c:
+    async with httpx.AsyncClient(base_url=base_url) as c:
         r = await c.get("/csrf_token")
         return r.json()
 
 
-async def _http_post(composed_app, path: str, body: dict, token: str):
+async def _http_post_at(base_url: str, path: str, body: dict, token: str):
     import httpx
 
-    transport = httpx.ASGITransport(app=composed_app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as c:
+    async with httpx.AsyncClient(base_url=base_url) as c:
         r = await c.post(path, json=body, headers={"X-CSRF-Token": token})
         return r
 
@@ -98,20 +140,20 @@ async def _http_post(composed_app, path: str, body: dict, token: str):
 # ---- connect handshake ------------------------------------------------------
 
 
-async def test_connect_with_valid_token_succeeds(composed_app):
-    tok = (await _fetch_csrf_token(composed_app))["token"]
-    sio, connected, _, _ = await _connect(composed_app, tok)
+async def test_connect_with_valid_token_succeeds(running_server):
+    tok = (await _fetch_csrf_token_at(running_server))["token"]
+    sio, connected, _, _ = await _connect_at(running_server, tok)
     try:
         await asyncio.wait_for(connected.wait(), timeout=2.0)
     finally:
         await sio.disconnect()
 
 
-async def test_connect_with_wrong_token_is_refused(composed_app):
+async def test_connect_with_wrong_token_is_refused(running_server):
     sio = socketio.AsyncClient(logger=False, engineio_logger=False)
     with pytest.raises((socketio.exceptions.ConnectionError, Exception)):
         await sio.connect(
-            "http://testserver",
+            running_server,
             socketio_path="/socket.io",
             transports=["websocket"],
             namespaces=["/ws"],
@@ -128,9 +170,9 @@ async def test_connect_with_wrong_token_is_refused(composed_app):
 # ---- state_request ---------------------------------------------------------
 
 
-async def test_state_request_returns_ack_and_full_snapshot(composed_app):
-    tok = (await _fetch_csrf_token(composed_app))["token"]
-    sio, connected, _, push_events = await _connect(composed_app, tok)
+async def test_state_request_returns_ack_and_full_snapshot(running_server):
+    tok = (await _fetch_csrf_token_at(running_server))["token"]
+    sio, connected, _, push_events = await _connect_at(running_server, tok)
     try:
         await asyncio.wait_for(connected.wait(), timeout=2.0)
         ack = await sio.call(
@@ -143,9 +185,9 @@ async def test_state_request_returns_ack_and_full_snapshot(composed_app):
         assert ack.get("ok") is True
         data = ack.get("data") or {}
         assert "runtime_epoch" in data
-        assert "seq_base" in data
+        assert "seq" in data
         assert isinstance(data["runtime_epoch"], str)
-        assert data["seq_base"] == 0
+        assert data["seq"] == 0
 
         # Give the broadcast a beat to land in our event list.
         for _ in range(20):
@@ -176,25 +218,23 @@ async def test_state_request_returns_ack_and_full_snapshot(composed_app):
 # ---- message_async progress gate (the always-finally invariant) -----------
 
 
-async def test_message_async_progress_flag_toggles_and_resets(composed_app):
-    tok = (await _fetch_csrf_token(composed_app))["token"]
-    sio, connected, _, push_events = await _connect(composed_app, tok)
+async def test_message_async_progress_flag_toggles_and_resets(running_server):
+    tok = (await _fetch_csrf_token_at(running_server))["token"]
+    sio, connected, _, push_events = await _connect_at(running_server, tok)
     try:
         await asyncio.wait_for(connected.wait(), timeout=2.0)
 
         # 1) Seed a context via chat_create so we have a stable id.
-        create = await _http_post(
-            composed_app, "/chat_create", {"current_context": None}, tok
+        create = await _http_post_at(
+            running_server, "/chat_create", {"current_context": None}, tok
         )
         assert create.status_code == 200
         ctxid = create.json()["ctxid"]
 
-        # 2) Capture the current state of the progress flag (False
-        #    at rest). We use /api/_test/state/<ctx> for introspection.
+        # 2) Capture the current state of the progress flag (False at rest).
         import httpx
 
-        transport = httpx.ASGITransport(app=composed_app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as c:
+        async with httpx.AsyncClient(base_url=running_server) as c:
             r = await c.get(
                 f"/api/_test/state/{ctxid}", headers={"X-CSRF-Token": tok}
             )
@@ -203,8 +243,8 @@ async def test_message_async_progress_flag_toggles_and_resets(composed_app):
 
         # 3) Fire message_async (echo run takes ~100ms inside the
         #    try/finally). The progress flag MUST end up False again.
-        r = await _http_post(
-            composed_app,
+        r = await _http_post_at(
+            running_server,
             "/message_async",
             {"text": "ping-flow", "context": ctxid},
             tok,
@@ -213,8 +253,9 @@ async def test_message_async_progress_flag_toggles_and_resets(composed_app):
 
         # 4) Wait for the echo run to finish, then assert the flag
         #    is back to False (the always-finally gate).
+        snap: dict = {}
         for _ in range(40):  # up to ~4s
-            async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as c:
+            async with httpx.AsyncClient(base_url=running_server) as c:
                 r = await c.get(
                     f"/api/_test/state/{ctxid}",
                     headers={"X-CSRF-Token": tok},

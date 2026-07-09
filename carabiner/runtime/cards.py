@@ -139,7 +139,8 @@ def propose(
     }
 
     # Audit — must succeed (or AUDIT_REQUIRED=false escape hatch).
-    audit.create_action_log(
+    # propose() is sync; use the sync wrapper around the async DB call.
+    audit.create_action_log_sync(
         action_type=verb,
         status="proposed",
         card_id=card_id,
@@ -154,10 +155,28 @@ def propose(
 
     _REGISTRY[card_id] = card
 
-    # Fire-and-forget emit (sync helper from carabiner.runtime.emitter).
+    # Persist the original ``data`` payload on the card so commit() can
+    # reconstruct it without a DB lookup. (Avoids the chicken-and-egg
+    # of "we wrote the data to ActionLog, now we need to read it back
+    # from ActionLog".)
+    # NB: this is a bridge-only field; the frontend doesn't see it.
+    card["_propose_data"] = dict(data)
+
+    # Fire-and-forget emit (async helper from carabiner.runtime.emitter).
+    # propose() itself is sync, so we run the emit in a fresh loop
+    # via asyncio.run only if there's no running loop. If a loop is
+    # already running (e.g. inside the bridge HTTP handler), we
+    # schedule the emit instead.
     if sio is not None:
         try:
-            emitter.emit_action_card(sio, card)
+            import asyncio as _asyncio
+
+            try:
+                _asyncio.get_running_loop()
+            except RuntimeError:
+                _asyncio.run(emitter.emit_action_card(sio, card))
+            else:  # pragma: no cover — shouldn't fire from sync propose()
+                logger.warning("propose() called inside a running loop; card emit skipped")
         except Exception as exc:  # noqa: BLE001
             logger.warning("emit_action_card failed: %s", exc)
 
@@ -197,18 +216,15 @@ async def commit(
         return card
 
     decision = policy.check_commit(
-        card["module"], card["action"], card.get("detail_data") or {}, card
+        card["module"], card["action"], card.get("_propose_data") or {}, card
     )
     if not decision.allowed:
         raise PermissionError(f"policy denied commit: {decision.reason}")
 
-    # Reconstruct the data the model sent. We don't store the full
-    # payload in the card (the card is a UI artefact); for commit
-    # we read it back from the ActionLog metadata.
-    payload = await _reconstruct_data(card)
+    payload = card.get("_propose_data") or {}
     mutation_result = await execute_mutation(card["module"], card["action"], payload)
 
-    audit.create_action_log(
+    await audit.create_action_log(
         action_type=card["action"],
         status="committed",
         card_id=card_id,
@@ -224,7 +240,7 @@ async def commit(
     card["timestamp"] = int(time.time())
     if sio is not None:
         try:
-            emitter.emit_action_card(sio, card)
+            await emitter.emit_action_card(sio, card)
         except Exception as exc:  # noqa: BLE001
             logger.warning("emit_action_card failed: %s", exc)
 
@@ -245,7 +261,7 @@ async def dismiss(
     if card.get("status") == "dismissed":
         return card
 
-    audit.create_action_log(
+    await audit.create_action_log(
         action_type=card["action"],
         status="dismissed",
         card_id=card_id,
@@ -258,7 +274,7 @@ async def dismiss(
     card["timestamp"] = int(time.time())
     if sio is not None:
         try:
-            emitter.emit_action_card(sio, card)
+            await emitter.emit_action_card(sio, card)
         except Exception as exc:  # noqa: BLE001
             logger.warning("emit_action_card failed: %s", exc)
 

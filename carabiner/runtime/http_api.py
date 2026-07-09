@@ -31,7 +31,7 @@ from fastapi import Cookie, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from carabiner import chat_store  # type: ignore
+from carabiner.chat_store import chat_store  # singleton instance, not the module
 from carabiner.runtime import config as runtime_config
 from carabiner.runtime import security
 from carabiner.runtime import state as runtime_state

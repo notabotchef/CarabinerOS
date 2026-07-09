@@ -110,26 +110,43 @@ def build_server(
         correlation_id = data.get("correlationId") or ""
         snapshot = store.to_snapshot(context)
         # Ack first (small, fast), then push the full snapshot.
-        await _safe_emit_state_push(server, context, snapshot, correlation_id=correlation_id, sid=sid)
+        await _safe_emit_state_push(
+            server, context, snapshot,
+            correlation_id=correlation_id,
+            sid=sid,
+            runtime_epoch=store.runtime_epoch,
+            seq=store.seq_base,
+        )
         return {
             "ok": True,
             "data": {
                 "runtime_epoch": store.runtime_epoch,
-                "seq_base": store.seq_base,
+                "seq": store.seq_base,
             },
             "correlationId": correlation_id,
         }
 
     @server.on("card_commit", namespace="/ws")
     async def _card_commit(sid: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Commit a proposed action card.
+
+        The lifecycle (status guard → policy re-check → mutation →
+        audit → re-emit) lives in :func:`carabiner.runtime.cards.commit`.
+        The socket handler is a thin shim that:
+          1. locates the card in the snapshot store's notifications
+          2. seeds the card into ``cards._REGISTRY`` (since cards.py
+             has its own in-memory registry, separate from the
+             SnapshotStore's notifications list)
+          3. delegates to ``cards.commit`` for the real work
+          4. mirrors the committed card back into the snapshot store
+             so state_request includes the updated status
+        """
         data = data or {}
         card_id = data.get("cardId")
         correlation_id = data.get("correlationId") or ""
         if not card_id:
             return {"ok": False, "error": "missing_cardId", "correlationId": correlation_id}
 
-        # Locate the card in the in-memory store; the audit + commit
-        # logic is the *bridge's* responsibility, not the model's.
         context = data.get("context") or "default"
         cs = store.get(context)
         if cs is None:
@@ -139,39 +156,54 @@ def build_server(
         if card is None:
             return {"ok": False, "error": "card_not_found", "correlationId": correlation_id}
 
-        # ---- status guard (idempotent) --------------------------------
+        # ---- idempotency at the socket layer --------------------------
         if card.get("status") == STATUS_COMMITTED:
             return {"ok": True, "idempotent": True, "correlationId": correlation_id}
 
-        # ---- policy re-check (stub) -----------------------------------
-        # Real policy is wired in P6.4 (carabiner/runtime/policy.py).
-        # For now we accept everything that survived the propose step
-        # and proceed. The stub MUST be replaced before the beta can
-        # advertise mutation safety.
-        policy_ok = True
-        if not policy_ok:
-            return {"ok": False, "error": "policy_denied", "correlationId": correlation_id}
+        # ---- delegate to cards.commit for the real lifecycle ---------
+        # cards.py keeps its own _REGISTRY; if this card originated
+        # from the MCP surface, it's already there. If it originated
+        # via the legacy action_card emit path (python/tools/action_card.py),
+        # we seed it here from the snapshot-store notification.
+        try:
+            from carabiner.runtime import cards as cards_mod
+        except ImportError as exc:  # pragma: no cover
+            return {"ok": False, "error": "cards_unavailable", "detail": str(exc)}
 
-        # ---- audit write (fail-closed if AUDIT_REQUIRED) --------------
-        if cfg.audit_required:
-            try:
-                _write_audit_log(card, status=STATUS_COMMITTED, context=context)
-            except Exception as exc:  # pragma: no cover - DB path
-                logger.error("audit write failed; failing closed: %s", exc)
-                return {"ok": False, "error": "audit_failed", "correlationId": correlation_id}
+        existing = cards_mod.get(card_id)
+        if existing is None:
+            # Seed: convert the notification card into the cards.py
+            # shape (add ``_propose_data`` so commit() can find the
+            # mutation payload).
+            seeded = dict(card)
+            seeded.setdefault("_propose_data", card.get("detail_data") or {})
+            cards_mod._REGISTRY[card_id] = seeded
 
-        # ---- execute (stub for echo runtime) --------------------------
-        # In echo runtime there is no real mutation; we simply mark
-        # the card committed. The real executor (carabiner/runtime/
-        # execute.py) ships in P6.4.
+        try:
+            committed = await cards_mod.commit(card_id, sio=server)
+        except KeyError:
+            return {"ok": False, "error": "card_not_found", "correlationId": correlation_id}
+        except PermissionError as exc:
+            return {"ok": False, "error": "policy_denied", "detail": str(exc), "correlationId": correlation_id}
+        except Exception as exc:  # noqa: BLE001
+            logger.error("commit failed: %s", exc, exc_info=True)
+            return {"ok": False, "error": "commit_failed", "detail": str(exc), "correlationId": correlation_id}
+
+        # ---- mirror the result back into the snapshot store -----------
         store.update_notification(context, card_id, status=STATUS_COMMITTED)
 
-        # ---- re-emit the card so the UI updates -----------------------
-        emitter.emit_action_card(server, card, correlation_id=correlation_id, sid=sid)
+        # Re-emit using the cards.py-committed dict (carries the
+        # timestamp + status fields from the real lifecycle).
+        await emitter.emit_action_card(server, committed, correlation_id=correlation_id, sid=sid)
         return {"ok": True, "status": STATUS_COMMITTED, "correlationId": correlation_id}
 
     @server.on("card_dismiss", namespace="/ws")
     async def _card_dismiss(sid: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Dismiss a proposed action card.
+
+        Delegates to :func:`carabiner.runtime.cards.dismiss` so the
+        audit row is written with the same metadata shape as commit.
+        """
         data = data or {}
         card_id = data.get("cardId")
         correlation_id = data.get("correlationId") or ""
@@ -185,15 +217,28 @@ def build_server(
         if card is None:
             return {"ok": False, "error": "card_not_found", "correlationId": correlation_id}
 
-        if cfg.audit_required:
-            try:
-                _write_audit_log(card, status=STATUS_DISMISSED, context=context)
-            except Exception as exc:  # pragma: no cover - DB path
-                logger.error("audit write failed; failing closed: %s", exc)
-                return {"ok": False, "error": "audit_failed", "correlationId": correlation_id}
+        # Delegate to the cards lifecycle.
+        try:
+            from carabiner.runtime import cards as cards_mod
+        except ImportError as exc:  # pragma: no cover
+            return {"ok": False, "error": "cards_unavailable", "detail": str(exc)}
+
+        existing = cards_mod.get(card_id)
+        if existing is None:
+            seeded = dict(card)
+            seeded.setdefault("_propose_data", card.get("detail_data") or {})
+            cards_mod._REGISTRY[card_id] = seeded
+
+        try:
+            dismissed = await cards_mod.dismiss(card_id, sio=server)
+        except KeyError:
+            return {"ok": False, "error": "card_not_found", "correlationId": correlation_id}
+        except Exception as exc:  # noqa: BLE001
+            logger.error("dismiss failed: %s", exc, exc_info=True)
+            return {"ok": False, "error": "dismiss_failed", "detail": str(exc), "correlationId": correlation_id}
 
         store.update_notification(context, card_id, status=STATUS_DISMISSED)
-        emitter.emit_action_card(server, card, correlation_id=correlation_id, sid=sid)
+        await emitter.emit_action_card(server, dismissed, correlation_id=correlation_id, sid=sid)
         return {"ok": True, "status": STATUS_DISMISSED, "correlationId": correlation_id}
 
     @server.on("card_message", namespace="/ws")
@@ -206,7 +251,7 @@ def build_server(
             return {"ok": False, "error": "missing_fields", "correlationId": correlation_id}
         # Echo the reply back; real routing (LLM read of card context
         # → answer text) is added in P6.4.
-        emitter.emit_card_reply(server, card_id, f"echo: {text}", correlation_id=correlation_id, sid=sid)
+        await emitter.emit_card_reply(server, card_id, f"echo: {text}", correlation_id=correlation_id, sid=sid)
         return {"ok": True, "correlationId": correlation_id}
 
     return server
@@ -221,31 +266,20 @@ async def _safe_emit_state_push(
     snapshot: Dict[str, Any],
     correlation_id: str,
     sid: Optional[str] = None,
+    runtime_epoch: Optional[str] = None,
+    seq: Optional[int] = None,
 ) -> str:
     """Emit a state_push with throttle awareness; swallow transient errors."""
     try:
-        return emitter.emit_state_push(
-            server, context, snapshot, correlation_id=correlation_id, sid=sid
+        return await emitter.emit_state_push(
+            server,
+            context,
+            snapshot,
+            correlation_id=correlation_id,
+            sid=sid,
+            runtime_epoch=runtime_epoch,
+            seq=seq,
         )
     except Exception as exc:  # pragma: no cover - transport
         logger.warning("state_push emit failed: %s", exc)
         return ""
-
-
-def _write_audit_log(card: Dict[str, Any], status: str, context: str) -> None:
-    """Persist an ActionLog row; raise on failure so callers can fail-closed.
-
-    For now (echo / pre-P6.4) we do not actually touch the database —
-    we *log* the audit intent at INFO so the trail is visible in
-    ``journalctl`` / local logs. The real repository call ships in
-    P6.5 (carabiner/db/repositories.py:327 ``create_action_log``).
-    """
-    logger.info(
-        "audit card=%s status=%s context=%s module=%s action=%s itemId=%s",
-        card.get("id"),
-        status,
-        context,
-        card.get("module"),
-        card.get("action"),
-        card.get("itemId"),
-    )

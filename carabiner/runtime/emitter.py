@@ -18,6 +18,11 @@ Default namespace is ``/ws`` — the same namespace the frontend
 subscribes to. Do **not** emit to ``/state_sync``; nothing listens
 there and the cards will be silently dropped (see the comment in
 ``python/tools/action_card.py:147``).
+
+All three emit helpers are ``async def`` because ``python-socketio``'s
+``AsyncServer.emit`` is a coroutine. Forgetting to ``await`` produces
+a RuntimeWarning ("coroutine was never awaited") and the event never
+reaches the client.
 """
 
 from __future__ import annotations
@@ -45,12 +50,14 @@ def make_envelope(
     }
 
 
-def emit_state_push(
+async def emit_state_push(
     sio: Any,
     context: str,
     snapshot: Dict[str, Any],
     correlation_id: Optional[str] = None,
     sid: Optional[str] = None,
+    runtime_epoch: Optional[str] = None,
+    seq: Optional[int] = None,
     namespace: str = DEFAULT_NAMESPACE,
 ) -> str:
     """Emit a ``state_push`` event with the full snapshot.
@@ -58,20 +65,32 @@ def emit_state_push(
     Returns the event id (useful for logging / tests).
     Pass ``sid`` to target a single connected client; ``None`` means
     "broadcast to everyone on the namespace".
+
+    The data envelope includes ``snapshot``, ``context``,
+    ``runtime_epoch``, and ``seq`` so the frontend's
+    ``A0StatePush.data`` shape (see ``frontend/src/lib/types.ts:55-66``)
+    is satisfied directly. The frontend expects both a snapshot and
+    the sequence/epoch metadata inside the data dict — without them
+    the client can't reconcile broadcasts.
     """
     envelope = make_envelope(
         handler_id="bridge.state",
-        data={"snapshot": snapshot, "context": context},
+        data={
+            "snapshot": snapshot,
+            "context": context,
+            "runtime_epoch": runtime_epoch or "",
+            "seq": seq if seq is not None else 0,
+        },
         correlation_id=correlation_id,
     )
     if sid is not None:
-        sio.emit("state_push", envelope, to=sid, namespace=namespace)
+        await sio.emit("state_push", envelope, to=sid, namespace=namespace)
     else:
-        sio.emit("state_push", envelope, namespace=namespace)
+        await sio.emit("state_push", envelope, namespace=namespace)
     return envelope["eventId"]
 
 
-def emit_action_card(
+async def emit_action_card(
     sio: Any,
     card: Dict[str, Any],
     correlation_id: Optional[str] = None,
@@ -91,13 +110,13 @@ def emit_action_card(
         correlation_id=correlation_id,
     )
     if sid is not None:
-        sio.emit("action_card", envelope, to=sid, namespace=namespace)
+        await sio.emit("action_card", envelope, to=sid, namespace=namespace)
     else:
-        sio.emit("action_card", envelope, namespace=namespace)
+        await sio.emit("action_card", envelope, namespace=namespace)
     return envelope["eventId"]
 
 
-def emit_card_reply(
+async def emit_card_reply(
     sio: Any,
     card_id: str,
     text: str,
@@ -112,7 +131,7 @@ def emit_card_reply(
         correlation_id=correlation_id,
     )
     if sid is not None:
-        sio.emit("card_reply", envelope, to=sid, namespace=namespace)
+        await sio.emit("card_reply", envelope, to=sid, namespace=namespace)
     else:
-        sio.emit("card_reply", envelope, namespace=namespace)
+        await sio.emit("card_reply", envelope, namespace=namespace)
     return envelope["eventId"]
