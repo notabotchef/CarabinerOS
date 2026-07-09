@@ -28,7 +28,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from fastapi import Cookie, FastAPI, Header, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from carabiner.chat_store import chat_store  # singleton instance, not the module
@@ -115,6 +115,75 @@ def create_app(
     cookie_name = security.csrf_token_cookie_name(runtime_id)
 
     app = FastAPI(title="Carabiner Bridge", version=cfg.extra.get("CARABINER_RUNTIME_VERSION", "0.1.0"))
+
+    # ---- / (landing) -------------------------------------------------------
+    # Phone browsers open the bare tunnel host at "/". Without this route
+    # FastAPI returns {"detail":"Not Found"} — which looks like the site is
+    # broken even when the bridge is healthy. Serve a small HTML index.
+
+    @app.get("/", response_class=HTMLResponse)
+    async def root() -> str:
+        health = {
+            "ok": True,
+            "runtime": cfg.runtime,
+            "hermes_reachable": False,
+        }
+        if cfg.runtime == "hermes":
+            try:
+                import httpx  # type: ignore
+
+                async with httpx.AsyncClient(timeout=0.5) as client:
+                    url = cfg.hermes_base_url.rstrip("/") + "/v1/models"
+                    headers = (
+                        {"Authorization": f"Bearer {cfg.api_server_key}"}
+                        if cfg.api_server_key
+                        else {}
+                    )
+                    r = await client.get(url, headers=headers)
+                    health["hermes_reachable"] = r.status_code < 500
+            except Exception:  # pragma: no cover - network
+                health["hermes_reachable"] = False
+
+        links = [
+            ("/api/health", "Health JSON"),
+            ("/csrf_token", "CSRF token"),
+            ("/api/orders", "Orders (needs CSRF header for some clients)"),
+            ("/api/inventory", "Inventory"),
+            ("/api/menu", "Menu"),
+            ("/api/recipes", "Recipes"),
+            ("/docs", "OpenAPI docs (Swagger)"),
+        ]
+        items = "\n".join(
+            f'<li><a href="{href}">{label}</a></li>' for href, label in links
+        )
+        return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CarabinerOS Bridge</title>
+  <style>
+    body {{ font-family: system-ui, sans-serif; margin: 2rem; max-width: 40rem;
+           line-height: 1.45; color: #111; background: #fafafa; }}
+    code {{ background: #eee; padding: 0.1em 0.35em; border-radius: 4px; }}
+    .ok {{ color: #0a7; font-weight: 600; }}
+    .warn {{ color: #b70; font-weight: 600; }}
+  </style>
+</head>
+<body>
+  <h1>CarabinerOS Bridge</h1>
+  <p class="ok">Bridge is up.</p>
+  <p>Runtime: <code>{health["runtime"]}</code> ·
+     Hermes reachable: <code class="{"ok" if health["hermes_reachable"] else "warn"}">{health["hermes_reachable"]}</code></p>
+  <p>Open one of these (not the bare domain alone if you only want JSON):</p>
+  <ul>
+    {items}
+  </ul>
+  <p><small>If you previously saw <code>{{"detail":"Not Found"}}</code> on
+  this host, that was FastAPI 404 for <code>/</code> — the tunnel was fine.</small></p>
+</body>
+</html>
+"""
 
     # ---- /csrf_token -------------------------------------------------------
 
