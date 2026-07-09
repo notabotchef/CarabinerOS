@@ -235,10 +235,10 @@ def create_app(
         context = body.context or _generate_context_id()
         # Append user log + persist.
         store.append_user_log(context, body.text)
-        # Fire-and-forget the echo work so the HTTP response returns
-        # the context immediately. The echo work itself goes through
-        # the always-finally progress gate (state.set_progress).
-        asyncio.create_task(_echo_run(cfg, store, context, body.text))
+        # Fire-and-forget the assistant run so the HTTP response returns
+        # the context immediately. Progress flag is always cleared in
+        # finally (state.set_progress) so the spinner never sticks.
+        asyncio.create_task(_assistant_run(cfg, store, context, body.text))
         return {"context": context}
 
     # ---- /chat_create ------------------------------------------------------
@@ -317,38 +317,106 @@ def _generate_context_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
-async def _echo_run(
+async def _assistant_run(
     cfg: runtime_config.RuntimeConfig,
     store: runtime_state.SnapshotStore,
     context: str,
     text: str,
 ) -> None:
-    """The canned echo run — exercised in echo runtime and in tests.
+    """Drive Hermes (or EchoClient) and grow a single assistant log entry.
 
     Always sets ``log_progress_active=True`` at the start and resets
     it to ``False`` in a ``finally`` block (the Fable audit invariant).
     A single response log entry is created and its content is grown
-    in place to model the streaming shape the hermes client will
-    produce.
+    in place so the frontend dedups by ``no-{no}``.
     """
+    from carabiner.runtime.hermes import HermesUnavailable, get_client
+
     store.set_progress(context, True)
+    client = None
+    full_parts: List[str] = []
+    no: Optional[int] = None
     try:
-        await asyncio.sleep(0.1)  # simulate work
+        client = get_client(cfg.runtime, cfg.hermes_base_url, cfg.api_server_key)
         entry = store.begin_assistant_log(context)
-        no = entry["no"]
-        canned = f"echo: {text}"
-        # Stream the canned response in a few chunks so the
-        # in-place-growth invariant is observable.
-        for chunk in (canned[i : i + 4] for i in range(0, len(canned), 4)):
-            store.append_assistant_delta(context, no, chunk)
-            await asyncio.sleep(0.01)
-        # Persist the final assistant text.
+        no = int(entry["no"])
+        model = cfg.hermes_model or None
         try:
-            chat_store.add_message(context, "assistant", canned)
+            async for kind, payload in client.stream(
+                text, session_id=context, model=model
+            ):
+                if kind == "text" and payload:
+                    full_parts.append(payload)
+                    store.append_assistant_delta(context, no, payload)
+                    await _broadcast_state(store, context, final=False)
+                elif kind == "done":
+                    break
+        except HermesUnavailable as exc:
+            apology = (
+                "Sorry — the Hermes intelligence backend is temporarily "
+                f"unavailable ({exc}). Try again in a moment."
+            )
+            full_parts = [apology]
+            if no is not None:
+                store.finalize_assistant_log(context, no, apology)
+            logger.warning("hermes stream failed for context=%s: %s", context, exc)
+
+        final = "".join(full_parts)
+        if no is not None and final:
+            store.finalize_assistant_log(context, no, final)
+        try:
+            if final:
+                chat_store.add_message(context, "assistant", final)
         except Exception as exc:  # pragma: no cover - defensive
             logger.debug("persist assistant message failed: %s", exc)
+    except Exception as exc:  # pragma: no cover - never leave spinner stuck
+        logger.exception("assistant run crashed for context=%s: %s", context, exc)
+        try:
+            entry = store.begin_assistant_log(context)
+            store.finalize_assistant_log(
+                context,
+                int(entry["no"]),
+                f"Sorry — chat failed: {exc}",
+            )
+        except Exception:
+            pass
     finally:
         store.set_progress(context, False)
+        await _broadcast_state(store, context, final=True)
+        if client is not None:
+            try:
+                await client.aclose()
+            except Exception:  # pragma: no cover
+                pass
+
+
+async def _broadcast_state(
+    store: runtime_state.SnapshotStore, context: str, *, final: bool
+) -> None:
+    """Best-effort state_push so the UI sees streaming updates.
+
+    No-ops when the socket layer hasn't registered a server (unit tests).
+    Intermediate pushes respect the ~200ms throttle; final always emits.
+    """
+    try:
+        from carabiner.runtime import sockets as runtime_sockets
+        from carabiner.runtime import emitter as runtime_emitter
+
+        sio = runtime_sockets.get_active_server()
+        if sio is None:
+            return
+        if not final and not store.should_emit(context):
+            return
+        snapshot = store.to_snapshot(context)
+        await runtime_emitter.emit_state_push(
+            sio,
+            context,
+            snapshot,
+            runtime_epoch=store.runtime_epoch,
+            seq=store.seq_base,
+        )
+    except Exception as exc:  # pragma: no cover - never fail the run for UI
+        logger.debug("state_push broadcast skipped: %s", exc)
 
 
 # ---- module-level singleton -------------------------------------------------

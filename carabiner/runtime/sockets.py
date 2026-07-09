@@ -43,6 +43,15 @@ from carabiner.runtime import state as runtime_state
 
 logger = logging.getLogger(__name__)
 
+# Process-wide AsyncServer so HTTP message runs can broadcast state_push.
+_active_server = None  # type: ignore[var-annotated]
+
+
+def get_active_server():
+    """Return the live AsyncServer, if any (None in pure-HTTP unit tests)."""
+    return _active_server
+
+
 
 # Card status lifecycle strings — match the A0 convention so the
 # frontend's ``use-action-cards.ts`` doesn't need a second source of
@@ -70,6 +79,7 @@ def build_server(
     assert cfg is not None and store is not None  # nosec
 
     runtime_id = security.derive_runtime_id(cfg.bridge_secret_key)
+    global _active_server
     server = socketio.AsyncServer(
         async_mode=async_mode,
         cors_allowed_origins="*",
@@ -77,6 +87,7 @@ def build_server(
         logger=False,
         engineio_logger=False,
     )
+    _active_server = server
 
     # ---- /ws namespace handlers ------------------------------------------
 
@@ -251,7 +262,7 @@ def build_server(
             return {"ok": False, "error": "missing_fields", "correlationId": correlation_id}
         # Echo the reply back; real routing (LLM read of card context
         # → answer text) is added in P6.4.
-        await emitter.emit_card_reply(server, card_id, f"echo: {text}", correlation_id=correlation_id, sid=sid)
+        await emitter.emit_card_reply(server, card_id, text, correlation_id=correlation_id, sid=sid)
         return {"ok": True, "correlationId": correlation_id}
 
     return server
