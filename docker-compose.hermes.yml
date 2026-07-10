@@ -95,7 +95,7 @@ services:
     volumes:
       - ./nginx.hermes.conf:/etc/nginx/nginx.conf:ro
     ports:
-      - "8080:80"
+      - "8090:80"
     depends_on:
       - bridge
       - frontend
