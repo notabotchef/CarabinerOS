@@ -86,4 +86,4 @@ def test_nginx_exposes_8080() -> None:
     parsed = json.loads(result.stdout)
     nginx = parsed["services"]["nginx"]
     ports = nginx.get("ports", [])
-    assert any("8080" in str(p) for p in ports), f"nginx must expose :8080, got {ports}"
+    assert any("8090" in str(p) for p in ports), f"nginx must expose :8090, got {ports}"
