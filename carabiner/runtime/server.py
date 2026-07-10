@@ -82,9 +82,25 @@ def create_app(
 
     @asynccontextmanager
     async def _composed_lifespan(app: Any):
+        # Start the brief scheduler alongside FastMCP so it shares the
+        # bridge's event loop and the live socketio server.
+        from carabiner.runtime.brief_config import BriefConfig
+        from carabiner.runtime.brief_scheduler import get_scheduler
+
+        scheduler = get_scheduler(BriefConfig.from_env())
         async with _mcp_lifespan(app):
-            async with existing(app):
-                yield
+            try:
+                await scheduler.start()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("brief_scheduler: failed to start: %s", exc)
+            try:
+                async with existing(app):
+                    yield
+            finally:
+                try:
+                    await scheduler.stop()
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("brief_scheduler: failed to stop: %s", exc)
 
     fastapi_app.router.lifespan_context = _composed_lifespan
 
