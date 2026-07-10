@@ -22,6 +22,19 @@ mkdir -p "$SKILL_DST"
 cp "$ROOT/hermes/SOUL.md" "$HOME_DIR/SOUL.md"
 cp "$SKILL_SRC/SKILL.md" "$SKILL_DST/SKILL.md"
 
+# CarabinerOS also ships a location-context skill. Seed it if present.
+LCTX_SRC="$ROOT/hermes/skills/carabineros-location-context"
+LCTX_DST="$HOME_DIR/skills/carabineros-location-context"
+if [ -f "$LCTX_SRC/SKILL.md" ]; then
+  mkdir -p "$LCTX_DST"
+  cp "$LCTX_SRC/SKILL.md" "$LCTX_DST/SKILL.md"
+  grep -q "carabineros-location-context" "$LCTX_DST/SKILL.md" || {
+    echo "FAIL: seeded location-context skill is malformed" >&2
+    exit 1
+  }
+  echo "Seeded: $LCTX_DST/SKILL.md"
+fi
+
 # Light assertions so a silent copy failure is impossible.
 grep -q "CarabinerOS" "$HOME_DIR/SOUL.md" || {
   echo "FAIL: seeded SOUL.md does not contain CarabinerOS" >&2
