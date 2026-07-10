@@ -22,8 +22,9 @@ Handlers (in this order):
 - ``card_message``         — emit ``card_reply`` (assistant text back
                               to the originating card).
 
-This module replaces the A0-side no-ops at
-``python/websocket_handlers/state_sync_handler/action_cards_handler.py:107-109``.
+This module replaces the A0-side no-ops that used to live at
+``python/websocket_handlers/state_sync_handler/action_cards_handler.py:107-109``
+(removed during the Hermes migration).
 """
 
 from __future__ import annotations
@@ -174,8 +175,9 @@ def build_server(
         # ---- delegate to cards.commit for the real lifecycle ---------
         # cards.py keeps its own _REGISTRY; if this card originated
         # from the MCP surface, it's already there. If it originated
-        # via the legacy action_card emit path (python/tools/action_card.py),
-        # we seed it here from the snapshot-store notification.
+        # via the legacy Agent-Zero action_card emit path (removed
+        # during the Hermes migration), we seed it here from the
+        # snapshot-store notification.
         try:
             from carabiner.runtime import cards as cards_mod
         except ImportError as exc:  # pragma: no cover

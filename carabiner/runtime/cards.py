@@ -1,12 +1,10 @@
 """Card lifecycle for the bridge.
 
-Replaces the Agent-Zero-side no-op at
-``python/websocket_handlers/state_sync_handler/action_cards_handler.py:107-109``
-with real lifecycle behaviour.
-
-Card payload shape is verbatim from ``python/tools/action_card.py:127-143``:
-    {id, type, module, action, summary, detail, itemId, chatId, changes[],
-     stats[], priority, deadline, status, timestamp, source}
+Canonical action-card shape lives here (see :data:`CANONICAL_FIELDS` and the
+``ActionCard`` dict built by :func:`_summary` + :func:`propose`). The shape was
+inherited from the legacy Agent-Zero ``python/tools/action_card.py:127-143``
+and ``python/websocket_handlers/state_sync_handler/action_cards_handler.py``
+which were removed during the Hermes migration.
 
 Lifecycle:
 

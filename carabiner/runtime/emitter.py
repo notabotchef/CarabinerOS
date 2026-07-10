@@ -16,8 +16,9 @@ The frontend (``frontend/src/lib/socket-client.ts``) unwraps
 
 Default namespace is ``/ws`` — the same namespace the frontend
 subscribes to. Do **not** emit to ``/state_sync``; nothing listens
-there and the cards will be silently dropped (see the comment in
-``python/tools/action_card.py:147``).
+there and the cards will be silently dropped (the Agent-Zero ``/state_sync``
+namespace was the convention under the legacy ``python/tools/action_card.py``
+emit path which was removed during the Hermes migration).
 
 All three emit helpers are ``async def`` because ``python-socketio``'s
 ``AsyncServer.emit`` is a coroutine. Forgetting to ``await`` produces

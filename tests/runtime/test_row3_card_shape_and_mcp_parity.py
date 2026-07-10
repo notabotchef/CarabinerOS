@@ -5,7 +5,8 @@ or any LLM. They verify two invariants the inventory called out:
 
 1. ``carabiner.runtime.cards.propose()`` returns a dict whose shape
    is byte-for-byte compatible with the legacy A0 action-card shape
-   at ``python/tools/action_card.py:127-143``:
+   that lived at ``python/tools/action_card.py:127-143`` (removed
+   during the Hermes migration):
 
        {id, type, module, action, summary, detail, itemId, chatId,
         changes[], stats[], priority, deadline, status, timestamp,

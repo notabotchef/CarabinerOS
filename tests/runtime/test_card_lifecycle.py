@@ -3,7 +3,9 @@
 Verifies the propose → commit → dismiss lifecycle on
 :mod:`carabiner.runtime.cards` including:
 
-- the exact card dict shape from ``python/tools/action_card.py:127-143``
+- the canonical card dict shape (see :data:`CANONICAL_FIELDS` in
+  ``tests/runtime/test_row3_card_shape_and_mcp_parity.py`` and the
+  ``ActionCard`` built by :func:`carabiner.runtime.cards.propose`)
 - idempotent commit (second call returns existing, no second mutation)
 - AUDIT_REQUIRED fail-closed
 - policy re-check on commit
