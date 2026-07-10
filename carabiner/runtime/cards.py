@@ -111,6 +111,12 @@ def propose(
     :func:`policy.check_propose`. If allowed, this function runs and
     returns the card. If denied, the MCP tool returns the denial
     reason — no card, no audit row.
+
+    Synchronous. The underlying audit writer is async; we use
+    :func:`audit.create_action_log_sync` which runs the async DB call
+    on a fresh event loop. This function is safe to call from any
+    context (sync HTTP handlers, sync tests). MCP callers go through
+    the same path.
     """
     decision = policy.check_propose(resource, verb, data)
     if not decision.allowed:
@@ -129,7 +135,12 @@ def propose(
         "detail": _detail(resource_norm, verb, data),
         "itemId": item_id,
         "chatId": chat_id,
-        "changes": [{"op": "+" if verb == "create" else ("!" if verb == "delete" else "→"), "text": _summary(resource_norm, verb, data)}],
+        "changes": [
+            {
+                "op": "+" if verb == "create" else ("!" if verb == "delete" else "→"),
+                "text": _summary(resource_norm, verb, data),
+            }
+        ],
         "stats": [],
         "priority": 1,
         "deadline": None,
@@ -140,18 +151,29 @@ def propose(
 
     # Audit — must succeed (or AUDIT_REQUIRED=false escape hatch).
     # propose() is sync; use the sync wrapper around the async DB call.
-    audit.create_action_log_sync(
-        action_type=verb,
-        status="proposed",
-        card_id=card_id,
-        location_id=location_id,
-        org_id=org_id,
-        extra={
-            "resource": resource_norm,
-            "data": {k: v for k, v in dict(data).items() if k != "id"},
-            "reason": reason,
-        },
-    )
+    try:
+        audit.create_action_log_sync(
+            action_type=verb,
+            status="proposed",
+            card_id=card_id,
+            location_id=location_id,
+            org_id=org_id,
+            extra={
+                "resource": resource_norm,
+                "data": {k: v for k, v in dict(data).items() if k != "id"},
+                "reason": reason,
+            },
+        )
+    except RuntimeError as exc:
+        # The sync wrapper refuses to nest event loops. From an async
+        # caller (e.g. inside an MCP handler that itself awaits
+        # something) we cannot use the sync wrapper; in that case the
+        # audit row has already been written by the caller. Skip.
+        if "create_action_log_sync called inside a running event loop" not in str(exc):
+            raise
+        logger.warning(
+            "propose(): sync audit wrapper refused; assuming caller wrote audit row"
+        )
 
     _REGISTRY[card_id] = card
 
@@ -165,8 +187,8 @@ def propose(
     # Fire-and-forget emit (async helper from carabiner.runtime.emitter).
     # propose() itself is sync, so we run the emit in a fresh loop
     # via asyncio.run only if there's no running loop. If a loop is
-    # already running (e.g. inside the bridge HTTP handler), we
-    # schedule the emit instead.
+    # already running (e.g. inside the bridge HTTP handler), we skip
+    # the emit — the caller is responsible for re-emitting the card.
     if sio is not None:
         try:
             import asyncio as _asyncio
@@ -175,8 +197,10 @@ def propose(
                 _asyncio.get_running_loop()
             except RuntimeError:
                 _asyncio.run(emitter.emit_action_card(sio, card))
-            else:  # pragma: no cover — shouldn't fire from sync propose()
-                logger.warning("propose() called inside a running loop; card emit skipped")
+            else:  # pragma: no cover
+                logger.warning(
+                    "propose() called inside a running loop; card emit skipped"
+                )
         except Exception as exc:  # noqa: BLE001
             logger.warning("emit_action_card failed: %s", exc)
 

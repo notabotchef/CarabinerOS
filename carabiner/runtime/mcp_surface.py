@@ -220,6 +220,36 @@ def _register_tools(mcp: Any) -> None:
             )
             return json.dumps({"status": "denied", "reason": str(exc)})
 
+        # ``cards.propose()`` is sync and its audit writer refuses to
+        # nest event loops. We are *inside* a running loop (this MCP
+        # handler is async). Write the audit row here directly via the
+        # async path so AUDIT_REQUIRED=true actually fails closed.
+        try:
+            from . import audit as audit_mod
+
+            await audit_mod.create_action_log(
+                action_type=verb,
+                status="proposed",
+                card_id=card["id"],
+                extra={
+                    "resource": resource,
+                    "data": {k: v for k, v in dict(parsed).items() if k != "id"},
+                    "reason": reason or "no reason provided",
+                    "source": "hermes-bridge",
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            # AUDIT_REQUIRED=true (default) — refuse to return success
+            # if the audit row couldn't be written.
+            logger.error("audit write failed: %s", exc)
+            return json.dumps(
+                {
+                    "status": "error",
+                    "reason": f"audit_required_and_failed: {exc}",
+                    "card": card,
+                }
+            )
+
         record_tool_invocation(
             run_id or "orphan",
             "carabiner_propose_write",
