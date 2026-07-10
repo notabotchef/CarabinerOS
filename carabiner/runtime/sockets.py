@@ -260,9 +260,17 @@ def build_server(
         correlation_id = data.get("correlationId") or ""
         if not card_id or not text:
             return {"ok": False, "error": "missing_fields", "correlationId": correlation_id}
-        # Echo the reply back; real routing (LLM read of card context
-        # → answer text) is added in P6.4.
-        await emitter.emit_card_reply(server, card_id, text, correlation_id=correlation_id, sid=sid)
+        # Real LLM round-trip: stream the Hermes response and emit each
+        # text delta as a card_reply event so the frontend can show the
+        # assistant typing into the card's reply box. Echo-only was
+        # the legacy behaviour; replaced in Row #3.
+        await _card_message_llm_roundtrip(
+            server,
+            sid=sid,
+            card_id=card_id,
+            text=text,
+            correlation_id=correlation_id,
+        )
         return {"ok": True, "correlationId": correlation_id}
 
     return server
@@ -294,3 +302,80 @@ async def _safe_emit_state_push(
     except Exception as exc:  # pragma: no cover - transport
         logger.warning("state_push emit failed: %s", exc)
         return ""
+
+
+async def _card_message_llm_roundtrip(
+    server: socketio.AsyncServer,
+    *,
+    sid: str,
+    card_id: str,
+    text: str,
+    correlation_id: str,
+) -> None:
+    """Stream a Hermes response into card_reply events.
+
+    Drives the Hermes gateway (or EchoClient fallback) the same way
+    :func:`carabiner.runtime.http_api._assistant_run` does for chat.
+    On failure we emit a single apology ``card_reply`` so the
+    frontend never sees an empty reply.
+
+    The handler that owns ``card_commit`` / ``card_dismiss`` (the one
+    just above) is left untouched; this only changes the text
+    round-trip for ``card_message``.
+    """
+    try:
+        from carabiner.runtime.hermes import HermesUnavailable, get_client
+        from carabiner.runtime import runtime_config
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("card_message: hermes client unavailable: %s", exc)
+        await emitter.emit_card_reply(
+            server, card_id,
+            f"Sorry — chat backend unavailable: {exc}",
+            correlation_id=correlation_id, sid=sid,
+        )
+        return
+
+    try:
+        cfg = runtime_config.get_config()
+        client = get_client(cfg.runtime, cfg.hermes_base_url, cfg.api_server_key)
+    except Exception as exc:  # pragma: no cover
+        logger.warning("card_message: get_client failed: %s", exc)
+        await emitter.emit_card_reply(
+            server, card_id,
+            f"Sorry — could not start chat: {exc}",
+            correlation_id=correlation_id, sid=sid,
+        )
+        return
+
+    full_parts: List[str] = []
+    try:
+        async for kind, payload in client.stream(
+            text, session_id=card_id, model=(cfg.hermes_model or None)
+        ):
+            if kind == "text" and payload:
+                full_parts.append(payload)
+                await emitter.emit_card_reply(
+                    server, card_id, payload,
+                    correlation_id=correlation_id, sid=sid,
+                )
+            elif kind == "done":
+                break
+    except HermesUnavailable as exc:
+        logger.warning("card_message: hermes unavailable: %s", exc)
+        await emitter.emit_card_reply(
+            server, card_id,
+            f"Sorry — Hermes is temporarily unavailable ({exc}).",
+            correlation_id=correlation_id, sid=sid,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("card_message: stream crashed: %s", exc)
+        await emitter.emit_card_reply(
+            server, card_id,
+            f"Sorry — card message failed: {exc}",
+            correlation_id=correlation_id, sid=sid,
+        )
+    finally:
+        try:
+            await client.aclose()
+        except Exception:  # pragma: no cover
+            pass

@@ -87,7 +87,8 @@ def test_carabiner_read_returns_slimmed_json() -> None:
 
 def test_carabiner_propose_write_allowed_returns_awaiting_approval() -> None:
     fake_card = {"id": "card-1", "status": "proposed", "module": "orders", "action": "create"}
-    with patch("carabiner.runtime.cards.propose", return_value=fake_card) as mock_propose:
+    with patch("carabiner.runtime.cards.propose", return_value=fake_card) as mock_propose, \
+         patch("carabiner.runtime.audit.create_action_log", new=AsyncMock(return_value=None)) as mock_audit:
         mcp = mcp_surface.get_mcp()
         tool = mcp._tool_manager._tools["carabiner_propose_write"]
         result = _run(
@@ -103,6 +104,7 @@ def test_carabiner_propose_write_allowed_returns_awaiting_approval() -> None:
     assert parsed["status"] == "awaiting_approval"
     assert parsed["card"]["id"] == "card-1"
     mock_propose.assert_called_once()
+    mock_audit.assert_awaited_once()
 
 
 def test_carabiner_propose_write_denied_returns_denial_reason() -> None:
