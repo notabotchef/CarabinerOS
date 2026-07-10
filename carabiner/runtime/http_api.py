@@ -329,13 +329,34 @@ async def _assistant_run(
     it to ``False`` in a ``finally`` block (the Fable audit invariant).
     A single response log entry is created and its content is grown
     in place so the frontend dedups by ``no-{no}``.
+
+    The stream parser yields three event kinds:
+
+    - ``"text"`` — operator-visible delta. Appended to the assistant
+      log, broadcast as ``state_push``.
+    - ``"thinking"`` — content inside a ``<think>...</think>`` block.
+      Routed to the bridge's debug logger AND emitted on a separate
+      Socket.IO ``state_thinking`` event. NEVER added to the chat
+      log array (the bug this function exists to prevent).
+    - ``"done"`` — terminator.
     """
     from carabiner.runtime.hermes import HermesUnavailable, get_client
+    from carabiner.runtime import chef_flavors
 
     store.set_progress(context, True)
     client = None
     full_parts: List[str] = []
     no: Optional[int] = None
+    # Open the InlineTicket above this turn with a chef-flavor filler so
+    # the operator sees the agent "working" before any text arrives.
+    # The heading is sampled deterministically per (context, no) so the
+    # same flavor doesn't repeat within a turn.
+    try:
+        opener_heading = chef_flavors.sample(context, salt=f"turn:{int(time.time())}")
+        store.append_tool_log(context, opener_heading, tool_name="chef-flavor")
+        await _broadcast_state(store, context, final=False)
+    except Exception:  # pragma: no cover - opener must never block
+        pass
     try:
         client = get_client(cfg.runtime, cfg.hermes_base_url, cfg.api_server_key)
         entry = store.begin_assistant_log(context)
@@ -349,6 +370,11 @@ async def _assistant_run(
                     full_parts.append(payload)
                     store.append_assistant_delta(context, no, payload)
                     await _broadcast_state(store, context, final=False)
+                elif kind == "thinking":
+                    # Internal monologue — debug log + dedicated
+                    # socket event. NEVER touch the chat log array.
+                    logger.debug("agent thinking: %s", payload)
+                    await _broadcast_thinking(context, payload)
                 elif kind == "done":
                     break
         except HermesUnavailable as exc:
@@ -417,6 +443,28 @@ async def _broadcast_state(
         )
     except Exception as exc:  # pragma: no cover - never fail the run for UI
         logger.debug("state_push broadcast skipped: %s", exc)
+
+
+async def _broadcast_thinking(context: str, delta: str) -> None:
+    """Best-effort emission of the ``state_thinking`` socket event.
+
+    Fired once per ``"thinking"`` delta from the stream parser. Does
+    not throttle (operators expect a live trace), and never blocks
+    the assistant run if the socket layer is unavailable.
+
+    The chat log array is intentionally NOT touched here — this is
+    the seam that prevents the verbose-narration leak bug.
+    """
+    try:
+        from carabiner.runtime import sockets as runtime_sockets
+        from carabiner.runtime import emitter as runtime_emitter
+
+        sio = runtime_sockets.get_active_server()
+        if sio is None:
+            return
+        await runtime_emitter.emit_state_thinking(sio, context, delta)
+    except Exception as exc:  # pragma: no cover - never fail the run for UI
+        logger.debug("state_thinking broadcast skipped: %s", exc)
 
 
 # ---- module-level singleton -------------------------------------------------

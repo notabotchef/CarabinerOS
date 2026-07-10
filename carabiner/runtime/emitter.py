@@ -136,3 +136,33 @@ async def emit_card_reply(
     else:
         await sio.emit("card_reply", envelope, namespace=namespace)
     return envelope["eventId"]
+
+
+async def emit_state_thinking(
+    sio: Any,
+    context: str,
+    delta: str,
+    correlation_id: Optional[str] = None,
+    sid: Optional[str] = None,
+    namespace: str = DEFAULT_NAMESPACE,
+) -> str:
+    """Emit a ``state_thinking`` event for agent internal monologue.
+
+    This is the operator-visible debug sink for content produced
+    inside ``<think>...</think>`` blocks (the model wrapping its own
+    tool-selection narration). It is a SEPARATE socket event from
+    ``state_push``; the chat log array is NEVER mutated for these
+    deltas. Clients (e.g. a "thinking trace" panel) that want to
+    surface them can subscribe to this event without seeing them
+    leak into the chat log.
+    """
+    envelope = make_envelope(
+        handler_id="bridge.thinking",
+        data={"context": context, "delta": delta},
+        correlation_id=correlation_id,
+    )
+    if sid is not None:
+        await sio.emit("state_thinking", envelope, to=sid, namespace=namespace)
+    else:
+        await sio.emit("state_thinking", envelope, namespace=namespace)
+    return envelope["eventId"]
