@@ -132,7 +132,7 @@ export interface ActionCard {
   deadline?: string;
   status: ActionCardStatus;
   timestamp: number;
-  source: "reactive" | "proactive";
+  source: "reactive" | "proactive" | "scheduled-brief";
   chatId?: string;
   suggestedAction?: string;
   suggestedChips?: string[];
