@@ -231,8 +231,11 @@ def test_propose_audit_failure_returns_error_status() -> None:
          patch("carabiner.runtime.audit.create_action_log", new=_boom):
         mcp = mcp_surface.get_mcp()
         tool = mcp._tool_manager._tools["carabiner_propose_write"]
-        # The MCP tool handler is async; we must await it.
-        result = asyncio.get_event_loop().run_until_complete(
+        # The MCP tool handler is async; we must await it. asyncio.run
+        # creates a fresh loop so we don't conflict with pytest-asyncio's
+        # loop scope. This matches the existing _run helper in
+        # test_read_flow.py.
+        result = asyncio.run(
             tool.fn(
                 resource="orders",
                 verb="create",
