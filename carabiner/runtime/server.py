@@ -23,6 +23,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+from contextlib import asynccontextmanager
 from typing import Any, Optional
 
 import uvicorn  # type: ignore
@@ -63,6 +64,30 @@ def create_app(
     # Build the FastAPI app (HTTP routes).
     fastapi_app = http_api.create_app(cfg=cfg, store=store)
 
+    # Drive the FastMCP session-manager lifespan from FastAPI's lifespan.
+    # Without this, FastMCP's StreamableHTTPSessionManager raises
+    # "Task group is not initialized" because uvicorn only runs the
+    # outer (FastAPI) lifespan — the mounted sub-app's lifespan is
+    # never entered.
+    @asynccontextmanager
+    async def _mcp_lifespan(app: Any):
+        from carabiner.runtime.mcp_surface import get_mcp
+
+        mcp = get_mcp()
+        async with mcp.session_manager.run():
+            yield
+
+    # Replace any existing lifespan with the composed one.
+    existing = fastapi_app.router.lifespan_context
+
+    @asynccontextmanager
+    async def _composed_lifespan(app: Any):
+        async with _mcp_lifespan(app):
+            async with existing(app):
+                yield
+
+    fastapi_app.router.lifespan_context = _composed_lifespan
+
     # Mount the socket.io ASGI app at /socket.io.
     sio_asgi = _build_socketio_app(cfg, store)
     fastapi_app.mount("/socket.io", sio_asgi)
@@ -75,16 +100,23 @@ def create_app(
     # Mount the scoped 2-tool MCP surface at /mcp. Tries
     # ``streamable_http_app()`` first; falls back to ``sse_app()``
     # if the installed mcp package predates streamable-http.
+    #
+    # Mount at the trailing-slash path (``/mcp/``) so Starlette does
+    # not redirect bare ``/mcp`` → ``/mcp/`` and lose the inner route
+    # match. FastMCP's streamable_http_app returns a Starlette app with
+    # its inner routes at ``/mcp`` (no slash). The trailing-slash mount
+    # makes the redirect a no-op and lets the inner router see every
+    # request.
     try:
         from carabiner.runtime.mcp_surface import streamable_http_app
 
-        fastapi_app.mount("/mcp", streamable_http_app())
+        fastapi_app.mount("/mcp/", streamable_http_app())
     except Exception as exc:  # noqa: BLE001
         logger.warning("streamable_http_app mount failed (%s); falling back to sse_app", exc)
         try:
             from carabiner.runtime.mcp_surface import sse_app
 
-            fastapi_app.mount("/mcp", sse_app())
+            fastapi_app.mount("/mcp/", sse_app())
         except Exception as exc2:  # noqa: BLE001
             logger.error("mcp surface could not be mounted (%s); /mcp returns 503", exc2)
 

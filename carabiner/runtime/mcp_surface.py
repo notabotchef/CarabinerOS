@@ -69,12 +69,30 @@ _mcp_instance: Any | None = None
 
 
 def get_mcp() -> Any:
-    """Return the FastMCP instance, building it on first call."""
+    """Return the FastMCP instance, building it on first call.
+
+    ``streamable_http_path="/"`` makes the inner Starlette app route at
+    root, which is what we need for ``Mount("/mcp/", ...)`` to forward
+    correctly: Starlette strips the ``/mcp/`` prefix when forwarding
+    into the sub-app, and the inner route matches at ``/``.
+    """
     global _mcp_instance
     if _mcp_instance is None:
         from mcp.server.fastmcp import FastMCP
 
-        _mcp_instance = FastMCP("carabiner_bridge", json_response=True)
+        _mcp_instance = FastMCP(
+            "carabiner_bridge",
+            json_response=True,
+            streamable_http_path="/",
+            # Disable the StreamableHTTPSessionManager task group. When
+            # the FastMCP app is mounted inside another ASGI app (our
+            # FastAPI), the outer uvicorn does not run FastMCP's
+            # lifespan, so the task group is never initialised.
+            # stateless_http=True makes the manager dispatch to
+            # _handle_stateless_request, which does not require the
+            # task group. Suitable for our read+propose MCP surface.
+            stateless_http=True,
+        )
         _register_tools(_mcp_instance)
     return _mcp_instance
 
