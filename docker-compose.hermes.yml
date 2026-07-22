@@ -66,6 +66,12 @@ services:
       - ./var/hermes-home:/opt/data
     ports:
       - "8642:8642"
+    # 2026-07-15: was implicit ~169MB (cgroup default) and OOM-137'd at 8h ago.
+    # Raise to 2g. Hermetic dev used echo; real hermes with multiple providers
+    # needs headroom for import-time model registry loading.
+    mem_limit: 2g
+    mem_reservation: 512m
+    restart: unless-stopped
     depends_on:
       bridge:
         condition: service_healthy
