@@ -11,11 +11,29 @@ import {
 } from "lucide-react";
 
 import { MOCK_DASHBOARD } from "@/lib/mock-dashboard";
+import { useWorkspace } from "@/hooks/use-workspace";
 
 function useMounted(): boolean {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { Promise.resolve().then(() => setMounted(true)); }, []);
   return mounted;
+}
+
+/**
+ * Returns true when the user has requested reduced motion via
+ * `prefers-reduced-motion: reduce`. When active, hover springs and
+ * transition animations are disabled to avoid motion sickness.
+ */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return reduced;
 }
 
 interface KpiCard {
@@ -64,21 +82,28 @@ function withMockFallback(
   };
 }
 
-function useSummary(endpoint: string) {
-  const [data, setData] = useState<Record<string, unknown>[]>([]);
-  useEffect(() => {
-    fetch(endpoint, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => setData(Array.isArray(d) ? d : []))
-      .catch(() => setData([]));
-  }, [endpoint]);
-  return data;
+/**
+ * Shared dashboard data hook.
+ *
+ * Uses `useWorkspace` (the same hook used by the detail pages) so the
+ * dashboard cards and the detail pages read from the same API sources
+ * with the same envelope handling. This guarantees dashboard totals
+ * reconcile with page details.
+ */
+export function useDashboardSummary() {
+  const orders = useWorkspace<Record<string, unknown>>("/api/orders");
+  const foodCost = useWorkspace<Record<string, unknown>>("/api/food-cost");
+  const prep = useWorkspace<Record<string, unknown>>("/api/prep");
+  return {
+    orders: orders.data,
+    foodCost: foodCost.data,
+    prep: prep.data,
+    loading: orders.loading || foodCost.loading || prep.loading,
+  };
 }
 
 export function SolitaireCards() {
-  const orders = useSummary("/api/orders");
-  const foodCost = useSummary("/api/food-cost");
-  const prep = useSummary("/api/prep");
+  const { orders, foodCost, prep } = useDashboardSummary();
 
   const cards: KpiCard[] = useMemo(() => {
     // Orders
@@ -155,16 +180,28 @@ export function SolitaireCards() {
   }, [orders, foodCost, prep]);
 
   const mounted = useMounted();
+  const reducedMotion = useReducedMotion();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const cardVariants: Variants = {
-    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    hidden: reducedMotion
+      ? { opacity: 0 }
+      : { opacity: 0, y: 20, scale: 0.95 },
     visible: (i: number) => ({
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { delay: i * 0.08, type: "spring", stiffness: 300, damping: 30 },
+      transition: reducedMotion
+        ? { delay: i * 0.04, duration: 0.15 }
+        : { delay: i * 0.08, type: "spring", stiffness: 300, damping: 30 },
     }),
+  };
+
+  const handleKeydown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setExpandedIndex(expandedIndex === index ? null : index);
+    }
   };
 
   return (
@@ -180,9 +217,13 @@ export function SolitaireCards() {
             initial={mounted ? "hidden" : false}
             animate="visible"
             variants={cardVariants}
-            whileHover={!isOpen ? { y: -3, transition: { type: "spring" as const, stiffness: 400, damping: 25 } } : {}}
+            whileHover={!isOpen && !reducedMotion ? { y: -3, transition: { type: "spring" as const, stiffness: 400, damping: 25 } } : {}}
             onClick={() => setExpandedIndex(isOpen ? null : i)}
-            className="relative overflow-hidden bg-card border border-border rounded-xl p-4 cursor-pointer min-h-[130px] flex flex-col transition-all duration-200 hover:border-primary/20 hover:shadow-md"
+            onKeyDown={(e) => handleKeydown(e, i)}
+            role="button"
+            tabIndex={0}
+            aria-expanded={isOpen}
+            className="relative overflow-hidden bg-card border border-border rounded-xl p-4 cursor-pointer min-h-[130px] flex flex-col transition-all duration-200 hover:border-primary/20 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
             {/* Header row: icon + label */}
             <div className="flex items-center gap-2 mb-3">

@@ -59,7 +59,7 @@ CARABINER_RUNTIME="$CARABINER_RUNTIME" \
 HERMES_BASE_URL="http://localhost:${HERMES_PORT}" \
 BRIDGE_PORT="$BRIDGE_PORT" \
 DATABASE_URL="${DATABASE_URL:-}" \
-  python -m uvicorn carabiner.runtime.server:app --host 0.0.0.0 --port "$BRIDGE_PORT" &
+  python -m uvicorn carabiner.runtime.server:create_app --factory --host 0.0.0.0 --port "$BRIDGE_PORT" &
 BRIDGE_PID=$!
 
 # Optionally start hermes.
