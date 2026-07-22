@@ -52,7 +52,7 @@ openssl rand -hex 32   # paste into API_SERVER_KEY and BRIDGE_SECRET_KEY
 docker compose -f docker-compose.hermes.yml up --build -d
 
 # Open
-# CarabinerOS:  http://localhost:8080
+# CarabinerOS:  http://localhost:8090
 ```
 
 ### Local dev loop (no nginx)

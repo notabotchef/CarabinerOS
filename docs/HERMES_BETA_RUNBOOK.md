@@ -16,7 +16,7 @@ sed -i.bak "s|^BRIDGE_SECRET_KEY=.*|BRIDGE_SECRET_KEY=$(openssl rand -hex 32)|" 
 
 # 3a. Docker path (full stack)
 docker compose -f docker-compose.hermes.yml up --build -d
-# Open http://localhost:8080
+# Open http://localhost:8090
 
 # 3b. Local-dev path (no docker)
 scripts/run_hermes_beta.sh                # Ctrl-C to stop
@@ -102,7 +102,7 @@ scripts/smoke_hermes.sh
 
 ```bash
 docker compose -f docker-compose.hermes.yml up --build -d
-# Open http://localhost:8080
+# Open http://localhost:8090
 ```
 
 Health endpoints:

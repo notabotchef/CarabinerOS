@@ -1,52 +1,59 @@
 # CONTRIBUTING.md
 
-Guidelines for contributing to CarabinerOS. Whether you a joining the project for the first time or shipping your tenth feature branch, this document walks you through the setup, workflow, and conventions.
+Guidelines for contributing to CarabinerOS. The CarabinerOS beta runtime is the
+Hermes bridge under `carabiner/runtime/` (see `docs/HERMES_BETA_RUNBOOK.md`).
+The legacy Agent Zero backend is preserved under `docs/_archive/` for reference
+only; this document describes the current runtime.
 
 ## Quick Start
 
 ### 1. Fork and Clone
 
 ```bash
-git clone https://github.com/Nunezchef/AgentCarabinerOS.git
-cd AgentCarabinerOS
+git clone https://github.com/notabotchef/CarabinerOS.git
+cd CarabinerOS
 ```
 
-### 2. Initialize Submodules
+### 2. Generate Secrets
 
 ```bash
-git submodule update --init --recursive
+cp .env.example .env
+openssl rand -hex 32   # paste into API_SERVER_KEY and BRIDGE_SECRET_KEY
 ```
 
-Agent Zero is included as a git submodule. This is mandatory on first clone.
+> No submodules. The Agent Zero git submodule was removed during the Hermes
+> migration (see `docs/FABLE_REPO_REAUDIT.md`). The CarabinerOS repo is now
+> standalone.
 
 ### 3. Start the Full Stack
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.hermes.yml up --build -d
 ```
 
-This spins up four services.
+This spins up five services.
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| nginx | 8080 | Reverse proxy (main access point) |
-| Next.js frontend | 3000 | Dev server (API proxies to backend) |
-| Python backend | 5000 | Flask/Uvicorn + Socket.IO |
+| nginx | 8090 | Reverse proxy (main access point) |
+| Next.js frontend | 3000 | Dev server (API proxies to bridge) |
+| Bridge (FastAPI + Socket.IO) | 8641 | Carries the frontend contract + MCP surface |
+| Hermes gateway | 8642 | OpenAI-compatible chat API |
 | PostgreSQL | 5432 | Database |
 
 ### 4. Seed the Database (optional)
 
 ```bash
-docker compose exec agent-zero bash -c \
-  'source /opt/venv-a0/bin/activate && PYTHONPATH=/cos python -m carabiner.db.seed_realistic --no-confirm'
+bash scripts/seed_fixture_data.sh
 ```
 
-Creates 3,037 realistic records for Carabiner Tapas (March 2026 data). Without this the database is empty.
+Seeds the workspace tables (`workspace_inventory`, `workspace_invoices`,
+`workspace_food_cost`, `workspace_campaigns`, `inbox_items`) with deterministic
+fixtures. Re-runnable; idempotent on the `(org_id, item_name)` key.
 
 ### 5. Open the App
 
-- **CarabinerOS:** http://localhost:8080
-- **Agent Zero direct:** http://localhost:8080/a0/
+- **CarabinerOS:** http://localhost:8090
 
 ## Development Workflow
 
@@ -80,15 +87,21 @@ pytest tests/test_http_auth_csrf.py
 cd frontend && pnpm dev
 ```
 
-Requires the backend running on port 5000. The Next.js dev server proxies all API requests to `A0_URL` (default http://localhost:5000). If the backend is not running, every API call will 500.
+Requires the bridge running on port 8641. The Next.js dev server proxies all
+API requests to `A0_URL` (default `http://localhost:8641`, the bridge). If the
+bridge is not running, every API call will 502. The `frontend/next.config.ts`
+rewrite table documents every proxied path.
 
 ### Running the Backend Directly
 
 ```bash
-python run_ui.py
+bash scripts/run_hermes_beta.sh          # bridge + hermes together
+# or for hermetic dev (no hermes gateway):
+CARABINER_RUNTIME=echo bash scripts/run_hermes_beta.sh
 ```
 
-From the project root. Uses Python 3.10+ with the `.venv/` virtual environment.
+From the project root. Uses Python 3.11+ with the `.venv/` virtual environment
+(see `carabiner/runtime/requirements.txt`).
 
 ## Coding Conventions
 
@@ -166,62 +179,76 @@ Why this matters. What problem does it solve for the user?
 ## Project Structure
 
 ```
-carabiner-os/
+carabineros/
 ├── carabiner/              # Domain code (restaurant logic)
-│   ├── api/                # Flask routes and REST endpoints
-│   ├── cli/                # Typer + Rich CLI commands
-│   ├── db/                 # SQLAlchemy models, repos, migrations
-│   ├── services/           # Business logic
-│   ├── agents/             # Multi-agent profiles and prompts
-│   └── knowledge/          # CLI reference docs for AI RAG
-├── engine/agent-zero/      # Git submodule (framework, read-only)
-├── frontend/               # Next.js 16 app
+│   ├── runtime/            # Hermes bridge: FastAPI + Socket.IO + MCP surface
+│   ├── db/                 # SQLAlchemy models, repos, alembic migrations
+│   │   ├── models.py       # Operational ORM (22 tables)
+│   │   └── workspace_models.py  # Frontend-driven UI tables
+│   ├── mcp/                # MCP server helpers (carabiner_read, carabiner_propose_write)
+│   └── cli/                # Typer + Rich CLI commands
+├── frontend/               # Next.js 16 app (App Router, React 19, Tailwind 4)
 │   └── src/app/            # Pages for each module
-├── docs/                   # All project documentation
-│   ├── ARCHITECTURE.md     # System design and component breakdown
-│   ├── CONTRIBUTING.md     # This file
-│   ├── CHANGELOG.md        # Version history
-│   └── README.md           # Documentation overview
-├── usr/                    # A0 runtime config (plugins, agents, settings)
-├── tests/                  # Backend test suite
-├── docker-compose.dev.yml  # Full stack orchestration
+├── docs/
+│   ├── HERMES_BETA_RUNBOOK.md   # Beta runtime guide (this is the source of truth)
+│   ├── HERMES_REQUIREMENTS_AND_CAPABILITIES.md
+│   ├── FABLE_REPO_REAUDIT.md    # Repo audit trail
+│   └── _archive/                # Legacy A0-era docs (do not edit)
+├── tests/
+│   └── runtime/            # Bridge-specific tests
+├── scripts/                # run_hermes_beta.sh, seed_fixture_data.sh, smoke_*.sh
+├── nginx.hermes.conf       # Public-edge proxy (mounts /api, /socket.io, /mcp → bridge)
+├── docker-compose.hermes.yml    # Full stack orchestration
+├── var/hermes-home/        # Hermes profile (gitignored, seeded from ~/.hermes)
 └── CLAUDE.md               # AI agent instructions for the codebase
 ```
 
+> The legacy Agent Zero backend (`engine/agent-zero`) and A0-era configs were
+> removed during the Hermes migration. See `docs/FABLE_REPO_REAUDIT.md`.
+> Archived docs live under `docs/_archive/` for reference only.
+
 ## Troubleshooting
 
-### Frontend API calls return 500
+### Frontend API calls return 502
 
-The Next.js dev server proxies to the Flask backend. If the backend is not running, every `/api/*` call will fail. Start the backend first.
+The Next.js dev server proxies to the bridge via nginx. If the bridge is not
+running, every `/api/*` call will return 502 from nginx. Start the bridge
+first.
 
 ```bash
-python run_ui.py        # terminal 1
-cd frontend && pnpm dev # terminal 2
+docker compose -f docker-compose.hermes.yml up -d bridge     # terminal 1
+cd frontend && A0_URL=http://localhost:8641 pnpm dev         # terminal 2
 ```
+
+Note: first hit per page takes 5-30s during Next.js Turbopack compilation;
+subsequent hits are sub-100ms.
 
 ### Docker services won't start
 
 Check logs for the failing service:
 ```bash
-docker compose -f docker-compose.dev.yml logs --tail=50 agent-zero
-docker compose -f docker-compose.dev.yml logs --tail=50 frontend
+docker compose -f docker-compose.hermes.yml logs --tail=50 <service>
+# services: postgres, bridge, hermes, frontend, nginx
 ```
 
 Common cause: leftover containers from a previous run.
 ```bash
-docker compose -f docker-compose.dev.yml down --remove-orphans
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.hermes.yml down --remove-orphans
+docker compose -f docker-compose.hermes.yml up --build
 ```
 
 ### MCP server "command not found"
 
-`usr/settings.json` uses `.venv/bin/python` (relative path). This requires starting the backend from the project root. For a machine-specific override, copy `usr/settings.local.json.example` to `usr/settings.local.json` and adjust paths.
+The bridge uses `carabiner/runtime/mcp_surface.py` (FastMCP), not the legacy
+`usr/settings.json` MCP server. The MCP surface is mounted at `/mcp` via the
+bridge and is reached by Hermes at `http://bridge:8641/mcp` (compose DNS) or
+`http://127.0.0.1:8641/mcp` (host). See `docs/HERMES_BETA_RUNBOOK.md`.
 
 ### Database connection refused
 
 PostgreSQL must be healthy:
 ```bash
-docker compose exec db pg_isready
+docker compose -f docker-compose.hermes.yml exec postgres pg_isready -U postgres
 ```
 
 If it is not ready, give it 10 seconds after starting the stack before seeding.
@@ -231,11 +258,11 @@ If it is not ready, give it 10 seconds after starting the stack before seeding.
 If you just cloned the project, these commands should all succeed in order:
 
 ```bash
-git submodule update --init --recursive
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.hermes.yml up -d
 sleep 15
-docker compose exec db pg_isready
-curl http://localhost:8080/api/health  # or any GET endpoint
+docker compose -f docker-compose.hermes.yml exec postgres pg_isready -U postgres
+bash scripts/smoke_post_war_room.sh        # 15/15 read-only checks
+curl http://localhost:8090/api/health      # returns {"ok":true,"runtime":"hermes",...}
 ```
 
 If any step fails, open an issue with the error output. We fix setup problems fast.
