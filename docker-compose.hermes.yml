@@ -89,6 +89,14 @@ services:
   frontend:
     build:
       context: ./frontend
+    # 2026-07-22: frontend had restart: no and clean-exited (code 0), staying
+    # down and taking the whole UI offline (nginx location / 502). Keep it up.
+    restart: unless-stopped
+    # 2026-07-22: Next.js dev server (Turbopack) OOM-137'd every ~30s on the
+    # implicit cgroup default (~169MB). Same root cause as the hermes
+    # mem_limit fix. Raise to 2g; restart:unless-stopped already above.
+    mem_limit: 2g
+    mem_reservation: 512m
     environment:
       NEXT_PUBLIC_API_URL: http://bridge:8641
       A0_URL: http://bridge:8641
