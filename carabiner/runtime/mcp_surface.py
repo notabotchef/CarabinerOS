@@ -79,6 +79,20 @@ def get_mcp() -> Any:
     global _mcp_instance
     if _mcp_instance is None:
         from mcp.server.fastmcp import FastMCP
+        from mcp.server.transport_security import TransportSecuritySettings
+
+        # The bridge is reached over the network (hermes at
+        # http://bridge:8641/mcp, and via nginx at the public edge),
+        # so the default DNS-rebinding allowlist (127.0.0.1/localhost only)
+        # rejects every real Host header with 421. Allow all hosts/origins
+        # for this demo surface — the authenticated tunnel is the front-door
+        # boundary, and the MCP tools here are read + propose-only (never
+        # mutate). This matches FastMCP 1.26's `allowed_hosts=["*"]` knob.
+        ts_settings = TransportSecuritySettings(
+            enable_dns_rebinding_protection=False,
+            allowed_hosts=["*"],
+            allowed_origins=["*"],
+        )
 
         _mcp_instance = FastMCP(
             "carabiner_bridge",
@@ -92,6 +106,7 @@ def get_mcp() -> Any:
             # _handle_stateless_request, which does not require the
             # task group. Suitable for our read+propose MCP surface.
             stateless_http=True,
+            transport_security=ts_settings,
         )
         _register_tools(_mcp_instance)
     return _mcp_instance
