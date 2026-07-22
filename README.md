@@ -36,7 +36,24 @@ Next.js frontend  ──HTTP /message_async, /chats, /csrf_token──▶  ┌�
                                                                      PostgreSQL (carabiner/db)
 ```
 
-The bridge owns the frontend contract verbatim and delegates intelligence to a pinned hermes gateway. The Next.js frontend is unchanged; `A0_URL=http://localhost:8641` points it at the bridge instead of Agent Zero.
+The bridge owns the frontend contract verbatim and delegates intelligence to a pinned hermes gateway. The Next.js frontend is unchanged; `A0_URL=http://localhost:8641` points it at the bridge (A0_URL is a legacy name from the Agent Zero era — it is being renamed to `BRIDGE_URL` in CFG-002).
+
+## Access Points
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| CarabinerOS UI | `http://localhost:8090` | Main access point via nginx |
+| Next.js dev server | `http://localhost:3000` | Direct dev server (bypasses nginx) |
+| Bridge (FastAPI) | `http://localhost:8641` | API + Socket.IO + MCP surface |
+| Hermes gateway | `http://localhost:8642` | OpenAI-compatible chat API |
+| PostgreSQL | `localhost:5432` | Database |
+
+For remote access, use SSH port forwarding:
+```bash
+ssh -L 8090:127.0.0.1:8090 hermes-vps
+# Then open http://localhost:8090 in your browser
+```
+Cloudflare tunnel is currently not functional (origin cert missing — tracked in CFG-006).
 
 ## Quick Start
 

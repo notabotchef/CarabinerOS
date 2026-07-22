@@ -37,6 +37,23 @@ function useMounted(): boolean {
   return mounted;
 }
 
+/**
+ * Returns true when the user has requested reduced motion via
+ * `prefers-reduced-motion: reduce`. When active, hover springs and
+ * transition animations are disabled.
+ */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return reduced;
+}
+
 interface Insight {
   text: string;
   tag: string;
@@ -90,6 +107,7 @@ const INSIGHTS: Insight[] = [
 
 function DailyBriefing() {
   const mounted = useMounted();
+  const reducedMotion = useReducedMotion();
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [minHeight, setMinHeight] = useState<number | undefined>(undefined);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -141,21 +159,30 @@ function DailyBriefing() {
 
   const isExpanded = expandedIndex !== null;
 
+  const handleRowKeydown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleExpand(index);
+    }
+  };
+
   return (
     <motion.div
-      initial={mounted ? { opacity: 0, y: 8 } : false}
+      initial={mounted ? { opacity: 0, y: reducedMotion ? 0 : 8 } : false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 25 }}
+      transition={reducedMotion ? { duration: 0.15 } : { delay: 0.2, type: "spring", stiffness: 200, damping: 25 }}
       className="w-full max-w-[500px] mb-6 rounded-xl border border-primary/20 bg-gradient-to-br from-primary/8 to-primary/3 relative overflow-hidden warm-glow"
     >
-      {/* Shimmer bar */}
-      <div
-        className="absolute top-0 inset-x-0 h-[2px] z-10"
-        style={{
-          background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent)",
-          animation: "shimmer-slide 3s ease-in-out infinite",
-        }}
-      />
+      {/* Shimmer bar — disabled when prefers-reduced-motion */}
+      {!reducedMotion && (
+        <div
+          className="absolute top-0 inset-x-0 h-[2px] z-10"
+          style={{
+            background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.4), transparent)",
+            animation: "shimmer-slide 3s ease-in-out infinite",
+          }}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3">
@@ -188,11 +215,15 @@ function DailyBriefing() {
             <motion.div
               key={i}
               onClick={() => handleExpand(i)}
-              className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border border-transparent cursor-pointer transition-colors hover:bg-primary/5 hover:border-primary/10"
+              onKeyDown={(e) => handleRowKeydown(e, i)}
+              role="button"
+              tabIndex={0}
+              aria-expanded={isExpanded && expandedIndex === i}
+              className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border border-transparent cursor-pointer transition-colors hover:bg-primary/5 hover:border-primary/10 focus:outline-none focus:bg-primary/5 focus:border-primary/10"
             >
               <motion.span
-                animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
-                transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.4 }}
+                animate={reducedMotion ? { scale: 1, opacity: 0.4 } : { scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }}
+                transition={reducedMotion ? {} : { duration: 2.5, repeat: Infinity, delay: i * 0.4 }}
                 className="size-1.5 shrink-0 rounded-full bg-primary/40"
               />
               <span className="text-sm text-muted-foreground leading-relaxed flex-1">
@@ -221,7 +252,15 @@ function DailyBriefing() {
                 {/* Close button */}
                 <button
                   onClick={(e) => { e.stopPropagation(); handleCollapse(); }}
-                  className="absolute top-1 right-0 size-7 rounded-lg border border-primary/20 bg-primary/5 flex items-center justify-center text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleCollapse();
+                    }
+                  }}
+                  aria-label="Collapse daily brief"
+                  className="absolute top-1 right-0 size-7 rounded-lg border border-primary/20 bg-primary/5 flex items-center justify-center text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -279,6 +318,7 @@ function DailyBriefing() {
 
 export function HomeView({ onSend }: HomeViewProps) {
   const mounted = useMounted();
+  const reducedMotion = useReducedMotion();
 
   // Derive greeting/time context only after mount to avoid SSR/client
   // hydration mismatches (Date values differ between server and client).
@@ -291,14 +331,17 @@ export function HomeView({ onSend }: HomeViewProps) {
   // render with full opacity so the page is never blank.  Once mounted,
   // let framer-motion handle the entrance animations.
   const motionReady = mounted;
+  const motionTransition = reducedMotion
+    ? { duration: 0.15 }
+    : { type: "spring" as const, stiffness: 200, damping: 25 };
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 w-full max-w-xl mx-auto px-4">
       {/* Greeting */}
       <motion.div
-        initial={motionReady ? { opacity: 0, y: -8 } : false}
+        initial={motionReady ? { opacity: 0, y: reducedMotion ? 0 : -8 } : false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 200, damping: 25 }}
+        transition={motionTransition}
         className="text-center mb-6"
       >
         <h1 className="text-3xl font-bold tracking-tight gradient-text-warm mb-1">
@@ -311,9 +354,9 @@ export function HomeView({ onSend }: HomeViewProps) {
 
       {/* Composer (now above briefing) */}
       <motion.div
-        initial={motionReady ? { opacity: 0, y: 8 } : false}
+        initial={motionReady ? { opacity: 0, y: reducedMotion ? 0 : 8 } : false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15, type: "spring", stiffness: 200, damping: 25 }}
+        transition={reducedMotion ? { duration: 0.15, delay: 0.05 } : { delay: 0.15, type: "spring", stiffness: 200, damping: 25 }}
         className="w-full max-w-[500px]"
       >
         <ChatComposer onSend={onSend} showSuggestions />
