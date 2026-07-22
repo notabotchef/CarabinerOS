@@ -2,7 +2,15 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence, type Variants } from "motion/react";
-import { ShoppingCart, DollarSign, ChefHat, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import {
+  ShoppingCart,
+  DollarSign,
+  ChefHat,
+  UtensilsCrossed,
+  type LucideIcon,
+} from "lucide-react";
+
+import { MOCK_DASHBOARD } from "@/lib/mock-dashboard";
 
 function useMounted(): boolean {
   const [mounted, setMounted] = useState(false);
@@ -17,6 +25,43 @@ interface KpiCard {
   icon: LucideIcon;
   barWidth: string;
   details: { label: string; value: string }[];
+}
+
+/**
+ * `null` / `undefined` / `""` / `NaN` all count as "no live value".
+ * Used to gate the demo fallback so live data always wins when present.
+ */
+function hasLiveValue(v: unknown): boolean {
+  if (v === null || v === undefined) return false;
+  if (typeof v === "string" && v.trim() === "") return false;
+  if (typeof v === "number" && (Number.isNaN(v) || v === 0)) return false;
+  return true;
+}
+
+/**
+ * Apply the demo fallback when a card's value is missing, empty, or
+ * unparseable. Replaces generic placeholders ("on target", "all ready",
+ * em dashes) with the operator-specified demo values. Live values pass
+ * through untouched.
+ */
+function withMockFallback(
+  label: string,
+  liveCard: KpiCard,
+): KpiCard {
+  const mock = MOCK_DASHBOARD.find(
+    (m) => m.label.toLowerCase() === label.toLowerCase(),
+  );
+  if (!mock) return liveCard;
+  const valueMissing = !hasLiveValue(liveCard.value) || liveCard.value === "\u2014";
+  if (!valueMissing) return liveCard;
+  return {
+    ...liveCard,
+    value: mock.value,
+    subtitle: mock.subtitle,
+    barWidth: mock.barWidth,
+    icon: mock.icon,
+    details: mock.details,
+  };
 }
 
 function useSummary(endpoint: string) {
@@ -106,7 +151,7 @@ export function SolitaireCards() {
           { label: "Reservations", value: "8 remaining" },
         ],
       },
-    ];
+    ].map((c) => withMockFallback(c.label, c));
   }, [orders, foodCost, prep]);
 
   const mounted = useMounted();
