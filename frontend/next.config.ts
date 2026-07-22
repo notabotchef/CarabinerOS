@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     "10.0.0.39",
     "localhost",
     "127.0.0.1",
+    "2.24.125.216",
     "*.trycloudflare.com",
     "trycloudflare.com",
   ],
