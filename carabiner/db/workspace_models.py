@@ -11,7 +11,6 @@ from datetime import datetime
 from typing import Optional, List
 
 import sqlalchemy as sa
-import sqlalchemy as sa
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
