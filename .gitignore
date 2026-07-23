@@ -23,10 +23,14 @@
 # Logs
 logs/**
 !logs/**/
+*.log
 
 # Temp
 tmp/**
 !tmp/**/
+
+# ── State / runtime cache ───────────────────────────────
+state/cache/
 
 # ── usr/ ─────────────────────────────────────────────
 # Track our plugins/extensions/agents/settings but ignore
@@ -48,6 +52,9 @@ frontend/.next/
 frontend/node_modules/
 .ruff_cache/
 .next/
+dist/
+build/
+.turbo/
 
 # for browser-use
 agent_history.gif

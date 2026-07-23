@@ -194,3 +194,38 @@ Direct database reads from workspace_* tables should only be used by:
 ### Phase 9 (product)
 - Add cross-location data ownership (workspace_locations is already schema-ready)
 - Add multi-tenant data isolation (currently single-tenant for beta)
+
+---
+
+## DB-007 Final Decisions (Cycle 2)
+
+Full decision record: [`/root/carabineros/state/carabineros/DB-007_MODEL_DECISION.md`](../state/carabineros/DB-007_MODEL_DECISION.md).
+ADR-001 ("Workspace-* Models Are the Canonical Source for the Bridge") is the authoritative ruling; this section is a compact restatement.
+
+**Per-table verdict** (15 rows; rationale + evidence in the decision doc):
+
+| Workspace table | Decision | Operational counterpart fate |
+|---|---|---|
+| `workspace_orders` | **canonical** | `orders` (models.py) — DEPRECATE in Phase 8 |
+| `workspace_inventory` | **projection** of `inventory_counts` / `par_levels` / `waste_logs` | keep; Phase 9 ingestion re-homes counts to workspace |
+| `workspace_prep` | **canonical** | `prep_lists` / `prep_list_items` / `prep_stations` — DEPRECATE in Phase 8 (subject to Q1 — confirm legacy Flask UI is dormant) |
+| `workspace_food_cost` | **projection** of `daily_food_cost` / `budget_periods` / `daily_pl` | keep; Phase 9 ingestion re-homes timeseries to workspace |
+| `workspace_menu` | **canonical** | `menu_items` (models.py) — DEPRECATE in Phase 8 |
+| `workspace_campaigns` | **canonical** | no operational counterpart exists |
+| `workspace_invoices` + `invoice_events` | **canonical** | `invoices` / `invoice_line_items` (models.py) — DEPRECATE in Phase 8 |
+| `workspace_recipes` + nested component/ingredient/step tables | **canonical** | `recipes` / `recipe_ingredients` (models.py) — DEPRECATE in Phase 8 (orphaned by migration 004) |
+| `workspace_locations` + `organizations` | **canonical** | `locations` (models.py) — DEPRECATE in Phase 8 |
+| `inbox_items` | **canonical** | no operational counterpart |
+| `action_log` | **canonical** | no operational counterpart |
+| `menu_item_history` | **canonical** | no operational counterpart |
+| `eighty_six_log` | **canonical** | no operational counterpart |
+| (operational) `items` | **transitional** — referenced by FK from `recipe_component_ingredients.item_id` and `workspace_inventory.item_id` | migrate to `workspace_items` in Phase 8c |
+| (operational) `vendors` | **transitional** — referenced by `policy.py:34` allowlist and legacy CLI | migrate to `workspace_vendors` in Phase 8b; add MCP `vendors` module |
+
+**Headline verdict:** Option 1 (canonical workspace_*) wins for 11 of 15 tables; Option 2 (projection) for 2 (inventory, food_cost); Option 4 (transitional) for 2 (`items`, `vendors`). No tables are demo-only. Option 5 (scheduled migration) is the Phase 9 plan for the 2 projections and the 2 transitionals.
+
+**Two open questions for the operator:**
+1. Is the legacy Flask UI in `carabiner/api/` still served in production? It reads `PrepList` and a handful of other operational tables. If yes, Phase 8 drops must defer.
+2. Should `vendors` be added to `_MODULE_REGISTRY` after Phase 8b creates `workspace_vendors`, or kept CLI-only? Recommend yes (modulo R6 mitigation in the decision doc).
+
+**Status:** ADR-001 Accepted 2026-07-23. Phase 8a (deprecation comments + CI lint + this DATA_OWNERSHIP.md update) is the only follow-up work this cycle; all data movement is sequenced into Phase 8b/8c/9.
