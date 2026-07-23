@@ -1,11 +1,26 @@
 {
   "registry_version": 2,
-  "last_updated": "2026-07-22T11:32:00-05:00",
-  "valid_workspace_kinds": ["scratch", "worktree", "dir"],
+  "last_updated": "2026-07-23T20:31:58.044236+00:00",
+  "valid_workspace_kinds": [
+    "scratch",
+    "worktree",
+    "dir"
+  ],
   "policy": {
     "repo_writing_requires": "worktree",
-    "dir_allowed_for": ["read-only inspection", "docker operations outside repo", "control-plane scheduler work"],
-    "scratch_allowed_for": ["ephemeral investigation", "hermetic dev", "control-plane cron install", "db restore ops", "docker compose ops", "read-only test baseline"],
+    "dir_allowed_for": [
+      "read-only inspection",
+      "docker operations outside repo",
+      "control-plane scheduler work"
+    ],
+    "scratch_allowed_for": [
+      "ephemeral investigation",
+      "hermetic dev",
+      "control-plane cron install",
+      "db restore ops",
+      "docker compose ops",
+      "read-only test baseline"
+    ],
     "branch_naming": "ticket/<ticket-id>-<slug>",
     "max_concurrent_writers_per_file": 1,
     "lease_required_for_all_repo_writes": true,
@@ -18,8 +33,12 @@
       "branch": null,
       "workspace_kind": "dir",
       "workspace_path": "/root/carabineros",
-      "paths": ["state/carabineros/EXPERT_ASSIGNMENT_LOG.md"],
-      "leased_paths": ["state/carabineros/EXPERT_ASSIGNMENT_LOG.md"],
+      "paths": [
+        "state/carabineros/EXPERT_ASSIGNMENT_LOG.md"
+      ],
+      "leased_paths": [
+        "state/carabineros/EXPERT_ASSIGNMENT_LOG.md"
+      ],
       "specialist_session": "srv1604177:1798775",
       "worker_pid": 1801993,
       "started_at": "2026-07-22T16:11:53",
@@ -43,7 +62,7 @@
       "expires_at": null,
       "ended_at": "2026-07-22T16:13:27",
       "status": "released",
-      "release_reason": "Worker completed with read-only verification. No files modified. Requires validation closure per operator §6.",
+      "release_reason": "Worker completed with read-only verification. No files modified. Requires validation closure per operator \u00a76.",
       "result_summary": "Root cause was environmental (bridge runtime not running during reconciliation). No code change needed."
     },
     {
@@ -60,7 +79,7 @@
       "expires_at": null,
       "ended_at": "2026-07-22T16:16:00",
       "status": "abandoned",
-      "release_reason": "Worker killed before completion. Original attempt crashed (PID 1801992, exit_code=1). Requires resubmission with workspace_kind=scratch per Gate §6 classification.",
+      "release_reason": "Worker killed before completion. Original attempt crashed (PID 1801992, exit_code=1). Requires resubmission with workspace_kind=scratch per Gate \u00a76 classification.",
       "result_summary": "Crashed twice. No repo writes."
     },
     {
@@ -77,7 +96,7 @@
       "expires_at": null,
       "ended_at": "2026-07-22T16:16:30",
       "status": "abandoned",
-      "release_reason": "Worker killed; no repo writes. Requires resubmission with workspace_kind=scratch per Gate §6 classification.",
+      "release_reason": "Worker killed; no repo writes. Requires resubmission with workspace_kind=scratch per Gate \u00a76 classification.",
       "result_summary": "Multiple kill cycles. No repo writes."
     },
     {
@@ -94,7 +113,7 @@
       "expires_at": null,
       "ended_at": "2026-07-22T16:16:30",
       "status": "abandoned",
-      "release_reason": "Worker killed; no repo writes. Requires resubmission with workspace_kind=scratch per Gate §6 classification.",
+      "release_reason": "Worker killed; no repo writes. Requires resubmission with workspace_kind=scratch per Gate \u00a76 classification.",
       "result_summary": "Killed before any work."
     },
     {
@@ -111,7 +130,7 @@
       "expires_at": null,
       "ended_at": "2026-07-22T16:16:30",
       "status": "abandoned",
-      "release_reason": "Worker killed; no repo writes. Requires resubmission with workspace_kind=scratch per Gate §6 classification.",
+      "release_reason": "Worker killed; no repo writes. Requires resubmission with workspace_kind=scratch per Gate \u00a76 classification.",
       "result_summary": "Killed before any work."
     },
     {
@@ -120,15 +139,19 @@
       "branch": null,
       "workspace_kind": "scratch",
       "workspace_path": null,
-      "paths": ["state/carabineros/BASE-005_TEST_BASELINE.md"],
-      "leased_paths": ["state/carabineros/BASE-005_TEST_BASELINE.md"],
+      "paths": [
+        "state/carabineros/BASE-005_TEST_BASELINE.md"
+      ],
+      "leased_paths": [
+        "state/carabineros/BASE-005_TEST_BASELINE.md"
+      ],
       "specialist_session": "srv1604177:1798775",
       "worker_pid": 1806232,
       "started_at": "2026-07-22T16:21:54",
       "expires_at": null,
       "ended_at": "2026-07-22T16:26:08",
       "status": "released",
-      "release_reason": "Worker completed during gateway-restart window (old gateway PID 1798775 spawned it before new config loaded). Wrote state/carabineros/BASE-005_TEST_BASELINE.md (test baseline file). Workspace_kind was 'dir' which is technically a violation per Gate §6 (test baseline should have used scratch). Documented as accepted exception since the worker ran BEFORE the new gateway started.",
+      "release_reason": "Worker completed during gateway-restart window (old gateway PID 1798775 spawned it before new config loaded). Wrote state/carabineros/BASE-005_TEST_BASELINE.md (test baseline file). Workspace_kind was 'dir' which is technically a violation per Gate \u00a76 (test baseline should have used scratch). Documented as accepted exception since the worker ran BEFORE the new gateway started.",
       "result_summary": "Updated test baseline recorded. Python non-runtime: 12 pass / 0 fail. Python runtime: 117 pass / 2 fail / 8 skip. Frontend: 73 pass. Worker spawned before new gateway config loaded."
     },
     {
@@ -137,15 +160,21 @@
       "branch": "ticket/db-007-workspace-future",
       "workspace_kind": "worktree",
       "workspace_path": null,
-      "paths": ["docs/MODEL_FUTURE_DECISION.md", "docs/DATA_OWNERSHIP.md"],
-      "leased_paths": ["docs/MODEL_FUTURE_DECISION.md", "docs/DATA_OWNERSHIP.md"],
+      "paths": [
+        "docs/MODEL_FUTURE_DECISION.md",
+        "docs/DATA_OWNERSHIP.md"
+      ],
+      "leased_paths": [
+        "docs/MODEL_FUTURE_DECISION.md",
+        "docs/DATA_OWNERSHIP.md"
+      ],
       "specialist_session": null,
       "worker_pid": null,
       "started_at": null,
       "expires_at": null,
       "ended_at": null,
       "status": "pending",
-      "release_reason": "Not yet spawned. Awaiting Gate §3 worktree proof before scheduling.",
+      "release_reason": "Not yet spawned. Awaiting Gate \u00a73 worktree proof before scheduling.",
       "result_summary": "Awaiting resubmission with workspace_kind=worktree, branch=ticket/db-007-workspace-future."
     },
     {
@@ -154,8 +183,12 @@
       "branch": "ticket/test-worktree-proof",
       "workspace_kind": "worktree",
       "workspace_path": "/root/carabineros/.worktrees/t_3c024a85",
-      "paths": ["state/carabineros/worktree-proof/proof-marker.txt"],
-      "leased_paths": ["state/carabineros/worktree-proof/"],
+      "paths": [
+        "state/carabineros/worktree-proof/proof-marker.txt"
+      ],
+      "leased_paths": [
+        "state/carabineros/worktree-proof/"
+      ],
       "specialist_session": "srv1604177:1811597",
       "worker_pid": 1811776,
       "started_at": "2026-07-22T16:34:29",
@@ -168,10 +201,60 @@
       "worktree_branch": "ticket/test-worktree-proof",
       "worktree_head_commit": "59386b7",
       "isolated_from_main": true
+    },
+    {
+      "ticket_id": "DEP-001",
+      "ticket_db_id": "t_13641619",
+      "branch": "ticket/DEP-001-deploy-scripts",
+      "workspace_kind": "worktree",
+      "workspace_path": "/root/carabineros/.worktrees/t_13641619",
+      "paths": [
+        "scripts/deploy.sh",
+        "scripts/rollback.sh",
+        "docs/DEPLOY.md",
+        "state/carabineros/DEPLOY_DRILL_2026-07-23.md"
+      ],
+      "leased_paths": [
+        "scripts/deploy.sh",
+        "scripts/rollback.sh",
+        "docs/DEPLOY.md",
+        "state/carabineros/DEPLOY_DRILL_2026-07-23.md"
+      ],
+      "specialist_session": "agency-router:t_13641619",
+      "worker_pid": null,
+      "started_at": "2026-07-23T20:23:38.521139+00:00",
+      "expires_at": null,
+      "ended_at": "2026-07-23T20:31:58.044236+00:00",
+      "status": "released",
+      "release_reason": "DEP-001 completed; scripts + docs + drill report pushed to ticket/DEP-001-deploy-scripts (commit fac46a9)",
+      "result_summary": "Added scripts/deploy.sh (289 lines), scripts/rollback.sh (241 lines), docs/DEPLOY.md (285 lines), state/carabineros/DEPLOY_DRILL_2026-07-23.md. All bash -n clean. Dry-run drill: 4/4 cases pass."
+    },
+    {
+      "ticket_id": "FIX-WORKSPACE-KIND-CLOSURE",
+      "ticket_db_id": "t_6c72d856",
+      "branch": "ticket/fix-workspace-kind-closure",
+      "workspace_kind": "worktree",
+      "workspace_path": "/root/carabineros/.worktrees/fix-workspace-kind-closure",
+      "paths": [
+        "state/carabineros/EXPERT_ASSIGNMENT_LOG.md",
+        "state/carabineros/WORKSPACE_KIND_VALIDATION.md"
+      ],
+      "leased_paths": [
+        "state/carabineros/EXPERT_ASSIGNMENT_LOG.md",
+        "state/carabineros/WORKSPACE_KIND_VALIDATION.md"
+      ],
+      "specialist_session": "agency-router:recovery-cycle-1-closure",
+      "worker_pid": null,
+      "started_at": "2026-07-23T17:49:00-05:00",
+      "expires_at": null,
+      "ended_at": "2026-07-23T17:55:00-05:00",
+      "status": "released",
+      "release_reason": "Closure commit 405daf8 on branch ticket/fix-workspace-kind-closure. Worktree retained. Awaiting independent review and merge to strategic-implementation.",
+      "result_summary": "Worktree created. Applied stashed documentation (VALID_WORKSPACE_KINDS doc) + new WORKSPACE_KIND_VALIDATION.md covering all 10 acceptance criteria from operator Gate §3. 9/10 PASSED, criterion 7 (independent review) DEFERRED. Commit 405daf8 on branch ticket/fix-workspace-kind-closure. NOT merged to main. NOT merged to strategic-implementation yet. Stash@{0} retained until merge verification."
     }
   ],
   "active_leases": 0,
-  "released_leases": 3,
+  "released_leases": 5,
   "abandoned_leases": 5,
   "pending_leases": 2,
   "overlapping_leases": [],
