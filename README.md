@@ -1,102 +1,97 @@
 # CarabinerOS
 
-AI-powered restaurant management platform. Built on [Hermes](https://hermes-agent.nousresearch.com/docs) (`hermes-agent` ≥ v0.18.2) as the backend intelligence.
+CarabinerOS — prep-to-order correlation for restaurant ops.
 
-CarabinerOS replaces the spreadsheet-and-gut-feeling ops stack with an AI general manager that reads your data, drafts orders, tracks food cost, and manages prep — all through natural conversation.
+## What it is
 
-> **Status — 2026-07-09.** Beta runtime is the in-repo bridge under `carabiner/runtime/`. The legacy Agent Zero backend (the `engine/agent-zero` submodule) is preserved for reference only and is **not required** for the beta. See `docs/FABLE_REPO_REAUDIT.md` for the audit trail and `docs/HERMES_BETA_MIGRATION_PLAN.md` for the current plan.
+CarabinerOS is an AI general manager for independent restaurants. It watches your prep, inventory, and orders in one place, then drafts the next move — restock the walk-in, cut tonight's prep list, flag a slow line item — and asks before it commits anything. The intelligence layer is exposed as MCP tools, so the same prep, inventory, and orders data can drive a chat, a nightly report, or a third-party system without re-implementing the data model. It runs as a single self-hosted stack on one host, with one Postgres, one bridge, one model gateway, and one web UI.
 
-## Current Planning Docs
+## Demo
 
-- [Fable repo re-audit](docs/FABLE_REPO_REAUDIT.md) — what this repo actually is (vs. what older Codex docs claimed).
-- [Hermes requirements & capabilities](docs/HERMES_REQUIREMENTS_AND_CAPABILITIES.md) — what `hermes-agent` provides.
-- [Hermes beta migration plan](docs/HERMES_BETA_MIGRATION_PLAN.md) — the active P0–P9 plan.
-- [FreshcOS → CarabinerOS sync](docs/FRESHCOS_TO_CARABINEROS_SYNC.md) — **BLOCKED on access**; see unblock checklist.
-- [Bridges test report](docs/HERMES_BETA_TEST_REPORT.md) — actual run results.
+Live demo runbook: [docs/HERMES_BETA_RUNBOOK.md](docs/HERMES_BETA_RUNBOOK.md).
+
+The Cloudflare tunnel is currently DOWN. Access is via SSH tunnel:
+
+```bash
+ssh -L 8090:127.0.0.1:8090 hermes-vps
+```
+
+Then open [http://localhost:8090](http://localhost:8090) in your browser.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Browser([Browser])
+    FE[Next.js frontend<br/>:3000]
+    NG[nginx<br/>:8090]
+    BR[Carabiner bridge<br/>FastAPI + MCP<br/>:8641]
+    HE[Hermes gateway<br/>OpenAI-compatible<br/>:8642]
+    PG[(Postgres 16<br/>:5432)]
+
+    Browser -- HTTPS/WS :8090 --> NG
+    NG -- proxy :3000 --> FE
+    NG -- proxy :8641 --> BR
+    BR -- SQL --> PG
+    BR -- chat completions --> HE
+    HE -- tool calls /mcp --> BR
+```
+
+The bridge owns the frontend contract, the policy layer, the audit log, and the MCP surface. Hermes is bundled as a pinned gateway and is not exposed to the browser directly.
 
 ## Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Framer Motion, shadcn/ui |
-| **Intelligence backend** | Hermes (`hermes-agent` ≥ v0.18.2) — OpenAI-compatible gateway on `127.0.0.1:8642` |
-| **Bridge** | `carabiner/runtime/` — FastAPI + python-socketio ASGI; FastMCP `streamable_http_app()` at `/mcp` |
-| **Database** | PostgreSQL 16, SQLAlchemy 2.0 async, asyncpg |
-| **Infra** | Docker Compose (`docker-compose.hermes.yml`), nginx reverse proxy (`nginx.hermes.conf`) |
+| Layer        | Technology                                       |
+|--------------|--------------------------------------------------|
+| Frontend     | Next.js 16, React 19                             |
+| Styling      | Tailwind CSS 4                                   |
+| Bridge / API | FastAPI (Python) + python-socketio               |
+| Intelligence | Hermes (`hermes-agent`) — OpenAI-compatible gateway on `:8642` |
+| MCP surface  | FastMCP `streamable-http` at `/mcp`              |
+| Database     | PostgreSQL 16, SQLAlchemy 2.0 async, asyncpg     |
+| Reverse proxy| nginx                                            |
+| Orchestration| Docker Compose (`docker-compose.hermes.yml`)      |
 
-## Architecture (beta)
-
-```
-Next.js frontend  ──HTTP /message_async, /chats, /csrf_token──▶  ┌────────────────────────────┐
-                  ──Socket.IO /ws (state_push, action_card,      │  carabiner/runtime bridge   │──SSE /v1/chat/completions──▶ hermes-agent
-                     card_commit/dismiss/message)──────────────▶ │  (FastAPI + python-socketio)│◀──MCP (streamable-http /mcp)── gateway :8642
-                                                                 │  policy · audit · cards     │
-                                                                 └──────────┬─────────────────┘
-                                                                            ▼
-                                                                     PostgreSQL (carabiner/db)
-```
-
-The bridge owns the frontend contract verbatim and delegates intelligence to a pinned hermes gateway. The Next.js frontend is unchanged; `A0_URL=http://localhost:8641` points it at the bridge (A0_URL is a legacy name from the Agent Zero era — it is being renamed to `BRIDGE_URL` in CFG-002).
-
-## Access Points
-
-| Service | URL | Purpose |
-|---------|-----|---------|
-| CarabinerOS UI | `http://localhost:8090` | Main access point via nginx |
-| Next.js dev server | `http://localhost:3000` | Direct dev server (bypasses nginx) |
-| Bridge (FastAPI) | `http://localhost:8641` | API + Socket.IO + MCP surface |
-| Hermes gateway | `http://localhost:8642` | OpenAI-compatible chat API |
-| PostgreSQL | `localhost:5432` | Database |
-
-For remote access, use SSH port forwarding:
-```bash
-ssh -L 8090:127.0.0.1:8090 hermes-vps
-# Then open http://localhost:8090 in your browser
-```
-Cloudflare tunnel is currently not functional (origin cert missing — tracked in CFG-006).
-
-## Quick Start
+## Local dev
 
 ```bash
-git clone https://github.com/notabotchef/CarabinerOS.git
-cd CarabinerOS
-
-# Generate secrets
-cp .env.example .env
-openssl rand -hex 32   # paste into API_SERVER_KEY and BRIDGE_SECRET_KEY
-
-# Full stack: PostgreSQL + bridge + hermes + frontend + nginx
 docker compose -f docker-compose.hermes.yml up --build -d
-
-# Open
-# CarabinerOS:  http://localhost:8090
 ```
 
-### Local dev loop (no nginx)
+Then open [http://localhost:8090](http://localhost:8090).
 
-```bash
-scripts/run_hermes_beta.sh   # starts bridge on :8641 + hermes on :8642; Ctrl-C to stop
-cd frontend && A0_URL=http://localhost:8641 pnpm dev
+The compose file brings up Postgres on `:5432`, the bridge on `:8641`, Hermes on `:8642`, the Next.js frontend on `:3000`, and nginx on `:8090` as the public entry point.
+
+## Repo layout
+
+```
+carabineros/
+├── carabiner/          # Python runtime — bridge, MCP, db, api routes
+│   ├── runtime/        # FastAPI app, audit, brief cards
+│   ├── db/             # SQLAlchemy models, repositories, migrations
+│   ├── mcp/            # FastMCP server (streamable-http)
+│   ├── api/            # FastAPI routers + legacy A0 Flask blueprints
+│   └── domain/         # core domain types
+├── frontend/           # Next.js 16 / React 19 app
+├── docs/               # product, market, dev, ops, runbooks
+├── scripts/            # beta runner, smoke tests, seeders
+└── state/              # ephemeral project state — tickets, audits, recovery notes
 ```
 
-> Note: the legacy Agent Zero backend (`engine/agent-zero` submodule) is preserved for reference only; the beta runtime is the Hermes bridge under `carabiner/runtime/`. See `docs/HERMES_BETA_RUNBOOK.md`.
+## Status
 
-## Checks
+Alpha. Pre-seed. Accepting design partners.
 
-```bash
-docker compose -f docker-compose.hermes.yml config
-pytest tests/ -q
-pytest tests/runtime/ -q                          # bridge-specific
-cd frontend && pnpm test -- --runInBand
-cd frontend && pnpm lint
-```
-
-Known current issue from the July 2026 audit: frontend lint may fail on `frontend/src/components/chat-composer.tsx:163`.
-
-## Database
-
-37 tables covering: locations, orders, inventory, prep lists, menu items, recipes (modernist format with components/steps/ingredients), invoices, food cost, daily P&L, budget periods, campaigns, action logs, and more.
+- Security disclosures: `security@carabineros.com`
+- Everything else (partnerships, press, demo requests): `hello@carabineros.com`
 
 ## License
 
-Proprietary. All rights reserved.
+Proprietary. All rights reserved, unless a `LICENSE` file in the repository root says otherwise.
+
+## Acknowledgements
+
+- Hermes — agent runtime and gateway that powers the intelligence layer.
+- Agent Zero — original ops substrate that CarabinerOS was built on top of; legacy code is preserved for reference.
+- Postgres — the single source of truth for locations, orders, inventory, prep, recipes, and food cost.
+- Next.js — the web framework the operator UI runs on.
